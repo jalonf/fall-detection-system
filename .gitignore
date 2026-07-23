@@ -1,0 +1,23 @@
+# Entornos virtuales
+venv/
+env/
+.env
+__pycache__/
+*.py[cod]
+
+# Carpetas de datos y modelos pesados (¡NO subir a Git!)
+data/
+models/*.pth
+models/*.pt
+models/*.onnx
+models/*.h5
+
+# Notebooks temporales y cachés de IDE
+.ipynb_checkpoints/
+.vscode/
+.idea/
+*.log
+
+# Archivos del sistema operativo
+.DS_Store
+Thumbs.db
