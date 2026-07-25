@@ -1,3 +1,5 @@
+--extra-index-url https://download.pytorch.org/whl/cpu
+
 # Computer Vision & Biomechanical Extraction
 mediapipe>=0.10.0
 opencv-python>=4.8.0
