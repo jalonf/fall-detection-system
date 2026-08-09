@@ -215,7 +215,7 @@ class MonitorView(QWidget):
         """Builds the sidebar containing statistics cards, system status overview, and the event log."""
         sidebar = QVBoxLayout()
         sidebar.setContentsMargins(0, 0, 0, 0)
-        sidebar.setSpacing(18)
+        sidebar.setSpacing(20) 
 
         stats_row = QHBoxLayout()
         stats_row.setSpacing(16)
@@ -225,37 +225,55 @@ class MonitorView(QWidget):
 
         self.status_card = QFrame()
         self.status_card.setObjectName("statusCardNormal")
-        apply_shadow(self.status_card, blur=28, y=6, alpha=9)
+        self.status_card.setStyleSheet("""
+            QFrame#statusCardNormal { 
+                background-color: #FFFFFF;
+                border: 1px solid #E2E8F0;
+                border-radius: 6px;
+                border-left: 4px solid #94A3B8;
+            }
+        """)
+        apply_shadow(self.status_card, blur=10, y=2, alpha=4)
 
         sc_layout = QVBoxLayout(self.status_card)
-        sc_layout.setContentsMargins(22, 20, 22, 20)
-        sc_layout.setSpacing(8)
+        sc_layout.setContentsMargins(18, 14, 18, 14)
+        sc_layout.setSpacing(6)
 
+        sc_header_layout = QHBoxLayout()
         sc_title = QLabel("SYSTEM STATUS")
-        sc_title.setObjectName("sectionTitle")
-        sc_layout.addWidget(sc_title)
-
-        self.detection_status = QLabel("Idle")
-        self.detection_status.setObjectName("detectionStatus")
-        self.detection_status.setStyleSheet("font-size: 23px; font-weight: 800; color: #475569; letter-spacing: -0.4px; background: transparent;")
-        sc_layout.addWidget(self.detection_status)
+        sc_title.setStyleSheet("font-size: 10px; font-weight: 700; color: #64748B; letter-spacing: 1px;")
+        
+        self.sys_status_dot = QFrame()
+        self.sys_status_dot.setFixedSize(8, 8)
+        self.sys_status_dot.setStyleSheet("background-color: #94A3B8; border-radius: 4px;")
+        
+        self.detection_status = QLabel("Deactivated")
+        self.detection_status.setStyleSheet("font-size: 12px; font-weight: 700; color: #475569;")
+        
+        sc_header_layout.addWidget(sc_title)
+        sc_header_layout.addStretch()
+        sc_header_layout.addWidget(self.sys_status_dot)
+        sc_header_layout.addWidget(self.detection_status)
+        sc_layout.addLayout(sc_header_layout)
 
         self.detection_detail = QLabel("System is ready. Awaiting video stream.")
-        self.detection_detail.setObjectName("detectionDetail")
+        self.detection_detail.setStyleSheet("color: #64748B; font-size: 12px;")
         self.detection_detail.setWordWrap(True)
         sc_layout.addWidget(self.detection_detail)
         sidebar.addWidget(self.status_card)
 
         log_card = QFrame()
         log_card.setObjectName("panel")
-        apply_shadow(log_card, blur=28, y=6, alpha=9)
+        apply_shadow(log_card, blur=15, y=4, alpha=6)
+        
         log_wrapper = QVBoxLayout(log_card)
-        log_wrapper.setContentsMargins(20, 18, 20, 18)
+        log_wrapper.setContentsMargins(20, 20, 20, 20)
         log_wrapper.setSpacing(12)
 
         log_header = QHBoxLayout()
         log_title = QLabel("EVENT LOG")
         log_title.setObjectName("sectionTitle")
+        log_title.setStyleSheet("font-size: 11px; font-weight: 700; color: #64748B; letter-spacing: 1px;")
         log_header.addWidget(log_title)
         log_header.addStretch()
 
@@ -263,6 +281,7 @@ class MonitorView(QWidget):
         clear_btn.setObjectName("subtle")
         clear_btn.setFixedHeight(24)
         clear_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        clear_btn.setStyleSheet("color: #3B82F6; font-size: 12px; font-weight: 600; border: none; background: transparent;")
         clear_btn.clicked.connect(self._clear_events)
         log_header.addWidget(clear_btn)
         log_wrapper.addLayout(log_header)
@@ -270,7 +289,29 @@ class MonitorView(QWidget):
         self.event_list = QListWidget()
         self.event_list.setObjectName("eventLog")
         self.event_list.setMinimumHeight(200)
-        self.event_list.setSpacing(4)
+        self.event_list.setSpacing(0)
+        self.event_list.setWordWrap(True) 
+        self.event_list.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        self.event_list.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        self.event_list.setStyleSheet("""
+            QListWidget {
+                background-color: #F8FAFC;
+                border: 1px solid #E2E8F0;
+                border-radius: 6px;
+                padding: 4px;
+                outline: none;
+            }
+            QListWidget::item {
+                border-bottom: 1px solid #F1F5F9;
+                padding: 10px 8px;
+            }
+            QListWidget::item:last {
+                border-bottom: none;
+            }
+            QListWidget::item:selected {
+                background-color: transparent;
+            }
+        """)
         log_wrapper.addWidget(self.event_list, 1)
 
         sidebar.addWidget(log_card, 1)
@@ -280,24 +321,32 @@ class MonitorView(QWidget):
     def _stat_card(self, value, label, attr_name, accent_color):
         """Helper method to generate a styled metric statistics card."""
         card = QFrame()
-        card.setObjectName("statCard")
-        card.setFixedHeight(85)
-        card.setStyleSheet(f"QFrame#statCard {{ border-left: 4px solid {accent_color}; }}")
+        card.setObjectName(f"statCard_{attr_name}")
+        card.setFixedHeight(95)
         
-        apply_shadow(card, blur=16, y=4, alpha=5)
+        card.setStyleSheet(f"""
+            QFrame#statCard_{attr_name} {{ 
+                background-color: #FFFFFF;
+                border: 1px solid #E2E8F0;
+                border-top: 3px solid {accent_color};
+                border-radius: 6px;
+            }}
+        """)
+        
+        apply_shadow(card, blur=10, y=2, alpha=4)
 
         col = QVBoxLayout(card)
-        col.setContentsMargins(20, 14, 18, 14)
+        col.setContentsMargins(18, 14, 18, 14)
         col.setSpacing(2)
 
-        val = QLabel(value)
-        val.setStyleSheet("font-size: 26px; font-weight: 800; color: #0F172A; background: transparent; border: none;")
-
         lbl = QLabel(label)
-        lbl.setStyleSheet("font-size: 11px; font-weight: 700; color: #64748B; letter-spacing: 0.5px; background: transparent; border: none;")
+        lbl.setStyleSheet("font-size: 10px; font-weight: 700; color: #64748B; letter-spacing: 0.8px; background: transparent; border: none;")
 
-        col.addWidget(val)
+        val = QLabel(value)
+        val.setStyleSheet("font-size: 28px; font-weight: 700; color: #0F172A; background: transparent; border: none;")
+
         col.addWidget(lbl)
+        col.addWidget(val)
         col.addStretch()
 
         setattr(self, attr_name, val)
@@ -353,18 +402,21 @@ class MonitorView(QWidget):
             self.status_label.setStyleSheet(f"font-size: 13px; font-weight: 600; color: {Colors.PRIMARY}; background: transparent;")
             self._swap_object_name(self.status_badge, "statusBadgeActive")
 
-            self.detection_status.setText("Analyzing...")
-            self.detection_status.setStyleSheet("font-size: 23px; font-weight: 800; color: #2563EB; letter-spacing: -0.4px; background: transparent;")
+            self.sys_status_dot.setStyleSheet("background-color: #10B981; border-radius: 4px;")
+            self.detection_status.setText("Activated")
+            self.detection_status.setStyleSheet("font-size: 12px; font-weight: 700; color: #10B981;")
+            self.status_card.setStyleSheet("QFrame#statusCardNormal { background-color: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 6px; border-left: 4px solid #10B981; }")
             self.detection_detail.setText("AI processing active. Looking for anomalies.")
-            self._swap_object_name(self.status_card, "statusCardNormal")
         else:
             self.status_dot.setStyleSheet("background-color: #94A3B8; border-radius: 4px;")
             self.status_label.setText("Idle")
             self.status_label.setStyleSheet("font-size: 13px; font-weight: 600; color: #64748B; background: transparent;")
             self._swap_object_name(self.status_badge, "statusBadgeIdle")
 
-            self.detection_status.setText("Idle")
-            self.detection_status.setStyleSheet("font-size: 23px; font-weight: 800; color: #475569; letter-spacing: -0.4px; background: transparent;")
+            self.sys_status_dot.setStyleSheet("background-color: #94A3B8; border-radius: 4px;")
+            self.detection_status.setText("Deactivated")
+            self.detection_status.setStyleSheet("font-size: 12px; font-weight: 700; color: #475569;")
+            self.status_card.setStyleSheet("QFrame#statusCardNormal { background-color: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 6px; border-left: 4px solid #94A3B8; }")
             self.detection_detail.setText("System is ready. Awaiting video stream.")
 
     def trigger_fall_alert(self, message="Possible fall detected"):
@@ -374,7 +426,6 @@ class MonitorView(QWidget):
         
         self._swap_object_name(self.video_label, "videoFrameAlert")
         self._swap_object_name(self.status_badge, "statusBadgeAlert")
-        self._swap_object_name(self.status_card, "statusCardAlert")
         
         self.add_event("ALERT", message)
         
@@ -394,7 +445,10 @@ class MonitorView(QWidget):
             color = "#7F1D1D" 
             self._swap_object_name(self.video_label, "videoFrameAlertDim") 
             
-        self.detection_status.setStyleSheet(f"font-size: 23px; font-weight: 800; color: {color}; letter-spacing: -0.4px; background: transparent;")
+        self.detection_status.setStyleSheet(f"font-size: 12px; font-weight: 700; color: {color};")
+        self.sys_status_dot.setStyleSheet(f"background-color: {color}; border-radius: 4px;")
+        self.status_card.setStyleSheet(f"QFrame#statusCardNormal {{ background-color: #FEF2F2; border: 1px solid #FECACA; border-radius: 6px; border-left: 4px solid {color}; }}")
+        
         self.status_dot.setStyleSheet(f"background-color: {color}; border-radius: 4px;")
         self.status_label.setStyleSheet(f"font-size: 13px; font-weight: 700; color: {color}; background: transparent;")
 
@@ -461,5 +515,3 @@ class MonitorView(QWidget):
         self.clear_video()
         if self.on_stop:
             self.on_stop()
-
-
