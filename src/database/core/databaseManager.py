@@ -10,7 +10,6 @@ class DatabaseManager:
     connection: SqliteDatabase | None = None
     
     def __new__(cls, *args, **kwargs):
-        # En Python se recomienda usar 'is None' en lugar de '== None'
         if cls.instance is None:
             cls.instance = super(DatabaseManager, cls).__new__(cls)
             cls.instance.configure()
@@ -18,10 +17,11 @@ class DatabaseManager:
         return cls.instance
 
     def configure(self):
-        """Configures the path and prepares the connection object."""
-        rute_app = Path.home() / ".fall_detection_app"
-        rute_app.mkdir(parents=True, exist_ok=True)
-        self.connection = SqliteDatabase(str(rute_app / 'app.db'), check_same_thread=False)
+        project_root = Path(__file__).resolve().parent.parent.parent.parent
+        
+        db_file = project_root / 'app.db'
+        
+        self.connection = SqliteDatabase(str(db_file), check_same_thread=False)
 
     def init_tables(self, models: list):
         """
@@ -30,6 +30,7 @@ class DatabaseManager:
         """
         if self.connection is not None:
             self.connection.connect()
+            # The create_tables method executes "CREATE TABLE IF NOT EXISTS" under the hood.
             self.connection.create_tables(models)
             self.connection.close()
             print("Database initialized successfully.")
@@ -38,5 +39,4 @@ class DatabaseManager:
 
 
 databaseManager = DatabaseManager()
-# OJO A ESTE CAMBIO: Tiene que ser la 'd' minúscula (la instancia), no la clase
 db = databaseManager.connection

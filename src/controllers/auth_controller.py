@@ -1,3 +1,5 @@
+from src.database.repositories.user_repository import UserRepository
+
 class AuthController:
     """
     Controller responsible for handling authentication-related logic, 
@@ -16,6 +18,9 @@ class AuthController:
         self.view.on_login_attempt = self.handle_login
         self.view.on_register_attempt = self.handle_register
 
+        # The repository is instantiated here
+        self.user_repo = UserRepository()
+
     def handle_login(self, email, password, remember):
         """
         Processes login requests from the view, validating credentials 
@@ -27,7 +32,8 @@ class AuthController:
             remember (bool): Flag indicating whether to remember the session.
         """
         print(f"Login with: {email}")
-        if email and password:
+        
+        if self.user_repo.verify_password(email, password):
             self.on_auth_success(email)
         else:
             print("Error: Invalid credentials")
@@ -46,7 +52,26 @@ class AuthController:
             role (str): Assigned user role.
             terms (bool): Acceptance status of terms of use and privacy policy.
         """
-        print(f"Register : {name} as {role}")
-        if password == confirm and terms:
-            self.on_auth_success(email)
+    
+        if password != confirm:
+            print("Error: Passwords do not match")
+            return
+            
+        if not terms:
+            print("Error: You must accept the terms of use")
+            return
 
+        new_user = self.user_repo.create_user(
+            name=name, 
+            email=email, 
+            phone=phone, 
+            password=password, 
+            role=role
+        )
+
+        print(f"Register : {name} as {role}")
+        
+        if new_user:
+            self.on_auth_success(email)
+        else:
+            print("Error: Registration failed (Email already registered?)")
