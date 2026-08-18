@@ -2,57 +2,27 @@ from src.database.repositories.user_repository import UserRepository
 
 class AuthController:
     """
-    Controller responsible for handling authentication-related logic, 
-    including user login and registration attempts, linking actions 
-    from the authentication view to the application flow.
+    Controller responsible for handling authentication-related logic.
+    Connects its methods to the signals emitted by the AuthView.
     """
     def __init__(self, view, on_auth_success):
-        """
-        Args:
-            view: The authentication view instance containing user inputs and triggers.
-            on_auth_success (callable): Callback function executed upon successful authentication.
-        """
         self.view = view
         self.on_auth_success = on_auth_success
         
-        self.view.on_login_attempt = self.handle_login
-        self.view.on_register_attempt = self.handle_register
+        # Connect native view signals to controller methods
+        self.view.login_requested.connect(self.handle_login)
+        self.view.register_requested.connect(self.handle_register)
 
-        # The repository is instantiated here
         self.user_repo = UserRepository()
 
     def handle_login(self, email, password, remember):
-        """
-        Processes login requests from the view, validating credentials 
-        and triggering success callbacks if valid.
-        
-        Args:
-            email (str): User email address.
-            password (str): User password.
-            remember (bool): Flag indicating whether to remember the session.
-        """
         print(f"Login with: {email}")
-        
         if self.user_repo.verify_password(email, password):
             self.on_auth_success(email)
         else:
             print("Error: Invalid credentials")
 
     def handle_register(self, name, email, phone, password, confirm, role, terms):
-        """
-        Processes user registration requests, ensuring password confirmation 
-        and agreement to terms before authorizing access.
-        
-        Args:
-            name (str): Full name of the user.
-            email (str): User email address.
-            phone (str): Contact phone number.
-            password (str): Account password.
-            confirm (str): Password confirmation string.
-            role (str): Assigned user role.
-            terms (bool): Acceptance status of terms of use and privacy policy.
-        """
-    
         if password != confirm:
             print("Error: Passwords do not match")
             return
@@ -62,11 +32,8 @@ class AuthController:
             return
 
         new_user = self.user_repo.create_user(
-            name=name, 
-            email=email, 
-            phone=phone, 
-            password=password, 
-            role=role
+            name=name, email=email, phone=phone, 
+            password=password, role=role
         )
 
         print(f"Register : {name} as {role}")
@@ -74,4 +41,4 @@ class AuthController:
         if new_user:
             self.on_auth_success(email)
         else:
-            print("Error: Registration failed (Email already registered?)")
+            print("Error: Registration failed")

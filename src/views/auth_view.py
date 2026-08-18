@@ -1,51 +1,39 @@
-from PySide6.QtCore import Qt, QPropertyAnimation, QEasingCurve
+from PySide6.QtCore import Qt, QPropertyAnimation, QEasingCurve, Signal
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
-    QFrame, QLineEdit, QCheckBox, QStackedWidget, QScrollArea, QComboBox,
-    QGraphicsOpacityEffect
+    QWidget, QVBoxLayout, QHBoxLayout, QLabel, 
+    QFrame, QStackedWidget, QGraphicsOpacityEffect
 )
-from src.views.theme import apply_shadow, Colors
+
+from src.views.components.login_form import LoginForm
+from src.views.components.register_form import RegisterForm
 
 APP_NAME = "EXAMPLE"
 APP_TAGLINE = "Fall Detection System"
 
 class AuthView(QWidget):
     """
-    View responsible for rendering the authentication interface, 
-    including login and registration forms with smooth page transitions.
+    Main authentication view controller.
+    Acts as a container and manages the transition animations between 
+    the login and registration form components.
     """
-    login_email: QLineEdit
-    login_password: QLineEdit
-    reg_name: QLineEdit
-    reg_phone: QLineEdit
-    reg_email: QLineEdit
-    reg_password: QLineEdit
-    reg_confirm: QLineEdit
     
-    effect_out: QGraphicsOpacityEffect
-    effect_in: QGraphicsOpacityEffect
-    anim_out: QPropertyAnimation
-    anim_in: QPropertyAnimation
+    # Main view exposes signals to the controller
+    login_requested = Signal(str, str, bool)
+    register_requested = Signal(str, str, str, str, str, str, bool)
 
-    def __init__(self, on_login_attempt=None, on_register_attempt=None, parent=None):
-        """
-        Args:
-            on_login_attempt (callable): Callback function for submitting login data.
-            on_register_attempt (callable): Callback function for submitting registration data.
-            parent (QWidget): Parent widget.
-        """
+    def __init__(self, parent=None):
         super().__init__(parent)
         self.setObjectName("authScreen")
-        
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         
-        self.on_login_attempt = on_login_attempt
-        self.on_register_attempt = on_register_attempt
+        self.effect_out = None
+        self.effect_in = None
+        self.anim_out = None
+        self.anim_in = None
         
         self._build_ui()
 
     def _build_ui(self):
-        """Builds the main authentication layout featuring the branding panel and form container."""
         root = QHBoxLayout(self)
         root.setContentsMargins(0, 0, 0, 0)
         root.setSpacing(0)
@@ -88,8 +76,21 @@ class AuthView(QWidget):
         panel_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         self.stacked = QStackedWidget()
-        self.stacked.addWidget(self._wrap_scroll(self._login_page()))
-        self.stacked.addWidget(self._register_page())
+        
+        self.login_form = LoginForm()
+        self.register_form = RegisterForm()
+
+        # INTERNAL CONNECTIONS: 
+        # 1. Connect page switch links
+        self.login_form.switch_page_requested.connect(lambda: self._switch_page(1))
+        self.register_form.switch_page_requested.connect(lambda: self._switch_page(0))
+        
+        # 2. Redirect internal form signals to the exterior view signals
+        self.login_form.login_requested.connect(self.login_requested.emit)
+        self.register_form.register_requested.connect(self.register_requested.emit)
+
+        self.stacked.addWidget(self.login_form)
+        self.stacked.addWidget(self.register_form)
         
         panel_layout.addWidget(self.stacked)
 
@@ -97,12 +98,10 @@ class AuthView(QWidget):
         root.addWidget(right_panel, 0)  
 
     def _switch_page(self, target_index):
-        """Animates a smooth opacity cross-fade transition between the login and registration pages."""
         if self.stacked.currentIndex() == target_index:
             return
             
         current_widget = self.stacked.currentWidget()
-        
         self.effect_out = QGraphicsOpacityEffect(current_widget)
         current_widget.setGraphicsEffect(self.effect_out)
         
@@ -117,7 +116,6 @@ class AuthView(QWidget):
             self.stacked.setCurrentIndex(target_index)
             
             next_widget = self.stacked.currentWidget()
-            
             self.effect_in = QGraphicsOpacityEffect(next_widget)
             next_widget.setGraphicsEffect(self.effect_in)
             
@@ -132,239 +130,3 @@ class AuthView(QWidget):
 
         self.anim_out.finished.connect(on_fade_out_finished)
         self.anim_out.start()
-
-    def _wrap_scroll(self, inner):
-        """Wraps a page widget inside a clean, borderless scroll area."""
-        scroll = QScrollArea()
-        scroll.setObjectName("authScroll")
-        scroll.setWidgetResizable(True)
-        scroll.setFrameShape(QFrame.Shape.NoFrame)
-        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        scroll.viewport().setAutoFillBackground(False)
-        scroll.setWidget(inner)
-        return scroll
-
-    def _login_page(self):
-        """Constructs and returns the login form page widget."""
-        page = QWidget()
-        page.setObjectName("authPage")
-        layout = QVBoxLayout(page)
-        layout.setSpacing(0)
-        layout.setContentsMargins(0, 0, 0, 0)
-
-        layout.addStretch(1)
-
-        title = QLabel("Welcome back")
-        title.setObjectName("formTitle")
-        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        layout.addWidget(title)
-        layout.addSpacing(8)
-
-        sub = QLabel("Sign in to your account to continue")
-        sub.setObjectName("formSubtitle")
-        sub.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        layout.addWidget(sub)
-        layout.addSpacing(32) 
-
-        layout.addLayout(self._field("Email address", "login_email", "name@example.com"))
-        layout.addSpacing(16)
-        layout.addLayout(self._field("Password", "login_password", "••••••••", password=True))
-        layout.addSpacing(16)
-
-        row = QHBoxLayout()
-        row.setContentsMargins(0, 0, 0, 0)
-        self.remember = QCheckBox("Remember me")
-        forgot = QLabel("Forgot password?")
-        forgot.setObjectName("link")
-        forgot.setCursor(Qt.CursorShape.PointingHandCursor)
-        row.addWidget(self.remember)
-        row.addStretch()
-        row.addWidget(forgot)
-        layout.addLayout(row)
-        layout.addSpacing(28)
-
-        self.btn_login = QPushButton("Sign In")
-        self.btn_login.setObjectName("success")
-        self.btn_login.setFixedHeight(46)
-        self.btn_login.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.btn_login.clicked.connect(self._handle_login)
-        layout.addWidget(self.btn_login)
-        layout.addSpacing(24)
-
-        layout.addWidget(self._divider("or continue with"))
-        layout.addSpacing(24)
-        layout.addWidget(self._social_btn("Continue with Google", icon="G"))
-        layout.addSpacing(32)
-
-        switch = QHBoxLayout()
-        switch.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        switch.setSpacing(6)
-        q = QLabel("Don't have an account?")
-        q.setStyleSheet("color: #64748B; font-size: 13px;")
-        link = QLabel("Sign up")
-        link.setObjectName("link")
-        link.setCursor(Qt.CursorShape.PointingHandCursor)
-        
-        link.mousePressEvent = lambda e: self._switch_page(1)
-        
-        switch.addWidget(q)
-        switch.addWidget(link)
-        layout.addLayout(switch)
-        
-        layout.addStretch(1) 
-        
-        return page
-
-    def _register_page(self):
-        """Constructs and returns the registration form page widget."""
-        inner = QWidget()
-        inner.setObjectName("authPage")
-        form = QVBoxLayout(inner)
-        form.setContentsMargins(0, 40, 0, 40) 
-        form.setSpacing(0)
-
-        form.addStretch(1)
-
-        title = QLabel("Create an account")
-        title.setObjectName("formTitle")
-        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        form.addWidget(title)
-        form.addSpacing(8)
-
-        sub = QLabel("Set up your monitoring access")
-        sub.setObjectName("formSubtitle")
-        sub.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        form.addWidget(sub)
-        form.addSpacing(32)
-
-        two_col = QHBoxLayout()
-        two_col.setSpacing(16) 
-        left = QVBoxLayout()
-        left.addLayout(self._field("Full Name", "reg_name", "John Doe"))
-        right = QVBoxLayout()
-        right.addLayout(self._field("Phone", "reg_phone", "+1 234 567 8900"))
-        two_col.addLayout(left, 1)
-        two_col.addLayout(right, 1)
-        form.addLayout(two_col)
-        form.addSpacing(16)
-
-        form.addLayout(self._field("Email address", "reg_email", "name@example.com"))
-        form.addSpacing(16)
-
-        two_col2 = QHBoxLayout()
-        two_col2.setSpacing(16)
-        l2 = QVBoxLayout()
-        l2.addLayout(self._field("Password", "reg_password", "••••••••", password=True))
-        r2 = QVBoxLayout()
-        r2.addLayout(self._field("Confirm", "reg_confirm", "••••••••", password=True))
-        two_col2.addLayout(l2, 1)
-        two_col2.addLayout(r2, 1)
-        form.addLayout(two_col2)
-        form.addSpacing(16)
-
-        role_label = QLabel("User Role")
-        role_label.setObjectName("fieldLabel")
-        form.addWidget(role_label)
-        form.addSpacing(6)
-        self.reg_role = QComboBox()
-        self.reg_role.addItems(["Family / Caregiver", "Medical Staff", "Administrator"])
-        self.reg_role.setFixedHeight(44)
-        form.addWidget(self.reg_role)
-        form.addSpacing(20)
-
-        self.terms = QCheckBox("I accept the Terms of Use & Privacy Policy")
-        form.addWidget(self.terms)
-        form.addSpacing(28)
-
-        self.btn_register = QPushButton("Create account")
-        self.btn_register.setObjectName("success")
-        self.btn_register.setFixedHeight(46)
-        self.btn_register.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.btn_register.clicked.connect(self._handle_register)
-        form.addWidget(self.btn_register)
-        form.addSpacing(24)
-
-        switch = QHBoxLayout()
-        switch.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        switch.setSpacing(6)
-        q = QLabel("Already have an account?")
-        q.setStyleSheet("color: #64748B; font-size: 13px;")
-        link = QLabel("Sign in")
-        link.setObjectName("link")
-        link.setCursor(Qt.CursorShape.PointingHandCursor)
-        
-        link.mousePressEvent = lambda e: self._switch_page(0)
-        
-        switch.addWidget(q)
-        switch.addWidget(link)
-        form.addLayout(switch)
-        
-        form.addStretch(1)
-
-        return self._wrap_scroll(inner)
-
-    def _field(self, label_text, attr_name, placeholder, password=False):
-        """Helper method to generate a uniform input field layout with a label and text box."""
-        col = QVBoxLayout()
-        col.setSpacing(6)
-        col.setContentsMargins(0, 0, 0, 0)
-        lbl = QLabel(label_text)
-        lbl.setObjectName("fieldLabel")
-        col.addWidget(lbl)
-        edit = QLineEdit()
-        edit.setPlaceholderText(placeholder)
-        edit.setFixedHeight(44)
-        if password:
-            edit.setEchoMode(QLineEdit.EchoMode.Password)
-        setattr(self, attr_name, edit)
-        col.addWidget(edit)
-        return col
-
-    def _divider(self, text):
-        """Creates a horizontal separator line with a centered text label."""
-        w = QWidget()
-        row = QHBoxLayout(w)
-        row.setContentsMargins(0, 0, 0, 0)
-        row.setSpacing(12)
-        left = QFrame()
-        left.setObjectName("divider")
-        left.setFrameShape(QFrame.Shape.HLine)
-        lbl = QLabel(text)
-        lbl.setStyleSheet("color: #94A3B8; font-size: 12px; font-weight: 500;")
-        right = QFrame()
-        right.setObjectName("divider")
-        right.setFrameShape(QFrame.Shape.HLine)
-        row.addWidget(left, 1)
-        row.addWidget(lbl)
-        row.addWidget(right, 1)
-        return w
-
-    def _social_btn(self, text, icon="G"):
-        """Generates a styled alternative login/social button."""
-        btn = QPushButton(f"  {icon}    {text}")
-        btn.setObjectName("ghost")
-        btn.setFixedHeight(44)
-        btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        return btn
-
-    def _handle_login(self):
-        """Extracts login form data and triggers the login attempt callback."""
-        if self.on_login_attempt:
-            self.on_login_attempt(
-                email=self.login_email.text().strip(),
-                password=self.login_password.text(),
-                remember=self.remember.isChecked(),
-            )
-
-    def _handle_register(self):
-        """Extracts registration form data and triggers the register attempt callback."""
-        if self.on_register_attempt:
-            self.on_register_attempt(
-                name=self.reg_name.text().strip(),
-                email=self.reg_email.text().strip(),
-                phone=self.reg_phone.text().strip(),
-                password=self.reg_password.text(),
-                confirm=self.reg_confirm.text(),
-                role=self.reg_role.currentText(),
-                terms=self.terms.isChecked(),
-            )
