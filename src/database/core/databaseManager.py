@@ -17,6 +17,7 @@ class DatabaseManager:
         return cls.instance
 
     def configure(self):
+        """Configures the path and prepares the connection object."""
         project_root = Path(__file__).resolve().parent.parent.parent.parent
         
         db_file = project_root / 'app.db'

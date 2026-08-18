@@ -1,15 +1,11 @@
 """
-Central design tokens + reusable visual helpers.
-
-Everything here is intentionally small and dependency-free so it can be
-imported from any view. The palette follows an enterprise "slate + blue"
-system with a strict, limited set of accents for a clean, medical-grade feel.
+Central design tokens, reusable visual helpers, and global theme configuration.
 """
 
-from PySide6.QtWidgets import QGraphicsDropShadowEffect
-from PySide6.QtGui import QColor
+from pathlib import Path
+from PySide6.QtWidgets import QGraphicsDropShadowEffect, QApplication
+from PySide6.QtGui import QColor, QPalette
 from PySide6.QtCore import Qt
-
 
 class Colors:
     # ---- Brand / primary ----
@@ -47,22 +43,15 @@ class Colors:
     INK_HOVER = "#1E293B"
     INK_PRESSED = "#334155"
 
-
 class Radius:
     SM = 6
     MD = 8
     LG = 12
     PILL = 999
 
-
 def apply_shadow(widget, blur: int = 20, y: int = 4, alpha: int = 20, x: int = 0):
     """
     Apply a soft, professional drop shadow to a widget.
-
-    Previously this was a no-op ("crisp borders only"). Re-enabling a *very*
-    subtle shadow adds real depth and hierarchy that flat borders can't convey,
-    which is a big part of a polished, modern desktop UI. Kept low-alpha so it
-    never looks heavy or "web-like".
     """
     if widget is None:
         return None
@@ -70,6 +59,43 @@ def apply_shadow(widget, blur: int = 20, y: int = 4, alpha: int = 20, x: int = 0
     effect.setBlurRadius(blur)
     effect.setXOffset(x)
     effect.setYOffset(y)
-    effect.setColor(QColor(15, 23, 42, max(0, min(255, alpha))))  # slate-900 tint
+    effect.setColor(QColor(15, 23, 42, max(0, min(255, alpha))))
     widget.setGraphicsEffect(effect)
     return effect
+
+class ThemeManager:
+    """
+    Handles the application's visual styling, including palette configuration
+    and QSS stylesheet injection.
+    """
+    STYLESHEET_PATH = Path(__file__).resolve().parent / "style.qss"
+
+    @classmethod
+    def setup_theme(cls, app: QApplication) -> None:
+        """
+        Applies the base Fusion style, custom color palette, and QSS stylesheet.
+        """
+        app.setStyle("Fusion")
+        
+        palette = QPalette()
+        palette.setColor(QPalette.ColorRole.Window, QColor(Colors.BACKGROUND))
+        palette.setColor(QPalette.ColorRole.WindowText, QColor(Colors.TEXT_BODY))
+        palette.setColor(QPalette.ColorRole.Base, QColor(Colors.SURFACE))
+        palette.setColor(QPalette.ColorRole.AlternateBase, QColor(Colors.SURFACE_ALT))
+        palette.setColor(QPalette.ColorRole.Text, QColor(Colors.TEXT_BODY))
+        palette.setColor(QPalette.ColorRole.Button, QColor(Colors.SURFACE))
+        palette.setColor(QPalette.ColorRole.ButtonText, QColor(Colors.TEXT_BODY))
+        palette.setColor(QPalette.ColorRole.Highlight, QColor(Colors.PRIMARY))
+        palette.setColor(QPalette.ColorRole.HighlightedText, QColor(Colors.TEXT_INVERSE))
+        palette.setColor(QPalette.ColorRole.PlaceholderText, QColor(Colors.TEXT_SUBTLE))
+        app.setPalette(palette)
+        
+        app.setStyleSheet(cls._load_stylesheet())
+
+    @classmethod
+    def _load_stylesheet(cls) -> str:
+        try:
+            return cls.STYLESHEET_PATH.read_text(encoding="utf-8")
+        except OSError as exc:
+            print(f"[WARN] Could not load stylesheet ({cls.STYLESHEET_PATH}): {exc}")
+            return ""
