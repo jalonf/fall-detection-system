@@ -20,6 +20,7 @@ class LoginForm(QWidget):
     
     def __init__(self, parent=None):
         super().__init__(parent)
+        self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         self.setObjectName("authPage")
         self._build_ui()
 

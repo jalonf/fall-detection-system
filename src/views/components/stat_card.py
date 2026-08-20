@@ -1,26 +1,23 @@
 from PySide6.QtWidgets import QFrame, QVBoxLayout, QLabel
+from PySide6.QtCore import Qt
 from src.views.theme import apply_shadow
 
 class StatCard(QFrame):
-    """
-    A reusable widget to display metric statistics.
-    Encapsulates its own layout, styling, and value update logic.
-    """
-    
     def __init__(self, initial_value, label_text, attr_name, accent_color, parent=None):
         super().__init__(parent)
         self.setObjectName(f"statCard_{attr_name}")
+        self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True) # <-- Clave para habilitar QSS
         self.setFixedHeight(95)
         
         self.setStyleSheet(f"""
             QFrame#statCard_{attr_name} {{ 
-                background-color: #FFFFFF;
-                border: 1px solid #E2E8F0;
+                background-color: rgba(255, 255, 255, 0.75); /* Translúcido */
+                border: 1px solid rgba(255, 255, 255, 0.9);
                 border-top: 3px solid {accent_color};
-                border-radius: 6px;
+                border-radius: 12px;
             }}
         """)
-        apply_shadow(self, blur=10, y=2, alpha=4)
+        apply_shadow(self, blur=10, y=2, alpha=6)
 
         col = QVBoxLayout(self)
         col.setContentsMargins(18, 14, 18, 14)

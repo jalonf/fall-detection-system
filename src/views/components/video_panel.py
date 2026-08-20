@@ -9,12 +9,12 @@ from src.views.theme import apply_shadow
 class VideoPanel(QFrame):
     """Component for the live camera feed and stream controls."""
     
-    # Declaramos las señales nativas
     start_requested = Signal(int)
     stop_requested = Signal()
     
     def __init__(self, parent=None):
         super().__init__(parent)
+        self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         self.setObjectName("panel")
         self._current_pixmap = None
         apply_shadow(self, blur=32, y=8, alpha=10)
@@ -70,7 +70,6 @@ class VideoPanel(QFrame):
         self.btn_stop.setMinimumWidth(150)
         self.btn_stop.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_stop.setEnabled(False)
-        # Emitimos la señal de parada
         self.btn_stop.clicked.connect(self.stop_requested.emit)
 
         self.btn_start = QPushButton("Start Detection")
@@ -78,7 +77,6 @@ class VideoPanel(QFrame):
         self.btn_start.setFixedHeight(44)
         self.btn_start.setMinimumWidth(170)
         self.btn_start.setCursor(Qt.CursorShape.PointingHandCursor)
-        # Emitimos la señal de inicio pasando el índice de la cámara seleccionada
         self.btn_start.clicked.connect(lambda: self.start_requested.emit(self.camera_select.currentIndex()))
 
         controls.addWidget(self.btn_stop)
@@ -89,7 +87,7 @@ class VideoPanel(QFrame):
     def _video_placeholder(self):
         return (
             "<div style='text-align:center;'>"
-            "<b style='color:#475569; font-size:18px;'>Camera Offline</b><br/><br/>"
+            "<b style='color:#334155; font-size:18px;'>Camera Offline</b><br/><br/>"
             "<span style='color:#64748B; font-size:14px;'>Awaiting video stream connection...</span>"
             "</div>"
         )

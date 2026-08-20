@@ -12,6 +12,7 @@ class Topbar(QFrame):
     
     def __init__(self, app_name, app_tagline, user_name, parent=None):
         super().__init__(parent)
+        self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         self.setObjectName("topbar")
         self.setFixedHeight(70)
         self.user_name = user_name

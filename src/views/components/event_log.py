@@ -11,6 +11,7 @@ class EventLog(QFrame):
     
     def __init__(self, parent=None):
         super().__init__(parent)
+        self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         self.setObjectName("panel")
         apply_shadow(self, blur=15, y=4, alpha=6)
         self._empty_hint_active = False
@@ -24,15 +25,12 @@ class EventLog(QFrame):
         log_header = QHBoxLayout()
         log_title = QLabel("EVENT LOG")
         log_title.setObjectName("sectionTitle")
-        log_title.setStyleSheet("font-size: 11px; font-weight: 700; color: #64748B; letter-spacing: 1px;")
         log_header.addWidget(log_title)
         log_header.addStretch()
 
         clear_btn = QPushButton("Clear log")
         clear_btn.setObjectName("subtle")
-        clear_btn.setFixedHeight(24)
         clear_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        clear_btn.setStyleSheet("color: #3B82F6; font-size: 12px; font-weight: 600; border: none; background: transparent;")
         clear_btn.clicked.connect(self.clear_events)
         log_header.addWidget(clear_btn)
         log_wrapper.addLayout(log_header)
@@ -40,29 +38,7 @@ class EventLog(QFrame):
         self.event_list = QListWidget()
         self.event_list.setObjectName("eventLog")
         self.event_list.setMinimumHeight(200)
-        self.event_list.setSpacing(0)
-        self.event_list.setWordWrap(True) 
-        self.event_list.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
-        self.event_list.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
-        self.event_list.setStyleSheet("""
-            QListWidget {
-                background-color: #F8FAFC;
-                border: 1px solid #E2E8F0;
-                border-radius: 6px;
-                padding: 4px;
-                outline: none;
-            }
-            QListWidget::item {
-                border-bottom: 1px solid #F1F5F9;
-                padding: 10px 8px;
-            }
-            QListWidget::item:last {
-                border-bottom: none;
-            }
-            QListWidget::item:selected {
-                background-color: transparent;
-            }
-        """)
+        self.event_list.setWordWrap(True)
         log_wrapper.addWidget(self.event_list, 1)
         self._refresh_empty_log_hint()
 
