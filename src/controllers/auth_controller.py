@@ -15,22 +15,18 @@ class AuthController:
 
         self.user_repo = UserRepository()
 
-    def handle_login(self, email, password, remember):
+    def handle_login(self, email, password):
         print(f"Login with: {email}")
         if self.user_repo.verify_password(email, password):
             self.on_auth_success(email)
         else:
             print("Error: Invalid credentials")
 
-    def handle_register(self, name, email, phone, password, confirm, role, terms):
+    def handle_register(self, name, email, phone, password, confirm, role):
         if password != confirm:
             print("Error: Passwords do not match")
             return
             
-        if not terms:
-            print("Error: You must accept the terms of use")
-            return
-
         new_user = self.user_repo.create_user(
             name=name, email=email, phone=phone, 
             password=password, role=role

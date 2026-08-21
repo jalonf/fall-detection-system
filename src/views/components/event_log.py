@@ -7,20 +7,20 @@ from PySide6.QtWidgets import (
 from src.views.theme import apply_shadow, Colors
 
 class EventLog(QFrame):
-    """Component for displaying system events and alerts."""
+    """Component for displaying system events and alerts with a formal layout."""
     
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         self.setObjectName("panel")
-        apply_shadow(self, blur=15, y=4, alpha=6)
+        apply_shadow(self, blur=8, y=2, alpha=6)
         self._empty_hint_active = False
         self._build_ui()
 
     def _build_ui(self):
         log_wrapper = QVBoxLayout(self)
-        log_wrapper.setContentsMargins(20, 20, 20, 20)
-        log_wrapper.setSpacing(12)
+        log_wrapper.setContentsMargins(16, 16, 16, 16)
+        log_wrapper.setSpacing(10)
 
         log_header = QHBoxLayout()
         log_title = QLabel("EVENT LOG")
@@ -37,7 +37,7 @@ class EventLog(QFrame):
 
         self.event_list = QListWidget()
         self.event_list.setObjectName("eventLog")
-        self.event_list.setMinimumHeight(200)
+        self.event_list.setMinimumHeight(180)
         self.event_list.setWordWrap(True)
         log_wrapper.addWidget(self.event_list, 1)
         self._refresh_empty_log_hint()

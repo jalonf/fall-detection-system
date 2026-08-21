@@ -8,50 +8,50 @@ from PySide6.QtGui import QColor, QPalette
 from PySide6.QtCore import Qt
 
 class Colors:
-    # ---- Brand / primary ----
-    PRIMARY = "#2563EB"
-    PRIMARY_HOVER = "#1D4ED8"
-    PRIMARY_PRESSED = "#1E40AF"
+    # ---- Brand / Primary ----
+    PRIMARY = "#1E3A8A"        # Deep Corporate Blue
+    PRIMARY_HOVER = "#1E40AF"
+    PRIMARY_PRESSED = "#1E3A8A"
     PRIMARY_SOFT = "#EFF6FF"
     PRIMARY_BORDER = "#BFDBFE"
 
-    # ---- Neutrals (slate scale) ----
-    BACKGROUND = "#F8FAFC"   # app canvas
-    SURFACE = "#FFFFFF"      # cards / panels
-    SURFACE_ALT = "#F1F5F9"  # muted fills
-    BORDER = "#E2E8F0"
-    BORDER_STRONG = "#CBD5E1"
+    # ---- Neutrals (Professional Light & Clean scale) ----
+    BACKGROUND = "#F9FAFB"     # Clean off-white canvas
+    SURFACE = "#FFFFFF"        # Cards and panels
+    SURFACE_ALT = "#F3F4F6"    # Muted fills
+    BORDER = "#E5E7EB"         # Soft structural border
+    BORDER_STRONG = "#D1D5DB"  # Stronger border
 
     # ---- Text ----
-    TEXT_MAIN = "#0F172A"
-    TEXT_BODY = "#334155"
-    TEXT_MUTED = "#64748B"
-    TEXT_SUBTLE = "#94A3B8"
+    TEXT_MAIN = "#111827"
+    TEXT_BODY = "#374151"
+    TEXT_MUTED = "#6B7280"
+    TEXT_SUBTLE = "#9CA3AF"
     TEXT_INVERSE = "#FFFFFF"
 
     # ---- Semantic ----
-    SUCCESS = "#10B981"
+    SUCCESS = "#059669"
     SUCCESS_SOFT = "#ECFDF5"
-    DANGER = "#EF4444"
-    DANGER_HOVER = "#DC2626"
+    DANGER = "#DC2626"
+    DANGER_HOVER = "#B91C1C"
     DANGER_SOFT = "#FEF2F2"
     DANGER_BORDER = "#FECACA"
-    WARNING = "#F59E0B"
+    WARNING = "#D97706"
 
-    # ---- Ink used for "enterprise" dark buttons ----
-    INK = "#0F172A"
-    INK_HOVER = "#1E293B"
-    INK_PRESSED = "#334155"
+    # ---- Ink ----
+    INK = "#111827"
+    INK_HOVER = "#1F2937"
+    INK_PRESSED = "#374151"
 
 class Radius:
-    SM = 6
-    MD = 8
-    LG = 12
+    SM = 4
+    MD = 4
+    LG = 6
     PILL = 999
 
-def apply_shadow(widget, blur: int = 20, y: int = 4, alpha: int = 20, x: int = 0):
+def apply_shadow(widget, blur: int = 10, y: int = 2, alpha: int = 10, x: int = 0):
     """
-    Apply a soft, professional drop shadow to a widget.
+    Apply a subtle, professional drop shadow to a widget.
     """
     if widget is None:
         return None
@@ -59,7 +59,7 @@ def apply_shadow(widget, blur: int = 20, y: int = 4, alpha: int = 20, x: int = 0
     effect.setBlurRadius(blur)
     effect.setXOffset(x)
     effect.setYOffset(y)
-    effect.setColor(QColor(15, 23, 42, max(0, min(255, alpha))))
+    effect.setColor(QColor(17, 24, 39, max(0, min(255, alpha))))
     widget.setGraphicsEffect(effect)
     return effect
 

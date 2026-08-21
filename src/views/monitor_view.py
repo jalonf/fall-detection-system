@@ -8,14 +8,14 @@ from src.views.components.event_log import EventLog
 from src.views.components.stat_card import StatCard
 from src.views.theme import Colors
 
-APP_NAME = "EXAMPLE"
+APP_NAME = "Safeguard"
 APP_TAGLINE = "Fall Detection System"
 
 class MonitorView(QWidget):
     """
     Main monitoring view orchestrator.
-    Assembles independent UI components and manages the global state 
-    and data flow between them. Exposes system-level signals to the controller.
+    Assembles independent UI components and manages global state 
+    and data flow between them. Exposes system-level signals to controller.
     """
     
     logout_requested = Signal()
@@ -49,14 +49,13 @@ class MonitorView(QWidget):
         body_wrapper = QWidget()
         body_wrapper.setObjectName("monitorBody")
         body_layout = QHBoxLayout(body_wrapper)
-        body_layout.setContentsMargins(36, 30, 36, 34)
-        body_layout.setSpacing(26)
+        body_layout.setContentsMargins(24, 20, 24, 24)
+        body_layout.setSpacing(20)
 
         video_area = QWidget()
         video_layout = QVBoxLayout(video_area)
         video_layout.setContentsMargins(0, 0, 0, 0)
         
-        # Instanciamos el panel de vídeo y conectamos sus señales de forma limpia
         self.video_panel = VideoPanel()
         self.video_panel.start_requested.connect(self.start_requested.emit)
         self.video_panel.stop_requested.connect(self.stop_requested.emit)
@@ -65,13 +64,13 @@ class MonitorView(QWidget):
         body_layout.addWidget(video_area, 1)
 
         sidebar_panel = QWidget()
-        sidebar_panel.setFixedWidth(352)
+        sidebar_panel.setFixedWidth(340)
         sidebar_layout = QVBoxLayout(sidebar_panel)
         sidebar_layout.setContentsMargins(0, 0, 0, 0)
-        sidebar_layout.setSpacing(20)
+        sidebar_layout.setSpacing(16)
 
         stats_row = QHBoxLayout()
-        stats_row.setSpacing(16)
+        stats_row.setSpacing(12)
         self.card_falls = StatCard("0", "FALLS TODAY", "stat_falls", Colors.DANGER)
         self.card_uptime = StatCard("00:00", "SESSION UPTIME", "stat_time", Colors.PRIMARY)
         stats_row.addWidget(self.card_falls)

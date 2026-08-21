@@ -7,7 +7,7 @@ from PySide6.QtWidgets import (
 from src.views.theme import apply_shadow
 
 class VideoPanel(QFrame):
-    """Component for the live camera feed and stream controls."""
+    """Component for the live camera feed and stream controls with a professional layout."""
     
     start_requested = Signal(int)
     stop_requested = Signal()
@@ -17,16 +17,16 @@ class VideoPanel(QFrame):
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         self.setObjectName("panel")
         self._current_pixmap = None
-        apply_shadow(self, blur=32, y=8, alpha=10)
+        apply_shadow(self, blur=12, y=3, alpha=8)
         self._build_ui()
 
     def _build_ui(self):
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(26, 24, 26, 22)
-        layout.setSpacing(18)
+        layout.setContentsMargins(20, 18, 20, 18)
+        layout.setSpacing(14)
 
         header = QVBoxLayout()
-        header.setSpacing(3)
+        header.setSpacing(2)
         header_title = QLabel("Live Camera Feed")
         header_title.setObjectName("cardTitle")
         header_sub = QLabel("Real-time pose tracking and fall analysis")
@@ -49,15 +49,15 @@ class VideoPanel(QFrame):
         layout.addWidget(line)
 
         controls = QHBoxLayout()
-        controls.setSpacing(14)
+        controls.setSpacing(12)
 
         cam_label = QLabel("Source")
         cam_label.setObjectName("fieldLabel")
 
         self.camera_select = QComboBox()
         self.camera_select.addItems(["Camera 0 (Built-in)", "Camera 1 (USB)", "IP Stream"])
-        self.camera_select.setFixedHeight(42)
-        self.camera_select.setFixedWidth(210)
+        self.camera_select.setFixedHeight(38)
+        self.camera_select.setFixedWidth(200)
         self.camera_select.setCursor(Qt.CursorShape.PointingHandCursor)
 
         controls.addWidget(cam_label)
@@ -66,16 +66,16 @@ class VideoPanel(QFrame):
 
         self.btn_stop = QPushButton("Stop Monitoring")
         self.btn_stop.setObjectName("ghost")
-        self.btn_stop.setFixedHeight(44)
-        self.btn_stop.setMinimumWidth(150)
+        self.btn_stop.setFixedHeight(38)
+        self.btn_stop.setMinimumWidth(140)
         self.btn_stop.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_stop.setEnabled(False)
         self.btn_stop.clicked.connect(self.stop_requested.emit)
 
         self.btn_start = QPushButton("Start Detection")
         self.btn_start.setObjectName("primary")
-        self.btn_start.setFixedHeight(44)
-        self.btn_start.setMinimumWidth(170)
+        self.btn_start.setFixedHeight(38)
+        self.btn_start.setMinimumWidth(150)
         self.btn_start.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_start.clicked.connect(lambda: self.start_requested.emit(self.camera_select.currentIndex()))
 
@@ -87,8 +87,8 @@ class VideoPanel(QFrame):
     def _video_placeholder(self):
         return (
             "<div style='text-align:center;'>"
-            "<b style='color:#334155; font-size:18px;'>Camera Offline</b><br/><br/>"
-            "<span style='color:#64748B; font-size:14px;'>Awaiting video stream connection...</span>"
+            "<b style='color:#E5E7EB; font-size:16px;'>Camera Offline</b><br/><br/>"
+            "<span style='color:#9CA3AF; font-size:13px;'>Awaiting video stream connection...</span>"
             "</div>"
         )
 
