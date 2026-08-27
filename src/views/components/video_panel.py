@@ -2,7 +2,7 @@ from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import (
     QFrame, QVBoxLayout, QHBoxLayout, QLabel, 
-    QPushButton, QComboBox, QSizePolicy
+    QPushButton, QComboBox, QSizePolicy, QFileDialog
 )
 from src.views.theme import apply_shadow
 
@@ -10,12 +10,14 @@ class VideoPanel(QFrame):
     """Component for the live camera feed and stream controls with a professional layout."""
     
     start_requested = Signal(int)
+    upload_requested = Signal(str)
     stop_requested = Signal()
     
-    def __init__(self, parent=None):
+    def __init__(self, user_role="Family / Caregiver", parent=None):
         super().__init__(parent)
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         self.setObjectName("panel")
+        self.user_role = user_role
         self._current_pixmap = None
         apply_shadow(self, blur=12, y=3, alpha=8)
         self._build_ui()
@@ -62,6 +64,15 @@ class VideoPanel(QFrame):
 
         controls.addWidget(cam_label)
         controls.addWidget(self.camera_select)
+
+        if self.user_role == "Administrator":
+            self.btn_upload = QPushButton("Upload Video")
+            self.btn_upload.setObjectName("ghost")
+            self.btn_upload.setMinimumWidth(130)
+            self.btn_upload.setCursor(Qt.CursorShape.PointingHandCursor)
+            self.btn_upload.clicked.connect(self._open_file_dialog)
+            controls.addWidget(self.btn_upload)
+
         controls.addStretch()
 
         self.btn_stop = QPushButton("Stop Monitoring")
@@ -83,6 +94,17 @@ class VideoPanel(QFrame):
         controls.addWidget(self.btn_start)
 
         layout.addLayout(controls)
+
+    def _open_file_dialog(self):
+        """Abre un diálogo nativo para seleccionar archivos de vídeo soportados."""
+        file_path, _ = QFileDialog.getOpenFileName(
+            self, 
+            "Select Video for Fall Analysis", 
+            "", 
+            "Video Files (*.mp4 *.avi *.mov *.mkv)"
+        )
+        if file_path:
+            self.upload_requested.emit(file_path)
 
     def _video_placeholder(self):
         return (
@@ -117,6 +139,8 @@ class VideoPanel(QFrame):
 
     def set_monitoring_state(self, active: bool):
         self.btn_start.setEnabled(not active)
+        if hasattr(self, "btn_upload"):
+            self.btn_upload.setEnabled(not active)
         self.btn_stop.setEnabled(active)
         self.camera_select.setEnabled(not active)
 

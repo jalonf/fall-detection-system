@@ -20,14 +20,16 @@ class MonitorView(QWidget):
     
     logout_requested = Signal()
     start_requested = Signal(int)
+    upload_requested = Signal(str)  # Señal para emitir la ruta del archivo de vídeo
     stop_requested = Signal()
     
-    def __init__(self, user_name="User", parent=None):
+    def __init__(self, user_name="User", user_role="Family / Caregiver", parent=None):
         super().__init__(parent)
         self.setObjectName("monitorScreen")
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
 
         self.user_name = user_name
+        self.user_role = user_role
         self._is_monitoring = False
         self._current_alert_msg = ""
         
@@ -56,8 +58,9 @@ class MonitorView(QWidget):
         video_layout = QVBoxLayout(video_area)
         video_layout.setContentsMargins(0, 0, 0, 0)
         
-        self.video_panel = VideoPanel()
+        self.video_panel = VideoPanel(user_role=self.user_role)
         self.video_panel.start_requested.connect(self.start_requested.emit)
+        self.video_panel.upload_requested.connect(self.upload_requested.emit)  # Conexión del botón de subida
         self.video_panel.stop_requested.connect(self.stop_requested.emit)
         
         video_layout.addWidget(self.video_panel, 1)

@@ -17,7 +17,6 @@ class AuthController:
         self.user_repo = UserRepository()
 
     def handle_login(self, email, password):
-        """Handles user login authentication flow with a smooth visual delay for success toasts."""
         if not email or not password:
             self.view.show_error("Please fill in all required fields.")
             return
@@ -25,13 +24,13 @@ class AuthController:
         if self.user_repo.verify_password(email, password):
             self.view.show_success("Welcome back! Authentication successful.")
             
-            # Retrieve the user entity to extract their actual name
+            # Obtenemos el objeto usuario completo de la base de datos[cite: 1, 2]
             user = self.user_repo.get_user_by_email(email)
-            user_name = user.name if user else "User"
             
-            # Delay the page transition slightly so the success toast is fully appreciated
-            QTimer.singleShot(1000, lambda: self.on_auth_success(user_name))
+            # Pasamos el objeto entero al callback de éxito
+            QTimer.singleShot(1000, lambda: self.on_auth_success(user))
         else:
+            self.view.show_error("Invalid email or password. Please try again.")
             self.view.show_error("Invalid email or password. Please try again.")
 
     def handle_register(self, name, email, phone, password, confirm, role):
@@ -51,7 +50,6 @@ class AuthController:
 
         if new_user:
             self.view.show_success("Account created successfully! Welcome.")
-            # Pass the newly registered name directly to the success callback
-            QTimer.singleShot(1000, lambda: self.on_auth_success(name))
+            QTimer.singleShot(1000, lambda: self.on_auth_success(name, role))
         else:
             self.view.show_error("Registration failed. Email might already be in use.")
