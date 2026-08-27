@@ -23,7 +23,7 @@ class EventLog(QFrame):
         log_wrapper.setSpacing(10)
 
         log_header = QHBoxLayout()
-        log_title = QLabel("EVENT LOG")
+        log_title = QLabel("SYSTEM EVENT LOG")
         log_title.setObjectName("sectionTitle")
         log_header.addWidget(log_title)
         log_header.addStretch()
@@ -37,7 +37,7 @@ class EventLog(QFrame):
 
         self.event_list = QListWidget()
         self.event_list.setObjectName("eventLog")
-        self.event_list.setMinimumHeight(180)
+        self.event_list.setMinimumHeight(220)
         self.event_list.setWordWrap(True)
         log_wrapper.addWidget(self.event_list, 1)
         self._refresh_empty_log_hint()
@@ -63,7 +63,7 @@ class EventLog(QFrame):
 
     def _refresh_empty_log_hint(self):
         self.event_list.clear()
-        hint = QListWidgetItem("No events recorded in this session.")
+        hint = QListWidgetItem("System nominal. No alerts recorded.")
         hint.setForeground(QColor(Colors.TEXT_SUBTLE))
         hint.setFlags(Qt.ItemFlag.NoItemFlags)
         self.event_list.addItem(hint)

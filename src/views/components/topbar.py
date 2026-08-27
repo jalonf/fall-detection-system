@@ -46,29 +46,6 @@ class Topbar(QFrame):
         layout.addLayout(brand_text)
         layout.addStretch()
 
-        self.status_badge = QFrame()
-        self.status_badge.setObjectName("statusBadgeIdle")
-        badge_layout = QHBoxLayout(self.status_badge)
-        badge_layout.setContentsMargins(10, 0, 12, 0)
-        badge_layout.setSpacing(8)
-        self.status_dot = QFrame()
-        self.status_dot.setObjectName("statusDot")
-        self.status_dot.setFixedSize(7, 7)
-        self.status_dot.setStyleSheet("background-color: #9CA3AF; border-radius: 3px;")
-        self.status_label = QLabel("Idle")
-        self.status_label.setObjectName("statusText")
-        self.status_label.setStyleSheet("font-size: 12px; font-weight: 600; color: #6B7280; background: transparent;")
-        badge_layout.addWidget(self.status_dot)
-        badge_layout.addWidget(self.status_label)
-        layout.addWidget(self.status_badge)
-
-        sep = QFrame()
-        sep.setObjectName("topbarSep")
-        sep.setFixedSize(1, 24)
-        layout.addSpacing(16)
-        layout.addWidget(sep)
-        layout.addSpacing(16)
-
         avatar = QLabel(self.user_name[0].upper() if self.user_name else "U")
         avatar.setObjectName("avatar")
         avatar.setFixedSize(30, 30)
@@ -89,24 +66,7 @@ class Topbar(QFrame):
         layout.addWidget(self.btn_logout)
 
     def set_monitoring_state(self, active: bool):
-        if active:
-            self.status_dot.setStyleSheet(f"background-color: {Colors.PRIMARY}; border-radius: 3px;")
-            self.status_label.setText("Monitoring")
-            self.status_label.setStyleSheet(f"font-size: 12px; font-weight: 600; color: {Colors.PRIMARY}; background: transparent;")
-            self._swap_object_name(self.status_badge, "statusBadgeActive")
-        else:
-            self.status_dot.setStyleSheet("background-color: #9CA3AF; border-radius: 3px;")
-            self.status_label.setText("Idle")
-            self.status_label.setStyleSheet("font-size: 12px; font-weight: 600; color: #6B7280; background: transparent;")
-            self._swap_object_name(self.status_badge, "statusBadgeIdle")
+        pass
 
     def set_alert_state(self, pulse_state: bool):
-        color = Colors.DANGER if pulse_state else "#991B1B"
-        self._swap_object_name(self.status_badge, "statusBadgeAlert")
-        self.status_dot.setStyleSheet(f"background-color: {color}; border-radius: 3px;")
-        self.status_label.setStyleSheet(f"font-size: 12px; font-weight: 700; color: {color}; background: transparent;")
-
-    def _swap_object_name(self, widget, name: str):
-        widget.setObjectName(name)
-        widget.style().unpolish(widget)
-        widget.style().polish(widget)
+        pass

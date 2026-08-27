@@ -9,12 +9,12 @@ class SystemStatusCard(QFrame):
         super().__init__(parent)
         self.setObjectName("statusCardNormal")
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
-        apply_shadow(self, blur=6, y=2, alpha=6)
+        apply_shadow(self, blur=8, y=2, alpha=5)
         self._build_ui()
 
     def _build_ui(self):
         sc_layout = QVBoxLayout(self)
-        sc_layout.setContentsMargins(16, 12, 16, 12)
+        sc_layout.setContentsMargins(16, 14, 16, 14)
         sc_layout.setSpacing(6)
 
         sc_header_layout = QHBoxLayout()
@@ -22,7 +22,7 @@ class SystemStatusCard(QFrame):
         sc_title.setObjectName("sectionTitle")
         
         self.sys_status_dot = QFrame()
-        self.sys_status_dot.setFixedSize(7, 7)
+        self.sys_status_dot.setFixedSize(8, 8)
         self.sys_status_dot.setObjectName("statusDot")
         
         self.detection_status = QLabel("Deactivated")
@@ -41,14 +41,14 @@ class SystemStatusCard(QFrame):
 
     def set_monitoring_state(self, active: bool):
         if active:
-            self.sys_status_dot.setStyleSheet("background-color: #059669; border-radius: 3px;")
+            self.sys_status_dot.setStyleSheet("background-color: #059669; border-radius: 4px;")
             self.detection_status.setText("Activated")
             self.detection_status.setStyleSheet("color: #059669; font-weight: 600;")
             self.detection_detail.setText("AI processing active. Looking for anomalies.")
         else:
-            self.sys_status_dot.setStyleSheet("background-color: #9CA3AF; border-radius: 3px;")
+            self.sys_status_dot.setStyleSheet("background-color: #94A3B8; border-radius: 4px;")
             self.detection_status.setText("Deactivated")
-            self.detection_status.setStyleSheet("color: #6B7280; font-weight: 600;")
+            self.detection_status.setStyleSheet("color: #64748B; font-weight: 600;")
             self.detection_detail.setText("System is ready. Awaiting video stream.")
 
     def set_alert_state(self, message: str, pulse_state: bool):
@@ -56,4 +56,4 @@ class SystemStatusCard(QFrame):
         self.detection_status.setText("CRITICAL ALERT")
         self.detection_detail.setText(message)
         self.detection_status.setStyleSheet(f"color: {color}; font-weight: 700;")
-        self.sys_status_dot.setStyleSheet(f"background-color: {color}; border-radius: 3px;")
+        self.sys_status_dot.setStyleSheet(f"background-color: {color}; border-radius: 4px;")

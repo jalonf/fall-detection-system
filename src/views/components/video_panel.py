@@ -7,7 +7,7 @@ from PySide6.QtWidgets import (
 from src.views.theme import apply_shadow
 
 class VideoPanel(QFrame):
-    """Component for the live camera feed and stream controls with a professional layout."""
+    """Component for the live camera feed and stream controls with a professional toolbar layout."""
     
     start_requested = Signal(int)
     upload_requested = Signal(str)
@@ -19,7 +19,7 @@ class VideoPanel(QFrame):
         self.setObjectName("panel")
         self.user_role = user_role
         self._current_pixmap = None
-        apply_shadow(self, blur=12, y=3, alpha=8)
+        apply_shadow(self, blur=10, y=2, alpha=7)
         self._build_ui()
 
     def _build_ui(self):
@@ -29,9 +29,9 @@ class VideoPanel(QFrame):
 
         header = QVBoxLayout()
         header.setSpacing(2)
-        header_title = QLabel("Live Camera Feed")
+        header_title = QLabel("Live Camera Feed & Analysis")
         header_title.setObjectName("cardTitle")
-        header_sub = QLabel("Real-time pose tracking and fall analysis")
+        header_sub = QLabel("Real-time pose tracking and fall detection stream")
         header_sub.setObjectName("cardSubtitle")
         header.addWidget(header_title)
         header.addWidget(header_sub)
@@ -44,22 +44,27 @@ class VideoPanel(QFrame):
         self.video_label.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         self.video_label.setText(self._video_placeholder())
         layout.addWidget(self.video_label, 1)
+        
+        toolbar_frame = QFrame()
+        toolbar_frame.setObjectName("videoToolbar")
+        toolbar_frame.setStyleSheet("""
+            QFrame#videoToolbar {
+                background-color: #F8FAFC;
+                border: 1px solid #E2E8F0;
+                border-radius: 6px;
+            }
+        """)
+        controls = QHBoxLayout(toolbar_frame)
+        controls.setContentsMargins(14, 10, 14, 10)
+        controls.setSpacing(10)
 
-        line = QFrame()
-        line.setObjectName("divider")
-        line.setFrameShape(QFrame.Shape.HLine)
-        layout.addWidget(line)
-
-        controls = QHBoxLayout()
-        controls.setSpacing(12)
-
-        cam_label = QLabel("Source")
+        cam_label = QLabel("Source:")
         cam_label.setObjectName("fieldLabel")
 
         self.camera_select = QComboBox()
         self.camera_select.addItems(["Camera 0 (Built-in)", "Camera 1 (USB)", "IP Stream"])
-        self.camera_select.setFixedHeight(38)
-        self.camera_select.setFixedWidth(200)
+        self.camera_select.setFixedHeight(36)
+        self.camera_select.setFixedWidth(170)
         self.camera_select.setCursor(Qt.CursorShape.PointingHandCursor)
 
         controls.addWidget(cam_label)
@@ -68,7 +73,8 @@ class VideoPanel(QFrame):
         if self.user_role == "Administrator":
             self.btn_upload = QPushButton("Upload Video")
             self.btn_upload.setObjectName("ghost")
-            self.btn_upload.setMinimumWidth(130)
+            self.btn_upload.setFixedHeight(36)
+            self.btn_upload.setMinimumWidth(115)
             self.btn_upload.setCursor(Qt.CursorShape.PointingHandCursor)
             self.btn_upload.clicked.connect(self._open_file_dialog)
             controls.addWidget(self.btn_upload)
@@ -77,26 +83,25 @@ class VideoPanel(QFrame):
 
         self.btn_stop = QPushButton("Stop Monitoring")
         self.btn_stop.setObjectName("ghost")
-        self.btn_stop.setFixedHeight(38)
-        self.btn_stop.setMinimumWidth(140)
+        self.btn_stop.setFixedHeight(36)
+        self.btn_stop.setMinimumWidth(135)
         self.btn_stop.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_stop.setEnabled(False)
         self.btn_stop.clicked.connect(self.stop_requested.emit)
 
         self.btn_start = QPushButton("Start Detection")
         self.btn_start.setObjectName("primary")
-        self.btn_start.setFixedHeight(38)
-        self.btn_start.setMinimumWidth(150)
+        self.btn_start.setFixedHeight(36)
+        self.btn_start.setMinimumWidth(145)
         self.btn_start.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_start.clicked.connect(lambda: self.start_requested.emit(self.camera_select.currentIndex()))
 
         controls.addWidget(self.btn_stop)
         controls.addWidget(self.btn_start)
 
-        layout.addLayout(controls)
+        layout.addWidget(toolbar_frame)
 
     def _open_file_dialog(self):
-        """Abre un diálogo nativo para seleccionar archivos de vídeo soportados."""
         file_path, _ = QFileDialog.getOpenFileName(
             self, 
             "Select Video for Fall Analysis", 
@@ -109,8 +114,8 @@ class VideoPanel(QFrame):
     def _video_placeholder(self):
         return (
             "<div style='text-align:center;'>"
-            "<b style='color:#E5E7EB; font-size:16px;'>Camera Offline</b><br/><br/>"
-            "<span style='color:#9CA3AF; font-size:13px;'>Awaiting video stream connection...</span>"
+            "<b style='color:#94A3B8; font-size:15px;'>Stream Offline</b><br/><br/>"
+            "<span style='color:#64748B; font-size:13px;'>Select a source or start detection to begin analysis</span>"
             "</div>"
         )
 

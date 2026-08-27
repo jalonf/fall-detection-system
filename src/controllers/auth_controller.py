@@ -24,10 +24,8 @@ class AuthController:
         if self.user_repo.verify_password(email, password):
             self.view.show_success("Welcome back! Authentication successful.")
             
-            # Obtenemos el objeto usuario completo de la base de datos[cite: 1, 2]
             user = self.user_repo.get_user_by_email(email)
             
-            # Pasamos el objeto entero al callback de éxito
             QTimer.singleShot(1000, lambda: self.on_auth_success(user))
         else:
             self.view.show_error("Invalid email or password. Please try again.")
