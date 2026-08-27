@@ -1,3 +1,4 @@
+from PySide6.QtCore import QTimer
 from src.database.repositories.user_repository import UserRepository
 
 class AuthController:
@@ -16,15 +17,31 @@ class AuthController:
         self.user_repo = UserRepository()
 
     def handle_login(self, email, password):
-        print(f"Login with: {email}")
+        """Handles user login authentication flow with a smooth visual delay for success toasts."""
+        if not email or not password:
+            self.view.show_error("Please fill in all required fields.")
+            return
+
         if self.user_repo.verify_password(email, password):
-            self.on_auth_success(email)
+            self.view.show_success("Welcome back! Authentication successful.")
+            
+            # Retrieve the user entity to extract their actual name
+            user = self.user_repo.get_user_by_email(email)
+            user_name = user.name if user else "User"
+            
+            # Delay the page transition slightly so the success toast is fully appreciated
+            QTimer.singleShot(1000, lambda: self.on_auth_success(user_name))
         else:
-            print("Error: Invalid credentials")
+            self.view.show_error("Invalid email or password. Please try again.")
 
     def handle_register(self, name, email, phone, password, confirm, role):
+        """Handles new user registration flow with validation checks and success delay."""
+        if not name or not email or not password or not confirm:
+            self.view.show_error("Please fill in all required fields.")
+            return
+
         if password != confirm:
-            print("Error: Passwords do not match")
+            self.view.show_error("Passwords do not match. Please verify.")
             return
             
         new_user = self.user_repo.create_user(
@@ -32,9 +49,9 @@ class AuthController:
             password=password, role=role
         )
 
-        print(f"Register : {name} as {role}")
-        
         if new_user:
-            self.on_auth_success(email)
+            self.view.show_success("Account created successfully! Welcome.")
+            # Pass the newly registered name directly to the success callback
+            QTimer.singleShot(1000, lambda: self.on_auth_success(name))
         else:
-            print("Error: Registration failed")
+            self.view.show_error("Registration failed. Email might already be in use.")

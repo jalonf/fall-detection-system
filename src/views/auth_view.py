@@ -1,4 +1,4 @@
-from PySide6.QtCore import Qt, QPropertyAnimation, QEasingCurve, Signal
+from PySide6.QtCore import Qt, QPropertyAnimation, QEasingCurve, Signal, QTimer
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, 
     QFrame, QStackedWidget, QGraphicsOpacityEffect
@@ -30,14 +30,18 @@ class AuthView(QWidget):
         self.anim_out = None
         self.anim_in = None
         
+        # Initialize and type-hint the inline notification banner to satisfy static analysis
+        self.banner_label: QLabel = QLabel(self)
+        
         self._build_ui()
 
     def _build_ui(self):
+        """Constructs and organizes the comprehensive layout for branding and authentication panels."""
         root = QHBoxLayout(self)
         root.setContentsMargins(0, 0, 0, 0)
         root.setSpacing(0)
 
-        # Left clean typographic branding area with serious enterprise nomenclature
+        # Left clean typographic branding area featuring enterprise-grade identity nomenclature
         left_area = QFrame()
         left_layout = QVBoxLayout(left_area)
         left_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -47,7 +51,7 @@ class AuthView(QWidget):
         brand_title.setStyleSheet("font-size: 54px; font-weight: 900; color: #111827; letter-spacing: -1.5px; background: transparent;")
         brand_title.setAlignment(Qt.AlignmentFlag.AlignLeft)
         
-        # Subtle accent divider line
+        # Subtle accent divider line for visual hierarchy
         divider = QFrame()
         divider.setFixedWidth(48)
         divider.setFixedHeight(4)
@@ -85,14 +89,20 @@ class AuthView(QWidget):
         left_layout.addSpacing(24)
         left_layout.addWidget(tech_pill, 0, Qt.AlignmentFlag.AlignLeft)
 
-        # Right form panel with balanced proportions
+        # Right form panel container configured with balanced structural proportions
         right_panel = QFrame()
         right_panel.setObjectName("glassPanel")
         right_panel.setFixedWidth(500)
         
-        panel_layout = QVBoxLayout(right_panel)
-        panel_layout.setContentsMargins(60, 0, 60, 0)
-        panel_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.panel_layout = QVBoxLayout(right_panel)
+        self.panel_layout.setContentsMargins(60, 0, 60, 0)
+        self.panel_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.panel_layout.setSpacing(16)
+
+        # Configure the floating notification banner component (hidden by default)
+        self.banner_label.setWordWrap(True)
+        self.banner_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.banner_label.setVisible(False)
 
         self.stacked = QStackedWidget()
         
@@ -108,12 +118,13 @@ class AuthView(QWidget):
         self.stacked.addWidget(self.login_form)
         self.stacked.addWidget(self.register_form)
         
-        panel_layout.addWidget(self.stacked)
+        self.panel_layout.addWidget(self.stacked)
 
         root.addWidget(left_area, 1)    
         root.addWidget(right_panel, 0)  
 
     def _switch_page(self, target_index):
+        """Executes smooth opacity fade-out and fade-in transitions between sub-forms."""
         if self.stacked.currentIndex() == target_index:
             return
             
@@ -146,3 +157,67 @@ class AuthView(QWidget):
 
         self.anim_out.finished.connect(on_fade_out_finished)
         self.anim_out.start()
+
+    def resizeEvent(self, event):
+        """Ensures the floating toast notification repositions correctly if the window is resized."""
+        super().resizeEvent(event)
+        if self.banner_label and self.banner_label.isVisible():
+            banner_width = 360
+            banner_height = 50
+            margin_right = 30
+            margin_bottom = 30
+            x = self.width() - banner_width - margin_right
+            y = self.height() - banner_height - margin_bottom
+            self.banner_label.setGeometry(x, y, banner_width, banner_height)
+
+    def _show_banner(self, message: str, is_error: bool = True):
+        """Updates content and renders the floating toast notification at the bottom-right corner."""
+        self.banner_label.setText(message)
+        
+        if is_error:
+            bg_color = "#FEF2F2"
+            border_color = "#F87171"
+            text_color = "#991B1B"
+        else:
+            bg_color = "#ECFDF5"
+            border_color = "#34D399"
+            text_color = "#065F46"
+
+        self.banner_label.setStyleSheet(f"""
+            background-color: {bg_color};
+            color: {text_color};
+            border: 1px solid {border_color};
+            border-radius: 8px;
+            padding: 10px 16px;
+            font-size: 12px;
+            font-weight: 600;
+        """)
+        
+        # Dimensions and absolute positioning for bottom-right corner (Toast style)
+        banner_width = 360
+        banner_height = 50
+        margin_right = 30
+        margin_bottom = 30
+        
+        x = self.width() - banner_width - margin_right
+        y = self.height() - banner_height - margin_bottom
+        
+        self.banner_label.setGeometry(x, y, banner_width, banner_height)
+        self.banner_label.show()
+        self.banner_label.raise_()
+
+        # Automatically dismiss the toast notification after a 4-second timeout
+        QTimer.singleShot(4000, self._hide_banner)
+
+    def _hide_banner(self):
+        """Hides the floating toast notification cleanly."""
+        if self.banner_label:
+            self.banner_label.setVisible(False)
+
+    def show_error(self, message: str):
+        """Triggers the display of a styled error toast notification."""
+        self._show_banner(message, is_error=True)
+
+    def show_success(self, message: str):
+        """Triggers the display of a styled success toast notification."""
+        self._show_banner(message, is_error=False)

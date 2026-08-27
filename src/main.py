@@ -33,9 +33,8 @@ class ExampleApp(QMainWindow):
         self.router.add_view(self.auth_view)
         self.router.navigate_to(self.auth_view)
 
-    def show_monitor_module(self, user_email):
-        user_name = user_email.split('@')[0].capitalize()
-        
+    def show_monitor_module(self, user_name):
+        """Transitions the interface to the real-time monitoring dashboard module."""
         self.monitor_view = MonitorView(user_name=user_name)
         self.monitor_controller = MonitorController(
             view=self.monitor_view,
