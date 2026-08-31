@@ -92,7 +92,7 @@ class AuthView(QWidget):
         # Right form panel container configured with balanced structural proportions
         right_panel = QFrame()
         right_panel.setObjectName("glassPanel")
-        right_panel.setFixedWidth(500)
+        right_panel.setFixedWidth(580)
         
         self.panel_layout = QVBoxLayout(right_panel)
         self.panel_layout.setContentsMargins(60, 0, 60, 0)

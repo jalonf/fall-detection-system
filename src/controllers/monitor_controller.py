@@ -28,6 +28,8 @@ class MonitorController:
 
         self.worker = VideoWorker(camera_index=camera_index)
         self.worker.frame_ready.connect(self.view.update_video_frame)
+        self.worker.skeleton_frame_ready.connect(self.view.skeleton_panel.update_frame)
+        self.worker.telemetry_data_ready.connect(self.view.skeleton_panel.update_telemetry)
         self.worker.fall_detected.connect(self.handle_fall_alert)
         self.worker.start()
         
@@ -35,12 +37,14 @@ class MonitorController:
         self.view.log_event("INFO", f"Stream connected (Source {camera_index})")
 
     def start_video_file(self, file_path):
-        """Inicia el worker encargado de procesar un archivo de vídeo subido."""
+        """Starts the worker responsible for processing an uploaded video file."""
         if self.worker is not None:
             return
 
         self.worker = VideoFileWorker(video_path=file_path)
         self.worker.frame_ready.connect(self.view.update_video_frame)
+        self.worker.skeleton_frame_ready.connect(self.view.skeleton_panel.update_frame)
+        self.worker.telemetry_data_ready.connect(self.view.skeleton_panel.update_telemetry)
         self.worker.fall_detected.connect(self.handle_fall_alert)
         
         if hasattr(self.worker, "playback_finished"):
@@ -56,6 +60,8 @@ class MonitorController:
         if self.worker:
             try:
                 self.worker.frame_ready.disconnect()
+                self.worker.skeleton_frame_ready.disconnect()
+                self.worker.telemetry_data_ready.disconnect()
                 self.worker.fall_detected.disconnect()
             except Exception:
                 pass

@@ -4,6 +4,7 @@ from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout
 from src.views.components.topbar import Topbar
 from src.views.components.video_panel import VideoPanel
 from src.views.components.system_status_card import SystemStatusCard
+from src.views.components.squeleton_panel import SkeletonPanel
 from src.views.components.event_log import EventLog
 from src.views.theme import Colors
 
@@ -70,8 +71,10 @@ class MonitorView(QWidget):
         sidebar_layout = QVBoxLayout(sidebar_panel)
         sidebar_layout.setContentsMargins(0, 0, 0, 0)
         sidebar_layout.setSpacing(12)
-
     
+        self.skeleton_panel = SkeletonPanel()
+        sidebar_layout.addWidget(self.skeleton_panel)
+        
         self.system_status = SystemStatusCard()
         sidebar_layout.addWidget(self.system_status)
 
@@ -86,6 +89,7 @@ class MonitorView(QWidget):
 
     def clear_video(self):
         self.video_panel.clear_video()
+        self.skeleton_panel.clear_video()
 
     def set_monitoring_state(self, active: bool):
         self._is_monitoring = active

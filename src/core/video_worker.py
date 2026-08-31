@@ -3,6 +3,7 @@ import cv2
 from PySide6.QtCore import QThread, Signal
 from PySide6.QtGui import QImage
 import mediapipe as mp
+import numpy as np
 
 from mediapipe.framework.formats import landmark_pb2 # type: ignore
 mp_drawing = mp.solutions.drawing_utils # type: ignore
@@ -18,13 +19,10 @@ class VideoWorker(QThread):
     """
     frame_ready = Signal(QImage)
     fall_detected = Signal(str)
+    skeleton_frame_ready = Signal(QImage)
+    telemetry_data_ready = Signal(dict)
 
     def __init__(self, camera_index=0, parent=None):
-        """
-        Args:
-            camera_index (int): Index of the camera to use for video capture (default: 0).
-            parent (QObject): Parent object for the QThread/QObject.
-        """
         super().__init__(parent)
         self.camera_index = camera_index
         self._is_running = True
@@ -32,10 +30,6 @@ class VideoWorker(QThread):
         self.last_known_landmarks = None
 
     def run(self):
-        """
-        Initializes the camera, processes the image to extract the skeleton and perform inference, 
-        and sends the information to the interface via signals.
-        """
         cap = cv2.VideoCapture(self.camera_index)
         
         while self._is_running and cap.isOpened():
@@ -67,6 +61,15 @@ class VideoWorker(QThread):
                 inference_time_ms=inference_time
             )
 
+            h, w, ch = frame.shape
+            black_frame = np.zeros(frame.shape, dtype=np.uint8)
+            
+            telemetry_data = {
+                'inference_ms': inference_time,
+                'centroid_y': None,
+                'confidence': 0.0
+            }
+
             if result.pose_landmarks:
                 frame = self._draw_human_bounding_box(frame, result.pose_landmarks)
 
@@ -85,19 +88,54 @@ class VideoWorker(QThread):
                     mp_drawing.DrawingSpec(color=(0, 255, 127), thickness=2)
                 )
 
-            frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            h, w, ch = frame_rgb.shape
+                mp_drawing.draw_landmarks(
+                    black_frame,
+                    proto_landmarks,
+                    mp_pose.POSE_CONNECTIONS,
+                    mp_drawing.DrawingSpec(color=(255, 255, 255), thickness=4, circle_radius=4),
+                    mp_drawing.DrawingSpec(color=(0, 255, 127), thickness=4)
+                )
+
+                visibilities = [lm.visibility for lm in result.pose_landmarks]
+                if visibilities:
+                    telemetry_data['confidence'] = sum(visibilities) / len(visibilities)
+                
+                if len(result.pose_landmarks) > 24:
+                    l_hip = result.pose_landmarks[23]
+                    r_hip = result.pose_landmarks[24]
+                    if l_hip.visibility > 0.5 and r_hip.visibility > 0.5:
+                        telemetry_data['centroid_y'] = (l_hip.y + r_hip.y) / 2.0
+
+                x_coords = [int(lm.x * w) for lm in result.pose_landmarks if lm.visibility > 0.3]
+                y_coords = [int(lm.y * h) for lm in result.pose_landmarks if lm.visibility > 0.3]
+                
+                if x_coords and y_coords:
+                    pad = 60
+                    x1 = max(0, min(x_coords) - pad)
+                    y1 = max(0, min(y_coords) - pad)
+                    x2 = min(w, max(x_coords) + pad)
+                    y2 = min(h, max(y_coords) + pad)
+                    
+                    black_frame = black_frame[y1:y2, x1:x2]
+
+            self.telemetry_data_ready.emit(telemetry_data)
+
             bytes_per_line = ch * w
-            
+            frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             qimg = QImage(frame_rgb.data, w, h, bytes_per_line, QImage.Format.Format_RGB888)
             
+            black_rgb = cv2.cvtColor(black_frame, cv2.COLOR_BGR2RGB)
+            bh, bw = black_rgb.shape[:2]
+            b_bytes_per_line = 3 * bw
+            skeleton_qimg = QImage(black_rgb.data, bw, bh, b_bytes_per_line, QImage.Format.Format_RGB888)
+
+            self.skeleton_frame_ready.emit(skeleton_qimg)
             self.frame_ready.emit(qimg)
 
         cap.release()
         self.extractor.release()
 
     def _draw_human_bounding_box(self, frame, landmarks_2d):
-        """Calculates skeleton bounds and draws a modern, attractive bounding box with label."""
         if not landmarks_2d:
             return frame
 
@@ -124,13 +162,10 @@ class VideoWorker(QThread):
         
         cv2.line(frame, (x1, y1), (x1 + length, y1), box_color, thickness, cv2.LINE_AA)
         cv2.line(frame, (x1, y1), (x1, y1 + length), box_color, thickness, cv2.LINE_AA)
-        
         cv2.line(frame, (x2, y1), (x2 - length, y1), box_color, thickness, cv2.LINE_AA)
         cv2.line(frame, (x2, y1), (x2, y1 + length), box_color, thickness, cv2.LINE_AA)
-        
         cv2.line(frame, (x1, y2), (x1 + length, y2), box_color, thickness, cv2.LINE_AA)
         cv2.line(frame, (x1, y2), (x1, y2 - length), box_color, thickness, cv2.LINE_AA)
-        
         cv2.line(frame, (x2, y2), (x2 - length, y2), box_color, thickness, cv2.LINE_AA)
         cv2.line(frame, (x2, y2), (x2, y2 - length), box_color, thickness, cv2.LINE_AA)
 
@@ -146,10 +181,6 @@ class VideoWorker(QThread):
         return frame
 
     def _censor_face(self, frame, landmarks_2d):
-        """
-        Calculates the face area using MediaPipe landmarks and applies 
-        a Gaussian blur to censor it.
-        """
         if not landmarks_2d:
             return frame
 
@@ -185,6 +216,5 @@ class VideoWorker(QThread):
         return frame
 
     def stop(self):
-        """Close the camera."""
         self._is_running = False
         self.wait()
