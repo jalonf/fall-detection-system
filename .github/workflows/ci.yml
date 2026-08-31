@@ -1,4 +1,4 @@
-name: Validaciones TFG
+name: TFG Validations
 
 on:
   push:
@@ -7,28 +7,24 @@ on:
     branches: [ "main" ]
 
 jobs:
-  comprobar-codigo:
+  check-code:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Configurar Python
+      - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
-      - name: Instalar dependencias
+      - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          # Instalar PyTorch para CPU primero desde su índice oficial
           pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
-          # Instalar herramientas de análisis estático
           pip install flake8
-          # Instalar las librerías principales de la app de forma flexible para evitar bloqueos de numpy
           pip install opencv-python opencv-contrib-python mediapipe peewee pydantic PySide6
-          # Intentar instalar el resto del requirements si lo tienes adaptado
           if [ -f requirements.txt ]; then pip install -r requirements.txt || true; fi
 
-      - name: Comprobar sintaxis y errores críticos (Linter)
+      - name: Check syntax and critical errors (Linter)
         run: |
           flake8 src/ --count --select=E9,F63,F7,F82 --show-source --statistics
