@@ -3,9 +3,10 @@ Central design tokens, reusable visual helpers, and global theme configuration.
 """
 
 from pathlib import Path
-from PySide6.QtWidgets import QGraphicsDropShadowEffect, QApplication
+
 from PySide6.QtGui import QColor, QPalette
-from PySide6.QtCore import Qt
+from PySide6.QtWidgets import QApplication, QGraphicsDropShadowEffect
+
 
 class Colors:
     # ---- Brand / Primary ----

@@ -1,17 +1,17 @@
 # main.py
 import sys
+
 from PySide6.QtWidgets import QApplication, QMainWindow
 
-from src.router.router import ViewRouter
-from src.views.theme import ThemeManager 
-
-from src.database.core.databaseManager import databaseManager
-from src.database.models.user import User
-
-from src.views.auth_view import AuthView
-from src.views.monitor_view import MonitorView 
 from src.controllers.auth_controller import AuthController
 from src.controllers.monitor_controller import MonitorController
+from src.database.core.database_manager import databaseManager
+from src.database.models.user import User
+from src.router.router import ViewRouter
+from src.views.auth_view import AuthView
+from src.views.monitor_view import MonitorView
+from src.views.theme import ThemeManager
+
 
 class ExampleApp(QMainWindow):
     def __init__(self):

@@ -1,10 +1,18 @@
 import re
+
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel, 
-    QPushButton, QFrame, QLineEdit, QComboBox, QScrollArea,
-    QSizePolicy
+    QComboBox,
+    QFrame,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QPushButton,
+    QScrollArea,
+    QVBoxLayout,
+    QWidget,
 )
+
 
 class RegisterForm(QWidget):
     """

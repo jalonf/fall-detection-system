@@ -1,12 +1,11 @@
 from PySide6.QtCore import Qt, QTimer, Signal
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout
+from PySide6.QtWidgets import QHBoxLayout, QVBoxLayout, QWidget
 
+from src.views.components.event_log import EventLog
+from src.views.components.squeleton_panel import SkeletonPanel
+from src.views.components.system_status_card import SystemStatusCard
 from src.views.components.topbar import Topbar
 from src.views.components.video_panel import VideoPanel
-from src.views.components.system_status_card import SystemStatusCard
-from src.views.components.squeleton_panel import SkeletonPanel
-from src.views.components.event_log import EventLog
-from src.views.theme import Colors
 
 APP_NAME = "Safeguard"
 APP_TAGLINE = "Fall Detection System"

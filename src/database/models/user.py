@@ -1,7 +1,9 @@
 import datetime
-from peewee import Model, CharField, DateTimeField
 
-from src.database.core.databaseManager import db
+from peewee import CharField, DateTimeField, Model
+
+from src.database.core.database_manager import db
+
 
 class BaseModel(Model):
     """Base class that assigns the database to all models."""

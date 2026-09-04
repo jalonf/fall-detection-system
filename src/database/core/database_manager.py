@@ -1,5 +1,7 @@
-from peewee import SqliteDatabase
 from pathlib import Path
+
+from peewee import SqliteDatabase
+
 
 class DatabaseManager:
     """
@@ -11,7 +13,7 @@ class DatabaseManager:
     
     def __new__(cls, *args, **kwargs):
         if cls.instance is None:
-            cls.instance = super(DatabaseManager, cls).__new__(cls)
+            cls.instance = super().__new__(cls)
             cls.instance.configure()
 
         return cls.instance

@@ -1,7 +1,12 @@
-from PySide6.QtCore import Qt, QPropertyAnimation, QEasingCurve, Signal, QTimer
+from PySide6.QtCore import QEasingCurve, QPropertyAnimation, Qt, QTimer, Signal
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel, 
-    QFrame, QStackedWidget, QGraphicsOpacityEffect
+    QFrame,
+    QGraphicsOpacityEffect,
+    QHBoxLayout,
+    QLabel,
+    QStackedWidget,
+    QVBoxLayout,
+    QWidget,
 )
 
 from src.views.components.login_form import LoginForm

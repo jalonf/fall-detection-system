@@ -1,6 +1,7 @@
 import time
-from src.core.video_worker import VideoWorker
+
 from src.core.video_file_worker import VideoFileWorker
+from src.core.video_worker import VideoWorker
 
 FALL_ALERT_COOLDOWN_S = 3.0
 
@@ -63,8 +64,8 @@ class MonitorController:
                 self.worker.skeleton_frame_ready.disconnect()
                 self.worker.telemetry_data_ready.disconnect()
                 self.worker.fall_detected.disconnect()
-            except Exception:
-                pass
+            except TypeError as e:
+                print(f"Aviso al desconectar señal: {e}")
                 
             self.worker.stop()
             self.worker.wait()

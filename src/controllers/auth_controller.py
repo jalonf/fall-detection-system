@@ -1,5 +1,7 @@
 from PySide6.QtCore import QTimer
+
 from src.database.repositories.user_repository import UserRepository
+
 
 class AuthController:
     """

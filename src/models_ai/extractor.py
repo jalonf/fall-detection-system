@@ -1,18 +1,19 @@
 import time
-from typing import Optional, Tuple
+
 import cv2
-import numpy as np
 import mediapipe as mp
+import numpy as np
 from mediapipe.tasks.python.core.base_options import BaseOptions
+from mediapipe.tasks.python.vision.core.vision_task_running_mode import (
+    VisionTaskRunningMode as RunningMode,
+)
 from mediapipe.tasks.python.vision.pose_landmarker import (
     PoseLandmarker,
     PoseLandmarkerOptions,
 )
-from mediapipe.tasks.python.vision.core.vision_task_running_mode import (
-    VisionTaskRunningMode as RunningMode,
-)
-from src.models_ai.dtos import Skeleton
+
 from src.config import POSE_LANDMARKER_MODEL_PATH
+from src.models_ai.dtos import Skeleton
 
 
 class MediaPipeExtractor:
@@ -42,7 +43,7 @@ class MediaPipeExtractor:
         )
         self._landmarker = PoseLandmarker.create_from_options(options)
 
-    def extract_skeleton(self, frame_bgr: np.ndarray) -> Tuple[Optional[Skeleton], Optional[list]]:
+    def extract_skeleton(self, frame_bgr: np.ndarray) -> tuple[Skeleton | None, list | None]:
         """
         Processes a BGR image frame and returns a (Skeleton, landmarks_2d) tuple.
 

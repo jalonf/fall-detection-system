@@ -1,8 +1,13 @@
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel, 
-    QPushButton, QFrame, QLineEdit
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QPushButton,
+    QVBoxLayout,
+    QWidget,
 )
+
 
 class LoginForm(QWidget):
     """

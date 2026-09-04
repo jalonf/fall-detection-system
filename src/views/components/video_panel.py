@@ -1,10 +1,19 @@
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import (
-    QFrame, QVBoxLayout, QHBoxLayout, QLabel, 
-    QPushButton, QComboBox, QSizePolicy, QFileDialog, QWidget
+    QComboBox,
+    QFileDialog,
+    QFrame,
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QSizePolicy,
+    QVBoxLayout,
+    QWidget,
 )
+
 from src.views.theme import apply_shadow
+
 
 class VideoPanel(QFrame):
     """Component for the live camera feed and stream controls with a professional layout."""

@@ -1,7 +1,9 @@
 import bcrypt
-from src.database.models.user import User 
 
-class UserRepository():
+from src.database.models.user import User
+
+
+class UserRepository:
     """Handles all database operations for the users."""
 
     def create_user(self, name, email, phone, password, role):
@@ -20,11 +22,10 @@ class UserRepository():
             )
             return user
         except Exception as e:
-        
             print(f"[Repo Error] Could not create user: {e}")
             return None
 
-    def get_user_by_email(self,email):
+    def get_user_by_email(self, email):
         """Finds a user by their email. Returns None if not found."""
         user = User.get_or_none(User.email == email)
 

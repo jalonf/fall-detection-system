@@ -1,6 +1,6 @@
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtWidgets import QFrame, QHBoxLayout, QVBoxLayout, QLabel, QPushButton
-from src.views.theme import Colors
+from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QPushButton, QVBoxLayout
+
 
 class Topbar(QFrame):
     """

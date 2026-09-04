@@ -1,6 +1,8 @@
-from PySide6.QtWidgets import QFrame, QVBoxLayout, QHBoxLayout, QLabel
 from PySide6.QtCore import Qt
-from src.views.theme import apply_shadow, Colors
+from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QVBoxLayout
+
+from src.views.theme import Colors, apply_shadow
+
 
 class SystemStatusCard(QFrame):
     """Component indicating the AI processing engine status with a clean structured layout."""

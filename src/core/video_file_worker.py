@@ -1,16 +1,18 @@
 import time
+
 import cv2
-from PySide6.QtCore import QThread, Signal
-from PySide6.QtGui import QImage
 import mediapipe as mp
 import numpy as np
+from mediapipe.framework.formats import landmark_pb2  # type: ignore
+from PySide6.QtCore import QThread, Signal
+from PySide6.QtGui import QImage
 
-from mediapipe.framework.formats import landmark_pb2 # type: ignore
 mp_drawing = mp.solutions.drawing_utils # type: ignore
 mp_pose = mp.solutions.pose # type: ignore
 
-from src.models_ai.extractor import MediaPipeExtractor 
 from src.models_ai.dtos import InferenceResult
+from src.models_ai.extractor import MediaPipeExtractor
+
 
 class VideoFileWorker(QThread):
     """
@@ -189,7 +191,7 @@ class VideoFileWorker(QThread):
         font = cv2.FONT_HERSHEY_SIMPLEX
         font_scale = 0.5
         font_thickness = 1
-        (text_width, text_height), baseline = cv2.getTextSize(label, font, font_scale, font_thickness)
+        (_text_width, text_height), _baseline = cv2.getTextSize(label, font, font_scale, font_thickness)
         
         label_y = max(y1 - 6, text_height + 6)
         cv2.putText(frame, label, (x1, label_y), font, font_scale, box_color, font_thickness, cv2.LINE_AA)

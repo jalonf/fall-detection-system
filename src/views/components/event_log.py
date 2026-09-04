@@ -1,10 +1,17 @@
 from PySide6.QtCore import Qt, QTime
 from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
-    QFrame, QVBoxLayout, QHBoxLayout, QLabel, 
-    QPushButton, QListWidget, QListWidgetItem
+    QFrame,
+    QHBoxLayout,
+    QLabel,
+    QListWidget,
+    QListWidgetItem,
+    QPushButton,
+    QVBoxLayout,
 )
-from src.views.theme import apply_shadow, Colors
+
+from src.views.theme import Colors, apply_shadow
+
 
 class EventLog(QFrame):
     """Component for displaying system events and alerts with a formal layout."""

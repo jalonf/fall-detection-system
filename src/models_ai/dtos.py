@@ -1,5 +1,6 @@
-from typing import Optional
+
 import numpy as np
+
 
 class Skeleton:
     """
@@ -45,8 +46,8 @@ class InferenceResult:
     """
     def __init__(
         self,
-        skeleton: Optional[Skeleton],
-        pose_landmarks: Optional[list] = None,
+        skeleton: Skeleton | None,
+        pose_landmarks: list | None = None,
         is_fall: bool = False,
         fall_probability: float = 0.0,
         inference_time_ms: float = 0.0,
