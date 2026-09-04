@@ -22,7 +22,7 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-          # Enable pip caching to significantly reduce build times on subsequent runs
+          # Enable pip caching to significantly reduce build times
           cache: 'pip'
 
       - name: Install dependencies
@@ -32,16 +32,13 @@ jobs:
           # 1. CI/CD quality tools
           pip install ruff pytest
           
-          # 2. Optimized PyTorch installation (CPU-only to speed up CI and save space)
-          pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
-          
-          # 3. Core project dependencies
+          # 2. Core project dependencies
           if [ -f requirements.txt ]; then 
-            pip install -r requirements.txt
+            # CLAVE: Añadir --extra-index-url para que pip encuentre la versión +cpu de PyTorch
+            pip install -r requirements.txt --extra-index-url https://download.pytorch.org/whl/cpu
           else
-            # Fallback installation with critical versions pinned to prevent future build failures
-            # MediaPipe is explicitly locked to 0.10.x to maintain API compatibility
             pip install opencv-python opencv-contrib-python "mediapipe==0.10.*" peewee pydantic PySide6
+            pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
           fi
 
       - name: Code Quality & Linter
