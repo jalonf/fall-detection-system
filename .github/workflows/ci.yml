@@ -6,25 +6,45 @@ on:
   pull_request:
     branches: [ "main" ]
 
+# Prevent concurrent runs on the same branch to save CI minutes
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   check-code:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      - name: Set up Python
+      - name: Set up Python 3.11
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+          # Enable pip caching to significantly reduce build times on subsequent runs
+          cache: 'pip'
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
+          
+          # 1. CI/CD quality tools
+          pip install ruff pytest
+          
+          # 2. Optimized PyTorch installation (CPU-only to speed up CI and save space)
           pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
-          pip install flake8
-          pip install opencv-python opencv-contrib-python mediapipe peewee pydantic PySide6
-          if [ -f requirements.txt ]; then pip install -r requirements.txt || true; fi
+          
+          # 3. Core project dependencies
+          if [ -f requirements.txt ]; then 
+            pip install -r requirements.txt
+          else
+            # Fallback installation with critical versions pinned to prevent future build failures
+            # MediaPipe is explicitly locked to 0.10.x to maintain API compatibility
+            pip install opencv-python opencv-contrib-python "mediapipe==0.10.*" peewee pydantic PySide6
+          fi
 
-      - name: Check syntax and critical errors (Linter)
+      - name: Code Quality & Linter
         run: |
-          flake8 src/ --count --select=E9,F63,F7,F82 --show-source --statistics
+          # Ruff replaces Flake8: it uses the same rulesets but executes blazingly fast
+          ruff check src/
