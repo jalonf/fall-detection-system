@@ -1,6 +1,9 @@
+import logging
 from pathlib import Path
 
 from peewee import SqliteDatabase
+
+logger = logging.getLogger(__name__)
 
 
 class DatabaseManager:
@@ -24,6 +27,12 @@ class DatabaseManager:
         
         db_file = project_root / 'app.db'
         
+        db_exists = db_file.exists()
+        if db_exists:
+            logger.info("Existing database detected at: %s", db_file)
+        else:
+            logger.info("Database file not found. A new database will be created from scratch at: %s", db_file)
+        
         self.connection = SqliteDatabase(str(db_file), check_same_thread=False)
 
     def init_tables(self, models: list):
@@ -32,13 +41,21 @@ class DatabaseManager:
         then closes the connection to release the file.
         """
         if self.connection is not None:
+            logger.info("Connecting to the database to initialize tables...")
             self.connection.connect()
+            
+            tables_exist = all(model.table_exists() for model in models)
+            
             # The create_tables method executes "CREATE TABLE IF NOT EXISTS" under the hood.
             self.connection.create_tables(models)
             self.connection.close()
-            print("Database initialized successfully.")
+            
+            if tables_exist:
+                logger.info("Database schema verified. All tables are ready.")
+            else:
+                logger.info("New database tables created successfully.")
         else:
-            print("Error: Attempted to initialize tables but there is no connection.")
+            logger.error("Attempted to initialize tables but there is no active database connection.")
 
 
 databaseManager = DatabaseManager()
