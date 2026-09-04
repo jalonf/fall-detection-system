@@ -1,3 +1,4 @@
+import logging
 import time
 
 import cv2
@@ -13,6 +14,7 @@ mp_pose = mp.solutions.pose # type: ignore
 from src.models_ai.dtos import InferenceResult
 from src.models_ai.extractor import MediaPipeExtractor
 
+logger = logging.getLogger(__name__)
 
 class VideoWorker(QThread):
     """
@@ -32,6 +34,7 @@ class VideoWorker(QThread):
         self.last_known_landmarks = None
 
     def run(self):
+        logger.info("Camera {camera_index} opened for video processing")
         cap = cv2.VideoCapture(self.camera_index)
         
         while self._is_running and cap.isOpened():
@@ -134,8 +137,10 @@ class VideoWorker(QThread):
             self.skeleton_frame_ready.emit(skeleton_qimg)
             self.frame_ready.emit(qimg)
 
+        logger.info("Releasing video capture and AI extractor resources...")
         cap.release()
         self.extractor.release()
+        logger.info("VideoWorker execution completed successfully.")
 
     def _draw_human_bounding_box(self, frame, landmarks_2d):
         if not landmarks_2d:
@@ -218,5 +223,6 @@ class VideoWorker(QThread):
         return frame
 
     def stop(self):
+        logger.info("Stop requested for VideoWorker thread.")
         self._is_running = False
         self.wait()
