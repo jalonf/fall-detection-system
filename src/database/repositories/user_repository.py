@@ -21,7 +21,7 @@ class UserRepository:
                 role=role
             )
             return user
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             print(f"[Repo Error] Could not create user: {e}")
             return None
 
