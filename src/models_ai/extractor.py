@@ -1,3 +1,4 @@
+import logging
 import time
 
 import cv2
@@ -15,6 +16,8 @@ from mediapipe.tasks.python.vision.pose_landmarker import (
 from src.config import POSE_LANDMARKER_MODEL_PATH
 from src.models_ai.dtos import Skeleton
 
+logger = logging.getLogger(__name__)
+
 
 class MediaPipeExtractor:
     """
@@ -23,7 +26,8 @@ class MediaPipeExtractor:
     """
 
     def __init__(
-        self, min_detection_confidence: float = 0.5, min_tracking_confidence: float = 0.5, model_path: str = POSE_LANDMARKER_MODEL_PATH,):
+        self, min_detection_confidence: float = 0.5, min_tracking_confidence: float = 0.5, model_path: str = POSE_LANDMARKER_MODEL_PATH,
+    ):
         """
         Args:
             min_detection_confidence: Minimum confidence ([0.0, 1.0]) for person detection
@@ -32,6 +36,7 @@ class MediaPipeExtractor:
             model_path:               Absolute path to the .task bundle
                                       (e.g. models/pose_landmarker_full.task).
         """
+        logger.info("Initializing MediaPipeExtractor with model path: %s", model_path)
         options = PoseLandmarkerOptions(
             base_options=BaseOptions(model_asset_path=model_path),
             running_mode=RunningMode.VIDEO,
@@ -42,6 +47,7 @@ class MediaPipeExtractor:
             output_segmentation_masks=False,
         )
         self._landmarker = PoseLandmarker.create_from_options(options)
+        logger.info("MediaPipe PoseLandmarker successfully created.")
 
     def extract_skeleton(self, frame_bgr: np.ndarray) -> tuple[Skeleton | None, list | None]:
         """
@@ -64,6 +70,7 @@ class MediaPipeExtractor:
         result = self._landmarker.detect_for_video(mp_image, timestamp_ms)
 
         if not result.pose_world_landmarks:
+            logger.debug("No pose detected in the current frame.")
             return None, None
 
         # 3D world-space landmarks (metres) — used by the AI model.
@@ -86,4 +93,6 @@ class MediaPipeExtractor:
 
     def release(self) -> None:
         """Safely releases underlying MediaPipe C++ resources to prevent memory leaks."""
+        logger.info("Releasing MediaPipe landmarker C++ resources...")
         self._landmarker.close()
+        logger.info("MediaPipe resources successfully released.")

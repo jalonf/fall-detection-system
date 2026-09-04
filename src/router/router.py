@@ -1,5 +1,9 @@
+import logging
+
 from PySide6.QtCore import QEasingCurve, QPropertyAnimation
 from PySide6.QtWidgets import QGraphicsOpacityEffect, QLabel, QStackedWidget, QWidget
+
+logger = logging.getLogger(__name__)
 
 
 class ViewRouter:
@@ -16,13 +20,18 @@ class ViewRouter:
         self.effect_out = None
         self.anim_out = None
         self.overlay = None
+        logger.info("ViewRouter initialized successfully.")
 
     def add_view(self, view: QWidget):
         """Adds a view to the manager without showing it immediately."""
+        view_name = view.__class__.__name__
+        logger.debug("Adding view to stack: %s", view_name)
         self.stacked_widget.addWidget(view)
 
     def remove_view(self, view: QWidget):
         """Removes a view from the manager."""
+        view_name = view.__class__.__name__
+        logger.debug("Removing view from stack: %s", view_name)
         self.stacked_widget.removeWidget(view)
 
     def navigate_to(self, next_widget: QWidget, on_finish_callback=None):
@@ -31,9 +40,14 @@ class ViewRouter:
         a cross-fade effect.
         """
         current_widget = self.stacked_widget.currentWidget()
+        next_name = next_widget.__class__.__name__
+        current_name = current_widget.__class__.__name__ if current_widget else "None"
+        
+        logger.info("Navigation requested from [%s] to [%s]", current_name, next_name)
         
         # If it is the first view or the same view, switch without animation
         if current_widget is None or current_widget == next_widget:
+            logger.debug("Performing direct view switch without animation.")
             self.stacked_widget.setCurrentWidget(next_widget)
             if on_finish_callback:
                 on_finish_callback()
@@ -68,6 +82,7 @@ class ViewRouter:
             self.overlay.deleteLater()
             self.overlay = None
             
+            logger.debug("Transition animation finished for view: %s", next_name)
             if on_finish_callback:
                 on_finish_callback()
 
