@@ -1,8 +1,8 @@
+import logging
+
 from PySide6.QtCore import QTimer
 
 from src.database.repositories.user_repository import UserRepository
-
-import logging
 
 logger = logging.getLogger(__name__)
 

@@ -1,4 +1,3 @@
-import time
 import logging
 
 from src.core.video_file_worker import VideoFileWorker
