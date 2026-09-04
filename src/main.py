@@ -1,4 +1,4 @@
-# main.py
+import logging
 import sys
 
 from PySide6.QtWidgets import QApplication, QMainWindow
@@ -58,6 +58,14 @@ class ExampleApp(QMainWindow):
         self.router.navigate_to(self.auth_view, on_finish_callback=cleanup_monitor)
 
 if __name__ == "__main__":
+
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+        handlers=[
+            logging.StreamHandler()
+        ]
+    )
     app = QApplication(sys.argv)
     
     ThemeManager.setup_theme(app)
