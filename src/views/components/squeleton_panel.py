@@ -21,7 +21,7 @@ class SkeletonPanel(QFrame):
         self.view.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.view.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         self.view.setMinimumHeight(150)
-        self.view.setStyleSheet("background-color: #000; border-radius: 4px;")
+        self.view.setStyleSheet("background-color: #0F172A; border-radius: 4px;")
         layout.addWidget(self.view)
         
         data_layout = QVBoxLayout()

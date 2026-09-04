@@ -25,29 +25,20 @@ class AuthController:
             self.view.show_success("Welcome back! Authentication successful.")
             
             user = self.user_repo.get_user_by_email(email)
-            
-            QTimer.singleShot(1000, lambda: self.on_auth_success(user))
+            QTimer.singleShot(1500, lambda: self.on_auth_success(user))
         else:
-            self.view.show_error("Invalid email or password. Please try again.")
             self.view.show_error("Invalid email or password. Please try again.")
 
     def handle_register(self, name, email, phone, password, confirm, role):
-        """Handles new user registration flow with validation checks and success delay."""
-        if not name or not email or not password or not confirm:
-            self.view.show_error("Please fill in all required fields.")
-            return
+        """Handles new user registration."""
 
-        if password != confirm:
-            self.view.show_error("Passwords do not match. Please verify.")
-            return
-            
         new_user = self.user_repo.create_user(
             name=name, email=email, phone=phone, 
             password=password, role=role
         )
-
+        
         if new_user:
             self.view.show_success("Account created successfully! Welcome.")
-            QTimer.singleShot(1000, lambda: self.on_auth_success(name, role))
+            QTimer.singleShot(1500, lambda: self.on_auth_success(new_user))
         else:
             self.view.show_error("Registration failed. Email might already be in use.")

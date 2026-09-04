@@ -10,7 +10,7 @@ class LoginForm(QWidget):
     Captures user credentials to access the fall detection monitoring system.
     """
     
-    login_requested = Signal(str, str)  # Updated to emit email and password (no remember flag needed)
+    login_requested = Signal(str, str)
     switch_page_requested = Signal()
     
     login_email: QLineEdit

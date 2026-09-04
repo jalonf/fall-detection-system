@@ -2,12 +2,12 @@ from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import (
     QFrame, QVBoxLayout, QHBoxLayout, QLabel, 
-    QPushButton, QComboBox, QSizePolicy, QFileDialog
+    QPushButton, QComboBox, QSizePolicy, QFileDialog, QWidget
 )
 from src.views.theme import apply_shadow
 
 class VideoPanel(QFrame):
-    """Component for the live camera feed and stream controls with a professional toolbar layout."""
+    """Component for the live camera feed and stream controls with a professional layout."""
     
     start_requested = Signal(int)
     upload_requested = Signal(str)
@@ -24,8 +24,8 @@ class VideoPanel(QFrame):
 
     def _build_ui(self):
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(20, 18, 20, 18)
-        layout.setSpacing(14)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(16)
 
         header = QVBoxLayout()
         header.setSpacing(2)
@@ -44,19 +44,11 @@ class VideoPanel(QFrame):
         self.video_label.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         self.video_label.setText(self._video_placeholder())
         layout.addWidget(self.video_label, 1)
-        
-        toolbar_frame = QFrame()
-        toolbar_frame.setObjectName("videoToolbar")
-        toolbar_frame.setStyleSheet("""
-            QFrame#videoToolbar {
-                background-color: #F8FAFC;
-                border: 1px solid #E2E8F0;
-                border-radius: 6px;
-            }
-        """)
-        controls = QHBoxLayout(toolbar_frame)
-        controls.setContentsMargins(14, 10, 14, 10)
-        controls.setSpacing(10)
+
+        controls_container = QWidget()
+        controls = QHBoxLayout(controls_container)
+        controls.setContentsMargins(0, 4, 0, 0)
+        controls.setSpacing(12)
 
         cam_label = QLabel("Source:")
         cam_label.setObjectName("fieldLabel")
@@ -99,7 +91,7 @@ class VideoPanel(QFrame):
         controls.addWidget(self.btn_stop)
         controls.addWidget(self.btn_start)
 
-        layout.addWidget(toolbar_frame)
+        layout.addWidget(controls_container)
 
     def _open_file_dialog(self):
         file_path, _ = QFileDialog.getOpenFileName(

@@ -72,7 +72,7 @@ class VideoFileWorker(QThread):
             )
 
             h, w, ch = frame.shape
-            black_frame = np.zeros(frame.shape, dtype=np.uint8)
+            colour_frame = np.full((h, w, ch), (42, 23, 15), dtype=np.uint8)
             
             telemetry_data = {
                 'inference_ms': inference_time,
@@ -99,7 +99,7 @@ class VideoFileWorker(QThread):
                 )
 
                 mp_drawing.draw_landmarks(
-                    black_frame,
+                    colour_frame,
                     proto_landmarks,
                     mp_pose.POSE_CONNECTIONS,
                     mp_drawing.DrawingSpec(color=(255, 255, 255), thickness=4, circle_radius=4),
@@ -126,7 +126,7 @@ class VideoFileWorker(QThread):
                     x2 = min(w, max(x_coords) + pad)
                     y2 = min(h, max(y_coords) + pad)
                     
-                    black_frame = black_frame[y1:y2, x1:x2]
+                    colour_frame = colour_frame[y1:y2, x1:x2]
 
             self.telemetry_data_ready.emit(telemetry_data)
 
@@ -134,7 +134,7 @@ class VideoFileWorker(QThread):
             frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             qimg = QImage(frame_rgb.data, w, h, bytes_per_line, QImage.Format.Format_RGB888)
             
-            black_rgb = cv2.cvtColor(black_frame, cv2.COLOR_BGR2RGB)
+            black_rgb = cv2.cvtColor(colour_frame, cv2.COLOR_BGR2RGB)
             bh, bw = black_rgb.shape[:2]
             b_bytes_per_line = 3 * bw
             skeleton_qimg = QImage(black_rgb.data, bw, bh, b_bytes_per_line, QImage.Format.Format_RGB888)
