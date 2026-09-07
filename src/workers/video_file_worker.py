@@ -13,11 +13,12 @@ mp_pose = mp.solutions.pose  # type: ignore
 
 from src.ai.dtos import InferenceResult
 from src.ai.extractor import MediaPipeExtractor
+from src.patterns.observer import EventSubject
 
 logger = logging.getLogger(__name__)
 
 
-class VideoFileWorker(QThread):
+class VideoFileWorker(QThread,EventSubject):
     """
     Responsible for loading an uploaded video file, processing frames to extract 
     the skeleton, and rendering the fall detection pipeline at natural speed.
@@ -29,7 +30,9 @@ class VideoFileWorker(QThread):
     playback_finished = Signal()
 
     def __init__(self, video_path: str, parent=None):
-        super().__init__(parent)
+        QThread.__init__(self, parent)
+        EventSubject.__init__(self)
+
         self.video_path = video_path
         self._is_running = True
         self.extractor = MediaPipeExtractor()

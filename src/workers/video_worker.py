@@ -13,10 +13,11 @@ mp_pose = mp.solutions.pose # type: ignore
 
 from src.ai.dtos import InferenceResult
 from src.ai.extractor import MediaPipeExtractor
+from src.patterns.observer import EventSubject
 
 logger = logging.getLogger(__name__)
 
-class VideoWorker(QThread):
+class VideoWorker(QThread,EventSubject):
     """
     It is responsible for initializing the camera to display it on the interface, 
     and processing the image to visualize the skeleton.
@@ -27,7 +28,9 @@ class VideoWorker(QThread):
     telemetry_data_ready = Signal(dict)
 
     def __init__(self, camera_index=0, parent=None):
-        super().__init__(parent)
+        QThread.__init__(self, parent)
+        EventSubject.__init__(self)
+        
         self.camera_index = camera_index
         self._is_running = True
         self.extractor = MediaPipeExtractor()
