@@ -23,7 +23,7 @@ class AuthView(QWidget):
     """
     
     login_requested = Signal(str, str)
-    register_requested = Signal(str, str, str, str, str, str)
+    register_requested = Signal(str, str, str, str, str, str, str, str)
 
     def __init__(self, parent=None):
         super().__init__(parent)
