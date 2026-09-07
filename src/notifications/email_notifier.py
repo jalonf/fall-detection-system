@@ -1,8 +1,8 @@
-import mimetypes
 import smtplib
 from email.message import EmailMessage
-from src.views.theme import Colors
+
 from src.patterns.observer import Observer
+from src.views.theme import Colors
 
 
 class EmailNotifier(Observer):
@@ -110,7 +110,7 @@ class EmailNotifier(Observer):
                     subtype="jpeg",
                     filename=file_name,
                 )
-            except Exception as img_err:
+            except (FileNotFoundError, OSError) as img_err:
                 print(f"Failed to attach fall snapshot image: {img_err}")
 
         # Send email via SMTP server
@@ -122,5 +122,5 @@ class EmailNotifier(Observer):
                 server.login(self.config["user"], self.config["password"])
                 server.send_message(msg)
             print(f"Alert email successfully sent to {self.email}")
-        except Exception as e:
+        except (smtplib.SMTPException, OSError) as e:
             print(f"Error sending email to {self.email}: {e}")
