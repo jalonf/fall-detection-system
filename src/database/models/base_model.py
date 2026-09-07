@@ -1,4 +1,3 @@
-
 from peewee import Model
 
 from src.database.core.database_manager import db
