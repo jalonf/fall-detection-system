@@ -3,12 +3,8 @@ import datetime
 from peewee import CharField, DateTimeField, Model
 
 from src.database.core.database_manager import db
+from src.database.models.base_model import BaseModel
 
-
-class BaseModel(Model):
-    """Base class that assigns the database to all models."""
-    class Meta:
-        database = db
 
 class User(BaseModel):
     """Model for the users table."""

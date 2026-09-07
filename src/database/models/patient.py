@@ -1,12 +1,9 @@
 import datetime
 
-from peewee import CharField, DateTimeField, ForeignKeyField, TextField, Model
-from src.database.core.database_manager import db
+from peewee import CharField, DateTimeField, ForeignKeyField, TextField
+from src.database.models.base_model import BaseModel
 from src.database.models.user import User
-class BaseModel(Model):
-    """Base class that assigns the database to all models."""
-    class Meta:
-        database = db
+
 
 class Patient(BaseModel):
     """Model for the patient table"""
