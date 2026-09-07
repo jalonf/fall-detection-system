@@ -1,8 +1,7 @@
 import datetime
 
-from peewee import CharField, DateTimeField, Model
+from peewee import CharField, DateTimeField
 
-from src.database.core.database_manager import db
 from src.database.models.base_model import BaseModel
 
 

@@ -1,6 +1,7 @@
 import datetime
 
 from peewee import CharField, DateTimeField, ForeignKeyField, TextField
+
 from src.database.models.base_model import BaseModel
 from src.database.models.user import User
 
