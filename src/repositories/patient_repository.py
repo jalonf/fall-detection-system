@@ -16,7 +16,7 @@ class PatientRepository:
             
             patient = Patient.create(
                 caregiver_id=user,
-                full_name=name,
+                name=name,
                 medical_info=notes
             )
             logger.info("Patient successfully created with name: %s", patient.name)

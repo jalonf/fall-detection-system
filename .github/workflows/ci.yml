@@ -34,7 +34,6 @@ jobs:
           
           # 2. Core project dependencies
           if [ -f requirements.txt ]; then 
-            # CLAVE: Añadir --extra-index-url para que pip encuentre la versión +cpu de PyTorch
             pip install -r requirements.txt --extra-index-url https://download.pytorch.org/whl/cpu
           else
             pip install opencv-python opencv-contrib-python "mediapipe==0.10.*" peewee pydantic PySide6
