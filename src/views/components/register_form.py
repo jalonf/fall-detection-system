@@ -20,7 +20,6 @@ class RegisterForm(QWidget):
     Handles user input validation and emits signals for account creation.
     """
     
-    # Updated signal signature to include medical info instead of patient phone
     register_requested = Signal(str, str, str, str, str, str, str, str)
     switch_page_requested = Signal()
 
