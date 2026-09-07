@@ -5,7 +5,7 @@ from PySide6.QtWidgets import QApplication, QMainWindow
 
 from src.controllers.auth_controller import AuthController
 from src.controllers.monitor_controller import MonitorController
-from src.database.core.database_manager import databaseManager
+from src.database.database_manager import databaseManager
 from src.database.models.patient import Patient
 from src.database.models.user import User
 from src.router.router import ViewRouter

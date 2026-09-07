@@ -8,41 +8,54 @@ from mediapipe.framework.formats import landmark_pb2  # type: ignore
 from PySide6.QtCore import QThread, Signal
 from PySide6.QtGui import QImage
 
-mp_drawing = mp.solutions.drawing_utils # type: ignore
-mp_pose = mp.solutions.pose # type: ignore
+mp_drawing = mp.solutions.drawing_utils  # type: ignore
+mp_pose = mp.solutions.pose  # type: ignore
 
-from src.models_ai.dtos import InferenceResult
-from src.models_ai.extractor import MediaPipeExtractor
+from src.ai.dtos import InferenceResult
+from src.ai.extractor import MediaPipeExtractor
 
 logger = logging.getLogger(__name__)
 
-class VideoWorker(QThread):
+
+class VideoFileWorker(QThread):
     """
-    It is responsible for initializing the camera to display it on the interface, 
-    and processing the image to visualize the skeleton.
+    Responsible for loading an uploaded video file, processing frames to extract 
+    the skeleton, and rendering the fall detection pipeline at natural speed.
     """
     frame_ready = Signal(QImage)
     fall_detected = Signal(str)
     skeleton_frame_ready = Signal(QImage)
     telemetry_data_ready = Signal(dict)
+    playback_finished = Signal()
 
-    def __init__(self, camera_index=0, parent=None):
+    def __init__(self, video_path: str, parent=None):
         super().__init__(parent)
-        self.camera_index = camera_index
+        self.video_path = video_path
         self._is_running = True
         self.extractor = MediaPipeExtractor()
         self.last_known_landmarks = None
 
     def run(self):
-        logger.info("Camera {camera_index} opened for video processing")
-        cap = cv2.VideoCapture(self.camera_index)
+        logger.info("Opening video file: %s", self.video_path)
+        cap = cv2.VideoCapture(self.video_path)
         
+        if not cap.isOpened():
+            logger.error("Could not open video file: %s", self.video_path)
+            return
+
+        fps = cap.get(cv2.CAP_PROP_FPS)
+        frame_delay = 1.0 / fps if fps > 0 else 1.0 / 30.0
+        logger.info("Video stream opened successfully. FPS: %.2f, Frame delay: %.4fs", fps, frame_delay)
+
         while self._is_running and cap.isOpened():
-            start_time = time.perf_counter()
+            loop_start = time.perf_counter()
             
             ret, frame = cap.read()
             if not ret or frame is None:
+                logger.info("End of video file reached or failed to read frame.")
                 break
+
+            start_time = time.perf_counter()
 
             skeleton, landmarks_2d = self.extractor.extract_skeleton(frame_bgr=frame)
 
@@ -78,9 +91,9 @@ class VideoWorker(QThread):
             if result.pose_landmarks:
                 frame = self._draw_human_bounding_box(frame, result.pose_landmarks)
 
-                proto_landmarks = landmark_pb2.NormalizedLandmarkList() # type: ignore
+                proto_landmarks = landmark_pb2.NormalizedLandmarkList()  # type: ignore
                 proto_landmarks.landmark.extend([
-                    landmark_pb2.NormalizedLandmark( # type: ignore
+                    landmark_pb2.NormalizedLandmark(  # type: ignore
                         x=lm.x, y=lm.y, z=lm.z, visibility=lm.visibility
                     ) for lm in result.pose_landmarks
                 ])
@@ -137,10 +150,16 @@ class VideoWorker(QThread):
             self.skeleton_frame_ready.emit(skeleton_qimg)
             self.frame_ready.emit(qimg)
 
+            elapsed = time.perf_counter() - loop_start
+            sleep_time = frame_delay - elapsed
+            if sleep_time > 0:
+                time.sleep(sleep_time)
+
         logger.info("Releasing video capture and AI extractor resources...")
         cap.release()
         self.extractor.release()
-        logger.info("VideoWorker execution completed successfully.")
+        self.playback_finished.emit()
+        logger.info("VideoFileWorker execution completed successfully.")
 
     def _draw_human_bounding_box(self, frame, landmarks_2d):
         if not landmarks_2d:
@@ -223,6 +242,6 @@ class VideoWorker(QThread):
         return frame
 
     def stop(self):
-        logger.info("Stop requested for VideoWorker thread.")
+        logger.info("Stop requested for VideoFileWorker thread.")
         self._is_running = False
         self.wait()

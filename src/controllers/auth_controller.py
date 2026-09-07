@@ -2,8 +2,8 @@ import logging
 
 from PySide6.QtCore import QTimer
 
-from src.database.repositories.patient_repository import PatientRepository
-from src.database.repositories.user_repository import UserRepository
+from src.repositories.patient_repository import PatientRepository
+from src.repositories.user_repository import UserRepository
 
 logger = logging.getLogger(__name__)
 

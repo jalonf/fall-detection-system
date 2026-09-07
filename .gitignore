@@ -24,3 +24,6 @@ Thumbs.db
 
 # Database
 app.db
+
+# Logs
+app.log

@@ -1,9 +1,11 @@
 import logging
+import os
 import time
 
 import cv2
 import mediapipe as mp
 import numpy as np
+from dotenv import load_dotenv
 from mediapipe.tasks.python.core.base_options import BaseOptions
 from mediapipe.tasks.python.vision.core.vision_task_running_mode import (
     VisionTaskRunningMode as RunningMode,
@@ -13,8 +15,9 @@ from mediapipe.tasks.python.vision.pose_landmarker import (
     PoseLandmarkerOptions,
 )
 
-from src.config import POSE_LANDMARKER_MODEL_PATH
-from src.models_ai.dtos import Skeleton
+from src.ai.dtos import Skeleton
+
+load_dotenv()
 
 logger = logging.getLogger(__name__)
 
@@ -26,15 +29,18 @@ class MediaPipeExtractor:
     """
 
     def __init__(
-        self, min_detection_confidence: float = 0.5, min_tracking_confidence: float = 0.5, model_path: str = POSE_LANDMARKER_MODEL_PATH,
+        self,
+        min_detection_confidence: float = 0.5,
+        min_tracking_confidence: float = 0.5,
+        model_path: str = os.getenv("POSE_LANDMARKER_MODEL_PATH", "assets/pose_landmarker_full.task"),
     ):
         """
         Args:
             min_detection_confidence: Minimum confidence ([0.0, 1.0]) for person detection
                                       and pose presence scoring.
             min_tracking_confidence:  Minimum confidence ([0.0, 1.0]) for inter-frame tracking.
-            model_path:               Absolute path to the .task bundle
-                                      (e.g. models/pose_landmarker_full.task).
+            model_path:               Path to the .task bundle, loaded directly from .env
+                                      (falling back to assets/pose_landmarker_full.task if not defined).
         """
         logger.info("Initializing MediaPipeExtractor with model path: %s", model_path)
         options = PoseLandmarkerOptions(

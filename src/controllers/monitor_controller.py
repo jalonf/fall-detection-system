@@ -1,7 +1,7 @@
 import logging
 
-from src.core.video_file_worker import VideoFileWorker
-from src.core.video_worker import VideoWorker
+from src.workers.video_file_worker import VideoFileWorker
+from src.workers.video_worker import VideoWorker
 
 FALL_ALERT_COOLDOWN_S = 3.0
 

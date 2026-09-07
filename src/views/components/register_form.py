@@ -20,7 +20,7 @@ class RegisterForm(QWidget):
     Handles user input validation and emits signals for account creation.
     """
     
-    register_requested = Signal(str, str, str, str, str, str, str, str)
+    register_requested = Signal(str, str, str, str, str, str, str)
     switch_page_requested = Signal()
 
     def __init__(self, parent=None):
@@ -310,7 +310,6 @@ class RegisterForm(QWidget):
                 self.reg_email.text().strip(),
                 self.reg_phone.text().strip(),
                 self.reg_password.text(),
-                self.reg_confirm.text(),
                 self.reg_role.currentText(),
                 self.reg_patient_name.text().strip(),
                 self.reg_medical_info.text().strip()
