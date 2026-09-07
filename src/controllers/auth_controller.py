@@ -38,7 +38,7 @@ class AuthController:
             logger.warning("Authentication failed: invalid credentials provided")
             self.view.show_error("Invalid email or password. Please try again.")
 
-    def handle_register(self, name, email, phone, password, confirm, role):
+    def handle_register(self, name, email, phone, password, role):
         """Handles new user registration."""
         logger.info("The controller is about to handle the registration process")
         new_user = self.user_repo.create_user(
