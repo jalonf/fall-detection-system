@@ -24,6 +24,7 @@ class AuthController:
         self.patient_repo = PatientRepository()
 
     def handle_login(self, email, password):
+        """Handles user login."""
         logger.info("The controller is about to handle the login process")
         if not email or not password:
             logger.warning("Login attempt failed: missing required fields")
