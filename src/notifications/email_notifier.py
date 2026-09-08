@@ -1,10 +1,9 @@
 import logging
 import os
-import smtplib
-from email.message import EmailMessage
 from pathlib import Path
 
 from dotenv import load_dotenv
+import resend
 
 from src.notifications.template import render_fall_alert_email
 from src.patterns.observer import Observer
@@ -13,14 +12,16 @@ load_dotenv()
 
 logger = logging.getLogger(__name__)
 
+
 class EmailNotifier(Observer):
 
     def __init__(self, email: str):
         self.email = email
-        self.server = os.getenv("SMTP_SERVER", "smtp.gmail.com")
-        self.port = int(os.getenv("SMTP_PORT", "587"))
-        self.user = os.getenv("SMTP_USER", "")
-        self.password = os.getenv("SMTP_PASSWORD", "")
+        self.api_key = os.getenv("RESEND_API_KEY", "")
+        self.from_email = os.getenv(
+            "RESEND_FROM_EMAIL", "Safeguard Alerts <onboarding@resend.dev>"
+        )
+        resend.api_key = self.api_key
 
     def update(self, event_data: dict) -> None:
         patient_name = event_data.get("patient_name", "Unknown Patient")
@@ -42,33 +43,31 @@ class EmailNotifier(Observer):
             has_attachment=has_attachment,
         )
 
-        # Build email structure
-        msg = EmailMessage()
-        msg["Subject"] = f"Safeguard: Fall Alert - {patient_name}"
-        msg["From"] = f"Safeguard Alerts <{self.user}>"
-        msg["To"] = self.email
-        msg.set_content(plain_text)
-        msg.add_alternative(html_content, subtype="html")
+        # Build payload parameters
+        params: resend.Emails.SendParams = {
+            "from": self.from_email,
+            "to": [self.email],
+            "subject": f"Safeguard: Fall Alert - {patient_name}",
+            "html": html_content,
+            "text": plain_text,
+        }
 
         # Attach image if valid
         if has_attachment and snapshot_file:
             try:
                 with open(snapshot_file, "rb") as img:
-                    msg.add_attachment(
-                        img.read(),
-                        maintype="image",
-                        subtype="jpeg",
-                        filename=snapshot_file.name,
-                    )
+                    params["attachments"] = [
+                        {
+                            "filename": snapshot_file.name,
+                            "content": list(img.read()),
+                        }
+                    ]
             except OSError as err:
-                print(f"Warning: Failed to attach snapshot ({err})")
+                logger.warning("Failed to read snapshot file for attachment: %s", err)
 
-        # Dispatch
+        # Dispatch via Resend API
         try:
-            with smtplib.SMTP(self.server, self.port) as client:
-                client.starttls()
-                client.login(self.user, self.password)
-                client.send_message(msg)
-            logger.info("Alert email sent to: %s" , self.email)
+            response = resend.Emails.send(params)
+            logger.info("Alert email sent to %s (ID: %s)", self.email, response.get("id"))
         except Exception as err:  # noqa: BLE001
-            logger.error("Failed to send email to %s : %s",self.email, err)
+            logger.error("Failed to send email to %s via Resend: %s", self.email, err)
