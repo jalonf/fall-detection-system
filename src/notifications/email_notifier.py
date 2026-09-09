@@ -2,8 +2,8 @@ import logging
 import os
 from pathlib import Path
 
-from dotenv import load_dotenv
 import resend
+from dotenv import load_dotenv
 
 from src.notifications.template import render_fall_alert_email
 from src.patterns.observer import Observer

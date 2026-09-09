@@ -7,7 +7,7 @@ from src.views.components.system_status_card import SystemStatusCard
 from src.views.components.topbar import Topbar
 from src.views.components.video_panel import VideoPanel
 
-APP_NAME = "Safeguard"
+APP_NAME = "Name"
 APP_TAGLINE = "Fall Detection System"
 
 class MonitorView(QWidget):
@@ -21,6 +21,7 @@ class MonitorView(QWidget):
     start_requested = Signal(int)
     upload_requested = Signal(str)
     stop_requested = Signal()
+    notify_requested = Signal()
     
     def __init__(self, user_name="User", user_role="Family / Caregiver", parent=None):
         super().__init__(parent)
@@ -60,6 +61,7 @@ class MonitorView(QWidget):
         self.video_panel = VideoPanel(user_role=self.user_role)
         self.video_panel.start_requested.connect(self.start_requested.emit)
         self.video_panel.upload_requested.connect(self.upload_requested.emit)
+        self.video_panel.notify_requested.connect(self.notify_requested.emit)
         self.video_panel.stop_requested.connect(self.stop_requested.emit)
         
         video_layout.addWidget(self.video_panel, 1)

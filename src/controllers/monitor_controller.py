@@ -1,5 +1,7 @@
 import logging
+from datetime import datetime
 
+from src.notifications.email_notifier import EmailNotifier
 from src.workers.video_file_worker import VideoFileWorker
 from src.workers.video_worker import VideoWorker
 
@@ -19,7 +21,8 @@ class MonitorController:
         self.worker = None
         self.falls_count = 0
         self._last_fall_ts = 0.0
-        
+
+        self.view.notify_requested.connect(self.notify_user)
         self.view.start_requested.connect(self.start_camera)
         self.view.upload_requested.connect(self.start_video_file)
         self.view.stop_requested.connect(self.stop_camera)
@@ -100,3 +103,17 @@ class MonitorController:
         self.view.log_event("ALERT", f"Fall detected: {message}")
         
         # TODO: Implementar lógica avanzada más adelante (guardar en BD, notificaciones, etc.)
+
+    def notify_user(self):
+        snapshot_file = None
+        event_data = {
+            "event_name": "fall_detected",
+            "patient_name": self.user.name,
+            "medical_history": "N/A",
+            "prediction_probability": 0.94,
+            "timestamp": datetime.now().astimezone().strftime("%d/%m/%Y %H:%M:%S"),
+            "snapshot_path": str(snapshot_file) if snapshot_file else None,
+        }
+        logger.info("Email notification sent")
+        email_notifier = EmailNotifier(self.user.email)
+        email_notifier.update(event_data)

@@ -21,6 +21,7 @@ class VideoPanel(QFrame):
     start_requested = Signal(int)
     upload_requested = Signal(str)
     stop_requested = Signal()
+    notify_requested = Signal()
     
     def __init__(self, user_role="Family / Caregiver", parent=None):
         super().__init__(parent)
@@ -79,6 +80,30 @@ class VideoPanel(QFrame):
             self.btn_upload.setCursor(Qt.CursorShape.PointingHandCursor)
             self.btn_upload.clicked.connect(self._open_file_dialog)
             controls.addWidget(self.btn_upload)
+
+            self.btn_notify = QPushButton("Notificate")
+            self.btn_notify.setObjectName("danger")
+            self.btn_notify.setFixedHeight(36)
+            self.btn_notify.setMinimumWidth(115)
+            self.btn_notify.setCursor(Qt.CursorShape.PointingHandCursor)
+            self.btn_notify.setStyleSheet("""
+                QPushButton#danger {
+                    background-color: #EF4444;
+                    color: #FFFFFF;
+                    border: none;
+                    border-radius: 6px;
+                    font-weight: 600;
+                    padding: 0 12px;
+                }
+                QPushButton#danger:hover {
+                    background-color: #DC2626;
+                }
+                QPushButton#danger:pressed {
+                    background-color: #B91C1C;
+                }
+            """)
+            self.btn_notify.clicked.connect(self.notify_requested.emit)
+            controls.addWidget(self.btn_notify)
 
         controls.addStretch()
 

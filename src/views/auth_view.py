@@ -12,7 +12,7 @@ from PySide6.QtWidgets import (
 from src.views.components.login_form import LoginForm
 from src.views.components.register_form import RegisterForm
 
-APP_NAME = "Safeguard"
+APP_NAME = "Name"
 APP_TAGLINE = "Fall Detection System"
 
 class AuthView(QWidget):
@@ -52,7 +52,7 @@ class AuthView(QWidget):
         left_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
         left_layout.setContentsMargins(70, 0, 70, 0)
         
-        brand_title = QLabel("Safeguard")
+        brand_title = QLabel("Name")
         brand_title.setStyleSheet("font-size: 54px; font-weight: 900; color: #111827; letter-spacing: -1.5px; background: transparent;")
         brand_title.setAlignment(Qt.AlignmentFlag.AlignLeft)
         
