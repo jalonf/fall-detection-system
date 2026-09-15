@@ -1,4 +1,8 @@
 import os
+os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
+os.environ["GLOG_minloglevel"] = "3"
+
 import logging
 import cv2
 import numpy as np
@@ -7,127 +11,133 @@ from tqdm import tqdm
 
 from src.ai.extractor import MediaPipeExtractor
 
-# Configure logging for professional monitoring
+# Configure clean logging format
 logging.basicConfig(
     level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+    format="[%(levelname)s] %(message)s"
 )
 logger = logging.getLogger(__name__)
 
 
-def process_dataset(dataset_root: str, output_dir: str, seq_len: int = 30) -> None:
-    """
-    Processes the raw fall detection dataset, extracts 3D normalized skeletons 
-    using MediaPipe, and exports consolidated temporal sliding windows as X_data.npy and y_data.npy.
-
-    Args:
-        dataset_root (str): Root directory containing 'ADL' and 'Fall' folders.
-        output_dir (str): Destination directory for processed feature arrays.
-        seq_len (int): Number of consecutive frames per temporal window (default: 30).
-    """
+def process_dataset(dataset_root: str, output_dir: str, target_fps: int = 30) -> None:
     dataset_path = Path(dataset_root)
     out_path = Path(output_dir)
     out_path.mkdir(parents=True, exist_ok=True)
     
+    # Traditional if statement for sequence length configuration
+    if target_fps == 30:
+        seq_len = 30
+    else:
+        seq_len = 15
+
     if not dataset_path.exists():
-        logger.error("Critical error: Dataset root path '%s' does not exist.", dataset_root)
+        logger.error("Dataset path '%s' not found.", dataset_root)
         return
 
-    logger.info("Initializing MediaPipeExtractor for dataset preprocessing...")
     extractor = MediaPipeExtractor()
-    
-    # Category mapping: ADL (Activities of Daily Living) -> 0, Fall -> 1
     categories = {"ADL": 0, "Fall": 1}
     
-    # Collect all video files recursively to compute a precise global progress bar
     all_videos = []
     for category, label in categories.items():
         cat_path = dataset_path / category
         if cat_path.exists():
-            video_files = list(cat_path.glob("**/*.mp4"))
-            for video_file in video_files:
+            for video_file in cat_path.glob("**/*.mp4"):
                 all_videos.append((video_file, label, category))
 
-    total_videos = len(all_videos)
-    if total_videos == 0:
-        logger.warning("No .mp4 video files found under the specified directory structure.")
+    if not all_videos:
+        logger.warning("No .mp4 videos found for %d FPS mode.", target_fps)
         extractor.release()
         return
 
-    logger.info("Starting preprocessing pipeline across %d total video files.", total_videos)
+    X_list, y_list = [], []
     
-    X_list = []
-    y_list = []
-    
-    # Global progress bar loop
-    with tqdm(total=total_videos, desc="Dataset Preprocessing", unit="video", ncols=100) as pbar:
+    # tqdm progress bar loop
+    with tqdm(total=len(all_videos), desc=f"Processing {target_fps} FPS", unit="vid", ncols=90) as pbar:
         for video_file, label, category in all_videos:
-            rel_name = video_file.relative_to(dataset_path)
-            pbar.set_postfix(cat=category, file=str(rel_name.name)[:20])
+            pbar.set_postfix(cat=category, file=video_file.name[:15])
 
             cap = cv2.VideoCapture(str(video_file))
             if not cap.isOpened():
-                logger.warning("Could not open video stream: %s", rel_name)
                 pbar.update(1)
                 continue
                 
-            frames_skeleton = []
-            
+            original_fps = cap.get(cv2.CAP_PROP_FPS)
+            if original_fps <= 1:
+                original_fps = 30.0
+                
+            raw_frames = []
             try:
                 while cap.isOpened():
                     ret, frame = cap.read()
                     if not ret or frame is None:
                         break
                         
-                    # Extract 3D world-space skeleton normalized at center of mass
                     skeleton, _ = extractor.extract_skeleton(frame_bgr=frame)
-                    
                     if skeleton is not None:
-                        # Flatten 3D coordinates array: shape (33, 3) -> (99,)
-                        frames_skeleton.append(skeleton.coordinates_3d.flatten())
+                        raw_frames.append(skeleton.coordinates_3d.flatten())
                     else:
-                        # Fallback mechanism for missing frames to ensure temporal continuity
-                        if frames_skeleton:
-                            frames_skeleton.append(frames_skeleton[-1])
+                        if raw_frames:
+                            raw_frames.append(raw_frames[-1])
                         else:
-                            frames_skeleton.append(np.zeros(99, dtype=np.float32))
-                            
-            except Exception as e:
-                logger.error("Unexpected error while parsing video %s: %s", rel_name, e)
+                            raw_frames.append(np.zeros(99, dtype=np.float32))
             finally:
                 cap.release()
             
-            # Discard videos shorter than the required temporal sequence window length
-            if len(frames_skeleton) < seq_len:
+            # Sub-sampling with traditional if statements
+            if target_fps == 15:
+                stride = max(1, round(original_fps / target_fps))
+                frames = raw_frames[::stride]
+            else:
+                if original_fps > 30:
+                    stride = max(1, round(original_fps / target_fps))
+                else:
+                    stride = 1
+                
+                if stride > 1:
+                    frames = raw_frames[::stride]
+                else:
+                    frames = raw_frames
+
+            if len(frames) < seq_len:
                 pbar.update(1)
                 continue
                 
-            # Generate sliding windows with 50% overlap (seq_len // 2)
-            sequence_array = np.array(frames_skeleton, dtype=np.float32)
+            sequence_array = np.array(frames, dtype=np.float32)
             step_size = max(1, seq_len // 2)
             
             for i in range(0, len(sequence_array) - seq_len + 1, step_size):
-                window = sequence_array[i : i + seq_len]
-                X_list.append(window)
+                X_list.append(sequence_array[i : i + seq_len])
                 y_list.append(label)
 
             pbar.update(1)
 
     extractor.release()
 
-    if len(X_list) > 0:
-        X_data = np.array(X_list, dtype=np.float32)
-        y_data = np.array(y_list, dtype=np.float32)
-        
-        np.save(out_path / "X_data.npy", X_data)
-        np.save(out_path / "y_data.npy", y_data)
-        logger.info("Preprocessing completed successfully. Saved %d consolidated samples into '%s'.", len(X_data), output_dir)
+    if X_list:
+        np.save(out_path / "X_data.npy", np.array(X_list, dtype=np.float32))
+        np.save(out_path / "y_data.npy", np.array(y_list, dtype=np.float32))
+        logger.info("Saved %d samples to '%s'.", len(X_list), output_dir)
     else:
-        logger.warning("No valid sliding windows were generated from the dataset.")
+        logger.warning("No valid windows generated for %d FPS.", target_fps)
 
 
 if __name__ == "__main__":
     DATASET_ROOT = "./fall_dataset" 
-    OUTPUT_PROCESSED = "./processed_features"
     
-    process_dataset(DATASET_ROOT, OUTPUT_PROCESSED, seq_len=30)
+    logger.info("--- Starting Dual-Mode Preprocessing ---")
+    
+    # 1. High-Risk / Precision Mode (30 FPS, window = 30 frames)
+    process_dataset(
+        dataset_root=DATASET_ROOT, 
+        output_dir="./processed_features/high_risk_30fps", 
+        target_fps=30
+    )
+    
+    # 2. Low-Risk / Eco Mode (15 FPS with adaptive sub-sampling, window = 15 frames)
+    process_dataset(
+        dataset_root=DATASET_ROOT, 
+        output_dir="./processed_features/low_risk_15fps", 
+        target_fps=15
+    )
+    
+    logger.info("--- Preprocessing Completed ---")
