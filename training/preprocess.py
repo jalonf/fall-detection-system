@@ -124,7 +124,7 @@ def process_dataset(dataset_root: str, output_dir: str, target_fps: int = 30) ->
 if __name__ == "__main__":
     DATASET_ROOT = "./fall_dataset" 
     
-    logger.info("--- Starting Dual-Mode Preprocessing ---")
+    logger.info("Starting Dual-Mode Preprocessing")
     
     # 1. High-Risk / Precision Mode (30 FPS, window = 30 frames)
     process_dataset(
@@ -140,4 +140,4 @@ if __name__ == "__main__":
         target_fps=15
     )
     
-    logger.info("--- Preprocessing Completed ---")
+    logger.info("Preprocessing Completed")
