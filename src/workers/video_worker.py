@@ -11,7 +11,7 @@ from PySide6.QtGui import QImage
 mp_drawing = mp.solutions.drawing_utils  # type: ignore
 mp_pose = mp.solutions.pose  # type: ignore
 
-from strategies import LowRiskStrategy, MonitoringStrategy
+from src.workers.strategies import LowRiskStrategy, MonitoringStrategy
 
 from src.ai.dtos import InferenceResult
 from src.ai.extractor import MediaPipeExtractor
@@ -36,6 +36,7 @@ class VideoWorker(QThread, EventSubject):
         self.camera_index = camera_index
         self._is_running = True
         self.extractor = MediaPipeExtractor()
+
         
         self._strategy = strategy or LowRiskStrategy()
         self.last_known_landmarks = None
