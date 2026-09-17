@@ -41,11 +41,15 @@ class ExampleApp(QMainWindow):
     def show_monitor_module(self, user):
         """Transitions the interface to the real-time monitoring dashboard module passing the user entity."""
         logger.info("Transitioning to monitor module for user: %s (Role: %s)", user.name, user.role)
+        
+        patient = self.auth_controller.user_repo.get_patient_by_user(user)
+        
         self.monitor_view = MonitorView(user_name=user.name, user_role=user.role)
         
         self.monitor_controller = MonitorController(
             view=self.monitor_view,
             current_user=user,
+            patient=patient,
             on_logout_callback=self.handle_logout
         )
         
@@ -81,7 +85,7 @@ if __name__ == "__main__":
     
     ThemeManager.setup_theme(app)
 
-    databaseManager.init_tables([User,Patient])
+    databaseManager.init_tables([User, Patient])
     
     window = ExampleApp()
     window.showMaximized()

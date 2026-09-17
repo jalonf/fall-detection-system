@@ -58,3 +58,13 @@ class UserRepository:
             logger.warning("Password verification failed: incorrect password for email %s", email)
             
         return is_valid
+
+    def get_patient_by_user(self, user):
+        """Finds and returns the patient associated with the given user."""
+        logger.debug("Querying patient for user id: %s", getattr(user, 'id', None))
+        try:
+            from src.database.models.patient import Patient
+            return Patient.get_or_none(Patient.caregiver_id == user)
+        except Exception as e:  # noqa: BLE001
+            logger.error("Could not retrieve patient for user: %s", e)
+            return None

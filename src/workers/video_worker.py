@@ -8,8 +8,10 @@ from mediapipe.framework.formats import landmark_pb2  # type: ignore
 from PySide6.QtCore import QThread, Signal
 from PySide6.QtGui import QImage
 
-mp_drawing = mp.solutions.drawing_utils # type: ignore
-mp_pose = mp.solutions.pose # type: ignore
+mp_drawing = mp.solutions.drawing_utils  # type: ignore
+mp_pose = mp.solutions.pose  # type: ignore
+
+from strategies import LowRiskStrategy, MonitoringStrategy
 
 from src.ai.dtos import InferenceResult
 from src.ai.extractor import MediaPipeExtractor
@@ -17,7 +19,7 @@ from src.patterns.observer import EventSubject
 
 logger = logging.getLogger(__name__)
 
-class VideoWorker(QThread,EventSubject):
+class VideoWorker(QThread, EventSubject):
     """
     It is responsible for initializing the camera to display it on the interface, 
     and processing the image to visualize the skeleton.
@@ -27,18 +29,31 @@ class VideoWorker(QThread,EventSubject):
     skeleton_frame_ready = Signal(QImage)
     telemetry_data_ready = Signal(dict)
 
-    def __init__(self, camera_index=0, parent=None):
+    def __init__(self, camera_index=0, strategy: MonitoringStrategy | None = None, parent=None):
         QThread.__init__(self, parent)
         EventSubject.__init__(self)
         
         self.camera_index = camera_index
         self._is_running = True
         self.extractor = MediaPipeExtractor()
+        
+        self._strategy = strategy or LowRiskStrategy()
         self.last_known_landmarks = None
 
+    def set_strategy(self, strategy: MonitoringStrategy):
+        """Allows changing the monitoring strategy dynamically."""
+        logger.info(f"Changing monitoring strategy to: {strategy.get_risk_level()}")
+        self._strategy = strategy
+
     def run(self):
-        logger.info("Camera {camera_index} opened for video processing")
+        logger.info(f"Camera {self.camera_index} opened for video processing with strategy {self._strategy.get_risk_level()}")
         cap = cv2.VideoCapture(self.camera_index)
+        
+        # Applies the corresponding resolution and FPS to the camera.
+        self._strategy.apply_config(cap)
+        
+        target_fps = cap.get(cv2.CAP_PROP_FPS) or 30
+        frame_duration = 1.0 / target_fps
         
         while self._is_running and cap.isOpened():
             start_time = time.perf_counter()
@@ -81,9 +96,9 @@ class VideoWorker(QThread,EventSubject):
             if result.pose_landmarks:
                 frame = self._draw_human_bounding_box(frame, result.pose_landmarks)
 
-                proto_landmarks = landmark_pb2.NormalizedLandmarkList() # type: ignore
+                proto_landmarks = landmark_pb2.NormalizedLandmarkList()  # type: ignore
                 proto_landmarks.landmark.extend([
-                    landmark_pb2.NormalizedLandmark( # type: ignore
+                    landmark_pb2.NormalizedLandmark(  # type: ignore
                         x=lm.x, y=lm.y, z=lm.z, visibility=lm.visibility
                     ) for lm in result.pose_landmarks
                 ])
@@ -139,6 +154,11 @@ class VideoWorker(QThread,EventSubject):
 
             self.skeleton_frame_ready.emit(skeleton_qimg)
             self.frame_ready.emit(qimg)
+
+            # Control FPS based on the active strategy
+            elapsed = time.perf_counter() - start_time
+            if elapsed < frame_duration:
+                time.sleep(frame_duration - elapsed)
 
         logger.info("Releasing video capture and AI extractor resources...")
         cap.release()

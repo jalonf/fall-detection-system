@@ -2,6 +2,7 @@ import logging
 from datetime import datetime
 
 from src.notifications.email_notifier import EmailNotifier
+from src.workers.strategies import HighRiskStrategy, LowRiskStrategy, MonitoringStrategy
 from src.workers.video_file_worker import VideoFileWorker
 from src.workers.video_worker import VideoWorker
 
@@ -15,9 +16,10 @@ class MonitorController:
     camera threads, and handling fall detection events in real time.
     """
     
-    def __init__(self, view, current_user, on_logout_callback):
+    def __init__(self, view, current_user, patient, on_logout_callback):
         self.view = view
         self.user = current_user
+        self.patient = patient
         self.worker = None
         self.falls_count = 0
         self._last_fall_ts = 0.0
@@ -30,13 +32,25 @@ class MonitorController:
         
         logger.info("MonitorController initialized for user: %s", getattr(self.user, 'name', 'Unknown'))
 
+    def _get_user_strategy(self) -> MonitoringStrategy:
+        """Resolves the monitoring strategy based on the patient's baseline risk level."""
+        risk_level = getattr(self.patient, 'risk_level', 'LOW') if self.patient else 'LOW'
+        
+        if str(risk_level).upper() == "HIGH":
+            logger.info("High baseline risk detected. Applying HighRiskStrategy.")
+            return HighRiskStrategy()
+        
+        logger.info("Low/Default baseline risk detected. Applying LowRiskStrategy.")
+        return LowRiskStrategy()
+
     def start_camera(self, camera_index):
         if self.worker is not None:
             logger.warning("Attempted to start camera stream, but a worker is already active.")
             return
 
+        strategy = self._get_user_strategy()
         logger.info("Initializing camera worker with source index: %s", camera_index)
-        self.worker = VideoWorker(camera_index=camera_index)
+        self.worker = VideoWorker(camera_index=camera_index, strategy=strategy)
         self.worker.frame_ready.connect(self.view.update_video_frame)
         self.worker.skeleton_frame_ready.connect(self.view.skeleton_panel.update_frame)
         self.worker.telemetry_data_ready.connect(self.view.skeleton_panel.update_telemetry)
@@ -82,7 +96,7 @@ class MonitorController:
             self.worker.telemetry_data_ready.disconnect()
             self.worker.fall_detected.disconnect()
         except TypeError as e:
-           logger.warning("Failed to disconnect signal: %s", e)
+            logger.warning("Failed to disconnect signal: %s", e)
             
         self.worker.stop()
         self.worker.wait()
@@ -108,7 +122,7 @@ class MonitorController:
         snapshot_file = None
         event_data = {
             "event_name": "fall_detected",
-            "patient_name": self.user.name,
+            "patient_name": getattr(self.patient, 'name', self.user.name),
             "medical_history": "N/A",
             "prediction_probability": 0.94,
             "timestamp": datetime.now().astimezone().strftime("%d/%m/%Y %H:%M:%S"),
