@@ -20,7 +20,7 @@ class RegisterForm(QWidget):
     Handles user input validation and emits signals for account creation.
     """
 
-    register_requested = Signal(str, str, str, str, str, str, str)
+    register_requested = Signal(str, str, str, str, str, str, str, str)
     switch_page_requested = Signal()
 
     def __init__(self, parent=None):
@@ -182,6 +182,20 @@ class RegisterForm(QWidget):
 
         layout.addLayout(row)
 
+        layout.addSpacing(10)
+
+        # Baseline Risk Level
+        risk_label = QLabel("Baseline risk level")
+        risk_label.setObjectName("fieldLabel")
+        layout.addWidget(risk_label)
+
+        layout.addSpacing(4)
+
+        self.reg_risk_level = QComboBox()
+        self.reg_risk_level.addItems(["LOW", "HIGH"])
+        self.reg_risk_level.setFixedHeight(40)
+        layout.addWidget(self.reg_risk_level)
+
         layout.addSpacing(20)
 
         # -------------------------------------------------
@@ -296,6 +310,7 @@ class RegisterForm(QWidget):
         self.reg_patient_name.clear()
         self.reg_medical_info.clear()
         self.reg_role.setCurrentIndex(0)
+        self.reg_risk_level.setCurrentIndex(0)
 
         self.reg_email_err.setText(
             "Used for fall alerts and system notifications."
@@ -421,5 +436,6 @@ class RegisterForm(QWidget):
                 self.reg_password.text(),
                 self.reg_role.currentText(),
                 self.reg_patient_name.text().strip(),
-                self.reg_medical_info.text().strip()
+                self.reg_medical_info.text().strip(),
+                self.reg_risk_level.currentText()
             )

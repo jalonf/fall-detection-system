@@ -41,7 +41,7 @@ class AuthController:
             logger.warning("Authentication failed: invalid credentials provided")
             self.view.show_error("Invalid email or password. Please try again.")
 
-    def handle_register(self, name, email, phone, password, role, patient_name, medical_info):
+    def handle_register(self, name, email, phone, password, role, patient_name, medical_info,risk_level):
         """Handles new user registration and creates the associated patient."""
         logger.info("The controller is about to handle the registration process")
         new_user = self.user_repo.create_user(
@@ -53,7 +53,8 @@ class AuthController:
             self.patient_repo.create_patient(
                 user=new_user,
                 name=patient_name,
-                medical_notes=medical_info
+                medical_notes=medical_info,
+                risk_level=risk_level
             )
             logger.info("User account and associated patient successfully created")
             self.view.show_success("Account created successfully! Welcome.")

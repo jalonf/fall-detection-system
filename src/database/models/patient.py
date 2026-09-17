@@ -11,4 +11,5 @@ class Patient(BaseModel):
     caregiver_id = ForeignKeyField(User, backref="patients", on_delete="CASCADE")
     name = CharField()
     medical_notes = TextField(null=True)
+    risk_level = CharField(default='LOW')
     created_at = DateTimeField(default=datetime.datetime.now)

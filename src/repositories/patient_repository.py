@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 class PatientRepository:
     """Handles all database operations for the patients (1:1 current, ready for 1:N)."""
 
-    def create_patient(self, user, name, medical_notes=None):
+    def create_patient(self, user, name,risk_level, medical_notes=None):
         """Saves a new patient linked to the caregiver."""
         try:
             logger.info("Attempting to create new patient with name: %s", name)
@@ -17,7 +17,8 @@ class PatientRepository:
             patient = Patient.create(
                 caregiver_id=user,
                 name=name,
-                medical_info=notes
+                medical_info=notes,
+                risk_level = risk_level
             )
             logger.info("Patient successfully created with name: %s", patient.name)
             return patient
