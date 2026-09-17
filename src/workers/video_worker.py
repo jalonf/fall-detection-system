@@ -11,11 +11,10 @@ from PySide6.QtGui import QImage
 mp_drawing = mp.solutions.drawing_utils  # type: ignore
 mp_pose = mp.solutions.pose  # type: ignore
 
-from src.workers.strategies import LowRiskStrategy, MonitoringStrategy
-
 from src.ai.dtos import InferenceResult
 from src.ai.extractor import MediaPipeExtractor
 from src.patterns.observer import EventSubject
+from src.workers.strategies import LowRiskStrategy, MonitoringStrategy
 
 logger = logging.getLogger(__name__)
 
