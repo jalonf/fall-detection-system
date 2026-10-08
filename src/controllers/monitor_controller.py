@@ -89,15 +89,8 @@ class MonitorController:
             logger.debug("Stop requested, but no active worker was found.")
             return
 
-        logger.info("Stopping camera worker and disconnecting signals...")
-        try:
-            self.worker.frame_ready.disconnect()
-            self.worker.skeleton_frame_ready.disconnect()
-            self.worker.telemetry_data_ready.disconnect()
-            self.worker.fall_detected.disconnect()
-        except TypeError as e:
-            logger.warning("Failed to disconnect signal: %s", e)
-            
+        logger.info("Stopping camera worker...")
+    
         self.worker.stop()
         self.worker.wait()
         self.worker = None
