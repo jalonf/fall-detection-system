@@ -9,6 +9,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from src.dtos.registration_data import RegistrationData
 from src.views.components.login_form import LoginForm
 from src.views.components.register_form import RegisterForm
 
@@ -23,7 +24,7 @@ class AuthView(QWidget):
     """
     
     login_requested = Signal(str, str)
-    register_requested = Signal(str, str, str, str, str, str, str,str)
+    register_requested = Signal(RegistrationData)
 
     def __init__(self, parent=None):
         super().__init__(parent)

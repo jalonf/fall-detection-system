@@ -15,7 +15,7 @@ from mediapipe.tasks.python.vision.pose_landmarker import (
     PoseLandmarkerOptions,
 )
 
-from src.ai.dtos import Skeleton
+from src.dtos.squeleton import Skeleton
 
 load_dotenv()
 

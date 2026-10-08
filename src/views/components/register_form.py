@@ -13,6 +13,8 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from src.dtos.registration_data import RegistrationData
+
 
 class RegisterForm(QWidget):
     """
@@ -20,7 +22,7 @@ class RegisterForm(QWidget):
     Handles user input validation and emits signals for account creation.
     """
 
-    register_requested = Signal(str, str, str, str, str, str, str, str)
+    register_requested = Signal(RegistrationData)
     switch_page_requested = Signal()
 
     def __init__(self, parent=None):
@@ -429,13 +431,14 @@ class RegisterForm(QWidget):
 
     def _emit_register(self):
         if self._validate_inputs():
-            self.register_requested.emit(
-                self.reg_name.text().strip(),
-                self.reg_email.text().strip(),
-                self.reg_phone.text().strip(),
-                self.reg_password.text(),
-                self.reg_role.currentText(),
-                self.reg_patient_name.text().strip(),
-                self.reg_medical_info.text().strip(),
-                self.reg_risk_level.currentText()
+            reg_data = RegistrationData(
+                name=self.reg_name.text().strip(),
+                email=self.reg_email.text().strip(),
+                phone=self.reg_phone.text().strip(),
+                password=self.reg_password.text(),
+                role=self.reg_role.currentText(),
+                patient_name=self.reg_patient_name.text().strip(),
+                medical_info=self.reg_medical_info.text().strip(),
+                risk_level=self.reg_risk_level.currentText()
             )
+            self.register_requested.emit(reg_data)

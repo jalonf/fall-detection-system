@@ -2,6 +2,7 @@ import logging
 
 from PySide6.QtCore import QTimer
 
+from src.dtos.registration_data import RegistrationData
 from src.repositories.patient_repository import PatientRepository
 from src.repositories.user_repository import UserRepository
 
@@ -41,20 +42,24 @@ class AuthController:
             logger.warning("Authentication failed: invalid credentials provided")
             self.view.show_error("Invalid email or password. Please try again.")
 
-    def handle_register(self, name, email, phone, password, role, patient_name, medical_info,risk_level):
+    def handle_register(self, data: RegistrationData):
         """Handles new user registration and creates the associated patient."""
-        logger.info("The controller is about to handle the registration process")
+        logger.info("The controller is about to handle the registration process for: %s", data.email)
+        
         new_user = self.user_repo.create_user(
-            name=name, email=email, phone=phone, 
-            password=password, role=role
+            name=data.name, 
+            email=data.email, 
+            phone=data.phone, 
+            password=data.password, 
+            role=data.role
         )
         
         if new_user:
             self.patient_repo.create_patient(
                 user=new_user,
-                name=patient_name,
-                medical_notes=medical_info,
-                risk_level=risk_level
+                name=data.patient_name,
+                medical_notes=data.medical_info,
+                risk_level=data.risk_level
             )
             logger.info("User account and associated patient successfully created")
             self.view.show_success("Account created successfully! Welcome.")

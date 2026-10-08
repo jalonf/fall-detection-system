@@ -11,8 +11,8 @@ from PySide6.QtGui import QImage
 mp_drawing = mp.solutions.drawing_utils  # type: ignore
 mp_pose = mp.solutions.pose  # type: ignore
 
-from src.ai.dtos import InferenceResult
 from src.ai.extractor import MediaPipeExtractor
+from src.dtos.inferenceResult import InferenceResult
 from src.patterns.observer import EventSubject
 from src.workers.strategies import LowRiskStrategy, MonitoringStrategy
 
