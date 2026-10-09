@@ -2,7 +2,6 @@ from PySide6.QtCore import Qt, QTimer, Signal
 from PySide6.QtWidgets import QHBoxLayout, QVBoxLayout, QWidget
 
 from src.views.components.event_log import EventLog
-from src.views.components.squeleton_panel import SkeletonPanel
 from src.views.components.system_status_card import SystemStatusCard
 from src.views.components.topbar import Topbar
 from src.views.components.video_panel import VideoPanel
@@ -12,16 +11,15 @@ APP_TAGLINE = "Fall Detection System"
 
 class MonitorView(QWidget):
     """
-    Main monitoring view orchestrator.
-    Assembles independent UI components and manages global state 
-    and data flow between them. Exposes system-level signals to controller.
+    Main real-time monitoring view without skeleton panels, 
+    focusing solely on the video feed, system status, and event logs.
     """
     
     logout_requested = Signal()
     start_requested = Signal(int)
-    upload_requested = Signal(str)
     stop_requested = Signal()
-    notify_requested = Signal()
+    notify_requested = Signal()       
+    upload_requested = Signal(str)    
     
     def __init__(self, user_name="User", user_role="Family / Caregiver", parent=None):
         super().__init__(parent)
@@ -60,21 +58,19 @@ class MonitorView(QWidget):
         
         self.video_panel = VideoPanel(user_role=self.user_role)
         self.video_panel.start_requested.connect(self.start_requested.emit)
+        self.video_panel.stop_requested.connect(self.stop_requested.emit)
         self.video_panel.upload_requested.connect(self.upload_requested.emit)
         self.video_panel.notify_requested.connect(self.notify_requested.emit)
-        self.video_panel.stop_requested.connect(self.stop_requested.emit)
         
         video_layout.addWidget(self.video_panel, 1)
         body_layout.addWidget(video_area, 1)
 
+        # Compact sidebar containing only system status and event logs (skeleton panel removed)
         sidebar_panel = QWidget()
         sidebar_panel.setFixedWidth(320)
         sidebar_layout = QVBoxLayout(sidebar_panel)
         sidebar_layout.setContentsMargins(0, 0, 0, 0)
         sidebar_layout.setSpacing(12)
-    
-        self.skeleton_panel = SkeletonPanel()
-        sidebar_layout.addWidget(self.skeleton_panel)
         
         self.system_status = SystemStatusCard()
         sidebar_layout.addWidget(self.system_status)
@@ -90,7 +86,6 @@ class MonitorView(QWidget):
 
     def clear_video(self):
         self.video_panel.clear_video()
-        self.skeleton_panel.clear_video()
 
     def set_monitoring_state(self, active: bool):
         self._is_monitoring = active
@@ -115,7 +110,7 @@ class MonitorView(QWidget):
         self.video_panel.reset_alert_state()
         self.set_monitoring_state(self._is_monitoring)
 
-    def update_uptime(self, time_str: str):
+    def update_fall_count(self, count_str: str):
         pass
 
     def log_event(self, event_type: str, message: str):

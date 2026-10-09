@@ -1,4 +1,4 @@
-from squeleton import Skeleton
+from src.dtos.squeleton import Skeleton
 
 
 class InferenceResult:
