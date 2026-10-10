@@ -7,7 +7,7 @@ from src.views.components.topbar import Topbar
 from src.views.components.video_panel import VideoPanel
 
 APP_NAME = "Name"
-APP_TAGLINE = "Fall Detection System"
+APP_TAGLINE = "Monitor Panel"
 
 class MonitorView(QWidget):
     """

@@ -15,16 +15,17 @@ class SkeletonPanel(QFrame):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(10, 10, 10, 10)
         
-        title = QLabel("TELEMETRY (LANDMARKS)")
+        title = QLabel("TELEMETRY")
         title.setObjectName("sectionTitle")
         layout.addWidget(title)
         
         self.view = QLabel()
         self.view.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.view.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
-        self.view.setMinimumHeight(150)
-        self.view.setStyleSheet("background-color: #0F172A; border-radius: 4px;")
-        layout.addWidget(self.view)
+        # Fijamos un tamaño exacto (ancho y alto estables) para evitar que se redimensione dinámicamente
+        self.view.setFixedSize(280, 200)
+        self.view.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+        self.view.setStyleSheet("background-color: #1E293B; border-radius: 4px; border: 1px solid #64748B;")
+        layout.addWidget(self.view, 0, Qt.AlignmentFlag.AlignCenter)
         
         data_layout = QVBoxLayout()
         data_layout.setContentsMargins(15, 8, 15, 4)

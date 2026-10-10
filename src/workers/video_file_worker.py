@@ -83,7 +83,7 @@ class VideoFileWorker(QThread,EventSubject):
             )
 
             h, w, ch = frame.shape
-            colour_frame = np.full((h, w, ch), (42, 23, 15), dtype=np.uint8)
+            colour_frame = np.full((h, w, ch), (59, 41, 30), dtype=np.uint8)
             
             telemetry_data = {
                 'inference_ms': inference_time,

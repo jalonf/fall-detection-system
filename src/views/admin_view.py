@@ -7,7 +7,7 @@ from src.views.components.system_status_card import SystemStatusCard
 from src.views.components.topbar import Topbar
 from src.views.components.video_panel import VideoPanel
 
-APP_NAME = "Name"
+APP_NAME = "VisionGuard"
 APP_TAGLINE = "Fall Detection System — Administrator Control Panel"
 
 class AdminView(QWidget):
