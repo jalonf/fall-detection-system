@@ -36,7 +36,6 @@ class VideoWorker(QThread, EventSubject):
         self._is_running = True
         self.extractor = MediaPipeExtractor()
 
-        
         self._strategy = strategy or LowRiskStrategy()
         self.last_known_landmarks = None
 
@@ -49,7 +48,6 @@ class VideoWorker(QThread, EventSubject):
         logger.info(f"Camera {self.camera_index} opened for video processing with strategy {self._strategy.get_risk_level()}")
         cap = cv2.VideoCapture(self.camera_index)
         
-        # Applies the corresponding resolution and FPS to the camera.
         self._strategy.apply_config(cap)
         
         target_fps = cap.get(cv2.CAP_PROP_FPS) or 30
@@ -85,7 +83,8 @@ class VideoWorker(QThread, EventSubject):
             )
 
             h, w, ch = frame.shape
-            colour_frame = np.full((h, w, ch), (42, 23, 15), dtype=np.uint8)
+            # Color unificado exacto #1E293B en formato BGR (Blue=59, Green=41, Red=30)
+            colour_frame = np.full((h, w, ch), (59, 41, 30), dtype=np.uint8)
             
             telemetry_data = {
                 'inference_ms': inference_time,
@@ -141,6 +140,9 @@ class VideoWorker(QThread, EventSubject):
                     
                     colour_frame = colour_frame[y1:y2, x1:x2]
 
+            if not self._is_running:
+                break
+
             self.telemetry_data_ready.emit(telemetry_data)
 
             bytes_per_line = ch * w
@@ -155,7 +157,6 @@ class VideoWorker(QThread, EventSubject):
             self.skeleton_frame_ready.emit(skeleton_qimg)
             self.frame_ready.emit(qimg)
 
-            # Control FPS based on the active strategy
             elapsed = time.perf_counter() - start_time
             if elapsed < frame_duration:
                 time.sleep(frame_duration - elapsed)

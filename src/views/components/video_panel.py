@@ -145,7 +145,7 @@ class VideoPanel(QFrame):
 
     def clear_video(self):
         self._current_pixmap = None
-        self.video_label.setPixmap(QPixmap())
+        self.video_label.clear()
         self.video_label.setText(self._video_placeholder())
 
     def resizeEvent(self, event):

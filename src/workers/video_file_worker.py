@@ -83,6 +83,7 @@ class VideoFileWorker(QThread,EventSubject):
             )
 
             h, w, ch = frame.shape
+            # Color unificado exacto #1E293B en formato BGR (Blue=59, Green=41, Red=30)
             colour_frame = np.full((h, w, ch), (59, 41, 30), dtype=np.uint8)
             
             telemetry_data = {
@@ -138,6 +139,9 @@ class VideoFileWorker(QThread,EventSubject):
                     y2 = min(h, max(y_coords) + pad)
                     
                     colour_frame = colour_frame[y1:y2, x1:x2]
+
+            if not self._is_running:
+                break
 
             self.telemetry_data_ready.emit(telemetry_data)
 
