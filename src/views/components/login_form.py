@@ -10,6 +10,7 @@ from PySide6.QtWidgets import (
 
 from src.views.components.auth_header import AuthHeader
 from src.views.icons import attach_leading_icon, attach_password_toggle
+from src.views.theme import Size
 
 
 class LoginForm(QWidget):
@@ -37,9 +38,7 @@ class LoginForm(QWidget):
         
         layout.addStretch(1)
 
-        layout.addWidget(AuthHeader(
-            "lock", "Welcome", "back", "Sign in to your account to continue"
-        ))
+        layout.addWidget(AuthHeader("Welcome back", "Sign in to your account to continue"))
         layout.addSpacing(34)
 
         layout.addLayout(self._field("Email address", "login_email", "name@example.com", icon_name="mail"))
@@ -49,7 +48,7 @@ class LoginForm(QWidget):
 
         self.btn_login = QPushButton("Sign In")
         self.btn_login.setObjectName("primary")
-        self.btn_login.setFixedHeight(46)
+        self.btn_login.setFixedHeight(Size.FIELD)
         self.btn_login.setCursor(Qt.CursorShape.PointingHandCursor)
 
         self.btn_login.clicked.connect(self._emit_login)
@@ -82,7 +81,7 @@ class LoginForm(QWidget):
         col.addWidget(lbl)
         edit = QLineEdit()
         edit.setPlaceholderText(placeholder)
-        edit.setFixedHeight(44)
+        edit.setFixedHeight(Size.FIELD)
         if icon_name:
             attach_leading_icon(edit, icon_name)
         if password:

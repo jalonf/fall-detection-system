@@ -1,7 +1,4 @@
-from pathlib import Path
-
 from PySide6.QtCore import QSize, Qt, Signal
-from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import (
     QFrame,
     QHBoxLayout,
@@ -12,7 +9,7 @@ from PySide6.QtWidgets import (
 )
 
 from src.views.icons import icon
-from src.views.theme import Colors
+from src.views.theme import Colors, Size, brand_logo
 
 
 class Topbar(QFrame):
@@ -27,7 +24,7 @@ class Topbar(QFrame):
         super().__init__(parent)
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         self.setObjectName("topbar")
-        self.setFixedHeight(80)
+        self.setFixedHeight(Size.TOPBAR)
         self.user_name = user_name
         self.user_role = user_role
         self.app_name = app_name
@@ -41,64 +38,47 @@ class Topbar(QFrame):
         line.setFixedSize(1, 24)
         return line
 
-    def _build_ui(self):
-        layout = QHBoxLayout(self)
-        layout.setContentsMargins(24, 0, 20, 0)
-        layout.setSpacing(16)
+    def _build_brand(self) -> QWidget:
+        container = QWidget()
+        layout = QHBoxLayout(container)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(12)
+        layout.setAlignment(Qt.AlignmentFlag.AlignVCenter)
 
-        # ---- Brand (left) ----
-        brand_container = QWidget()
-        brand_layout = QHBoxLayout(brand_container)
-        brand_layout.setContentsMargins(0, 0, 0, 0)
-        brand_layout.setSpacing(12)
-        brand_layout.setAlignment(Qt.AlignmentFlag.AlignVCenter)
-
+        # Logo when the asset exists, otherwise a lettermark tile (styled in QSS).
         brand_mark = QLabel()
         brand_mark.setObjectName("brandMark")
-
-        base_dir = Path(__file__).resolve().parent.parent
-        logo_path = base_dir / "assets" / "logo.png"
-
-        if logo_path.exists():
-            logo_pixmap = QPixmap(str(logo_path))
-            
-            logo_escaled = logo_pixmap.scaled(
-                70, 70, 
-                Qt.AspectRatioMode.KeepAspectRatio, 
-                Qt.TransformationMode.SmoothTransformation
-            )
-            brand_mark.setPixmap(logo_escaled)
-            brand_mark.setStyleSheet("background: transparent;")
-
-        brand_mark.setFixedSize(70, 70)
+        logo = brand_logo(Size.LOGO_TOPBAR)
+        if logo is not None:
+            brand_mark.setPixmap(logo)
+            brand_mark.setProperty("hasLogo", True)
+        else:
+            brand_mark.setText(self.app_name[:1].upper())
+        brand_mark.setFixedSize(Size.LOGO_TOPBAR, Size.LOGO_TOPBAR)
         brand_mark.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        brand_text = QVBoxLayout()
-        brand_text.setSpacing(1)
-        brand_text.setContentsMargins(0, 0, 0, 0)
-        brand_text.setAlignment(Qt.AlignmentFlag.AlignVCenter)
+        text = QVBoxLayout()
+        text.setSpacing(1)
+        text.setContentsMargins(0, 0, 0, 0)
+        text.setAlignment(Qt.AlignmentFlag.AlignVCenter)
 
-        logo = QLabel(self.app_name)
-        logo.setObjectName("appTitle")
-        
+        title = QLabel(self.app_name)
+        title.setObjectName("appTitle")
         tagline = QLabel(self.app_tagline)
         tagline.setObjectName("appSubtitle")
+        text.addWidget(title)
+        text.addWidget(tagline)
 
-        brand_text.addWidget(logo)
-        brand_text.addWidget(tagline)
+        layout.addWidget(brand_mark)
+        layout.addLayout(text)
+        return container
 
-        brand_layout.addWidget(brand_mark)
-        brand_layout.addLayout(brand_text)
-        layout.addWidget(brand_container)
-
-        layout.addStretch()
-
-        # ---- Session (right) ----
-        user_container = QWidget()
-        user_layout = QHBoxLayout(user_container)
-        user_layout.setContentsMargins(0, 0, 0, 0)
-        user_layout.setSpacing(12)
-        user_layout.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+    def _build_session(self) -> QWidget:
+        container = QWidget()
+        layout = QHBoxLayout(container)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(12)
+        layout.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
 
         avatar = QLabel(self.user_name[0].upper() if self.user_name else "U")
         avatar.setObjectName("avatar")
@@ -121,18 +101,28 @@ class Topbar(QFrame):
 
         self.btn_logout = QPushButton("Sign Out")
         self.btn_logout.setObjectName("ghost")
-        self.btn_logout.setFixedHeight(38)
+        self.btn_logout.setFixedHeight(Size.CONTROL)
         self.btn_logout.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.btn_logout.setIcon(icon("logout", Colors.PRIMARY, 18))
+        self.btn_logout.setIcon(icon("logout", Colors.ON_GHOST, 18))
         self.btn_logout.setIconSize(QSize(18, 18))
         self.btn_logout.clicked.connect(self.logout_requested.emit)
 
-        user_layout.addWidget(avatar)
-        user_layout.addLayout(identity)
-        user_layout.addSpacing(24)
-        user_layout.addWidget(self.btn_logout)
+        layout.addWidget(avatar)
+        layout.addLayout(identity)
+        layout.addSpacing(12)
+        layout.addWidget(self._separator())
+        layout.addSpacing(12)
+        layout.addWidget(self.btn_logout)
+        return container
 
-        layout.addWidget(user_container)
+    def _build_ui(self):
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(24, 0, 20, 0)
+        layout.setSpacing(16)
+
+        layout.addWidget(self._build_brand())
+        layout.addStretch()
+        layout.addWidget(self._build_session())
 
     def set_monitoring_state(self, active: bool):
         pass

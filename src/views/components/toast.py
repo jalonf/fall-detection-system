@@ -122,41 +122,41 @@ class Toast(QFrame):
         self._anim.start()
 
     def dismiss(self, *_):
-            if self.isHidden() or self._hiding:
-                return
-            
-            self._timer.stop()
-            self._anim.stop()
-            self._hiding = True
-            
-            self._anim.setDuration(150)
-            self._anim.setEasingCurve(QEasingCurve.Type.InCubic)
-            self._anim.setStartValue(self.pos())
-            self._anim.setEndValue(self._target + QPoint(0, -self.SLIDE))
-            self._anim.start()
+        if self.isHidden() or self._hiding:
+            return
 
-            # Safety net: hide for sure even if the animation never reports `finished`.
-            generation = self._generation
-            QTimer.singleShot(300, lambda: self._finish_hide(generation))
+        self._timer.stop()
+        self._anim.stop()
+        self._hiding = True
+
+        self._anim.setDuration(150)
+        self._anim.setEasingCurve(QEasingCurve.Type.InCubic)
+        self._anim.setStartValue(self.pos())
+        self._anim.setEndValue(self._target + QPoint(0, -self.SLIDE))
+        self._anim.start()
+
+        # Safety net: hide for sure even if the animation never reports `finished`.
+        generation = self._generation
+        QTimer.singleShot(300, lambda: self._finish_hide(generation))
 
     def reposition(self):
         """Size the toast for its content and anchor it to the parent's top-right."""
         parent = self.parentWidget()
         if parent is None:
             return
-            
+
         width = min(self.WIDTH, max(parent.width() - 2 * self.MARGIN, 200))
         self.setFixedWidth(width)
-        
+
         layout = self.layout()
         if layout is not None:
             height = max(layout.totalHeightForWidth(width), layout.minimumSize().height(), 60)
         else:
             height = 60
-            
+
         self.setFixedHeight(height)
         self._target = QPoint(parent.width() - width - self.MARGIN, self.MARGIN)
-        
+
         if self.isVisible() and not self._hiding and self._anim.state() != QAbstractAnimation.State.Running:
             self.move(self._target)
 

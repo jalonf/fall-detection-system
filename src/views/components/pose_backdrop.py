@@ -3,14 +3,15 @@ import math
 from PySide6.QtCore import QPointF, QRectF, Qt
 from PySide6.QtGui import (
     QColor,
-    QFont,
     QFontMetrics,
-        QPainter,
+    QPainter,
     QPainterPath,
     QPen,
     QTextOption,
 )
 from PySide6.QtWidgets import QWidget
+
+from src.views.theme import Colors, ui_font, with_alpha
 
 # Standing pose in normalised coordinates: x is relative to the spine,
 # y runs from the top of the head (0) to the ground (1).
@@ -55,8 +56,8 @@ _POSES = [
     (1.0, 84.0, 1.4, 255),
 ]
 
-_GHOST = (86, 124, 190)     # soft blue strokes for the 'before' frames
-_ALERT = (212, 61, 61)      # the single alert colour
+_GHOST = Colors.PRIMARY     # soft blue strokes for the 'before' frames
+_ALERT = Colors.DANGER      # the single alert colour
 
 
 def _local(name: str, height: float, spread: float) -> QPointF:
@@ -101,9 +102,9 @@ class PoseBackdrop(QWidget):
 
     def _paint_field(self, painter: QPainter, w: float, h: float):
         # Flat, softly tinted surface (no gradient) with a faint measurement grid.
-        painter.fillRect(QRectF(0, 0, w, h), QColor("#EEF3FA"))
+        painter.fillRect(QRectF(0, 0, w, h), QColor(Colors.PRIMARY_SOFT))
 
-        painter.setPen(QPen(QColor(61, 111, 190, 22), 1))
+        painter.setPen(QPen(with_alpha(Colors.PRIMARY, 22), 1))
         step = 48
         x = 0
         while x < w:
@@ -121,7 +122,7 @@ class PoseBackdrop(QWidget):
         x_end = max(w * 0.92 - body_h, x_start + body_h * 1.2)
 
         # Ground line
-        painter.setPen(QPen(QColor(61, 111, 190, 70), 1.2))
+        painter.setPen(QPen(with_alpha(Colors.PRIMARY, 70), 1.2))
         painter.drawLine(QPointF(w * 0.10, floor_y), QPointF(w * 0.94, floor_y))
 
         head_trace = []
@@ -133,8 +134,7 @@ class PoseBackdrop(QWidget):
             pivot_y = floor_y - 0.11 * body_h * math.sin(math.radians(angle))
             pivot = QPointF(pivot_x, pivot_y)
 
-            base = _ALERT if is_final else _GHOST
-            line_color = QColor(base[0], base[1], base[2], alpha)
+            line_color = with_alpha(_ALERT if is_final else _GHOST, alpha)
             self._draw_pose(painter, pivot, angle, body_h, spread, line_color, is_final)
 
             head_trace.append(_world(pivot, angle, _local("head", body_h, spread)))
@@ -184,7 +184,7 @@ class PoseBackdrop(QWidget):
                           2 * p1.y() - 0.5 * (p0.y() + p2.y()))
         path = QPainterPath(p0)
         path.quadTo(control, p2)
-        pen = QPen(QColor(_GHOST[0], _GHOST[1], _GHOST[2], 130), 1.5, Qt.PenStyle.DotLine)
+        pen = QPen(with_alpha(_GHOST, 130), 1.5, Qt.PenStyle.DotLine)
         painter.setPen(pen)
         painter.setBrush(Qt.BrushStyle.NoBrush)
         painter.drawPath(path)
@@ -197,7 +197,7 @@ class PoseBackdrop(QWidget):
         top = min(p.y() for p in points) - pad - head_pad
         bottom = max(p.y() for p in points) + pad
 
-        color = QColor(_ALERT[0], _ALERT[1], _ALERT[2])
+        color = QColor(_ALERT)
         pen = QPen(color, 2.0)
         pen.setCapStyle(Qt.PenCapStyle.RoundCap)
         pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
@@ -216,10 +216,7 @@ class PoseBackdrop(QWidget):
             painter.drawPath(corner)
 
         # Label tag
-        font = QFont()
-        font.setFamilies(["Segoe UI", "Inter", "Helvetica Neue", "sans-serif"])
-        font.setPixelSize(11)
-        font.setWeight(QFont.Weight.DemiBold)
+        font = ui_font(11, bold=True)
         painter.setFont(font)
         text = "Fall detected"
         metrics = QFontMetrics(font)
@@ -229,5 +226,5 @@ class PoseBackdrop(QWidget):
         painter.setPen(Qt.PenStyle.NoPen)
         painter.setBrush(color)
         painter.drawRoundedRect(tag, 5, 5)
-        painter.setPen(QColor("#FFFFFF"))
+        painter.setPen(QColor(Colors.TEXT_INVERSE))
         painter.drawText(tag, text, QTextOption(Qt.AlignmentFlag.AlignCenter))

@@ -8,11 +8,10 @@ class StatusChip(QFrame):
     """
     Compact pill showing a coloured dot and a short status text.
 
-    `tone` is kept for API compatibility and `state` is
-    one of "idle", "active" or "alert". All colours live in style.qss.
+    `state` is one of "idle", "active" or "alert". All colours live in style.qss.
     """
 
-    def __init__(self, tone: str = "light", text: str = "", state: str = "idle", parent=None):
+    def __init__(self, text: str = "", state: str = "idle", parent=None):
         super().__init__(parent)
         self.setObjectName("statusChip")
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
@@ -33,7 +32,6 @@ class StatusChip(QFrame):
         layout.addWidget(self._text)
 
         for widget in (self, self._dot, self._text):
-            widget.setProperty("tone", tone)
             widget.setProperty("state", state)
 
     def set_state(self, state: str, text: str | None = None):

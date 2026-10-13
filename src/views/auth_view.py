@@ -1,7 +1,4 @@
-from pathlib import Path
-
 from PySide6.QtCore import QEasingCurve, QPropertyAnimation, Qt, Signal
-from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import (
     QFrame,
     QGraphicsOpacityEffect,
@@ -17,8 +14,8 @@ from src.views.components.login_form import LoginForm
 from src.views.components.pose_backdrop import PoseBackdrop
 from src.views.components.register_form import RegisterForm
 from src.views.components.toast import Toast
+from src.views.theme import APP_NAME, Size, brand_logo
 
-APP_NAME = "Name"
 APP_TAGLINE = "Fall Detection System"
 
 
@@ -65,20 +62,16 @@ class AuthView(QWidget):
         lockup = QHBoxLayout()
         lockup.setSpacing(12)
         brand_mark = QLabel()
-        brand_mark.setObjectName("authBrandMark")
+        brand_mark.setObjectName("brandMark")
 
-        # FIX: assets and auth_view.py are in the same 'views' folder
-        base_dir = Path(__file__).resolve().parent
-        logo_path = base_dir / "assets" / "logo.png"
-        logo_pixmap = QPixmap(str(logo_path))
-        
-        logo_escaled = logo_pixmap.scaled(
-            85, 85, 
-            Qt.AspectRatioMode.KeepAspectRatio, 
-            Qt.TransformationMode.SmoothTransformation
-        )
-        brand_mark.setPixmap(logo_escaled)
-        brand_mark.setFixedSize(85, 85)
+        # Logo when assets/logo.png exists, otherwise a lettermark tile (styled in QSS).
+        logo = brand_logo(Size.LOGO_AUTH)
+        if logo is not None:
+            brand_mark.setPixmap(logo)
+            brand_mark.setProperty("hasLogo", True)
+        else:
+            brand_mark.setText(APP_NAME[:1].upper())
+        brand_mark.setFixedSize(Size.LOGO_AUTH, Size.LOGO_AUTH)
         brand_mark.setAlignment(Qt.AlignmentFlag.AlignCenter)
         brand_title = QLabel(APP_NAME)
         brand_title.setObjectName("authBrandName")
@@ -98,7 +91,7 @@ class AuthView(QWidget):
 
         brand_desc = QLabel(
             "An enterprise-grade computer vision platform designed for continuous safety monitoring, "
-            "leveraging spatial-temporal graph neural networks and MediaPipe pipelines."
+            "leveraging gated recurrent unit neural networks and MediaPipe pipelines."
         )
         brand_desc.setObjectName("brandDesc")
         brand_desc.setWordWrap(True)

@@ -173,7 +173,7 @@ def _paths(name: str):
 
     elif name == "lock":
         body = QPainterPath()
-        body.addRoundedRect(QRectF(5, 10.5, 14, 10, ), 3, 3)
+        body.addRoundedRect(QRectF(5, 10.5, 14, 10), 3, 3)
         shackle = QPainterPath()
         shackle.moveTo(8.5, 10.5)
         shackle.lineTo(8.5, 7)
@@ -237,7 +237,7 @@ def _render(name: str, color: str, size: int) -> QPixmap:
 
 
 def icon(name: str, color: str = Colors.TEXT_INVERSE, size: int = 18,
-         disabled: str = "#B4BFD3") -> QIcon:
+         disabled: str = Colors.TEXT_SUBTLE) -> QIcon:
     """Build a QIcon with distinct normal and disabled renderings."""
     result = QIcon()
     result.addPixmap(_render(name, color, size), QIcon.Mode.Normal)
@@ -247,7 +247,7 @@ def icon(name: str, color: str = Colors.TEXT_INVERSE, size: int = 18,
 
 def attach_password_toggle(edit: QLineEdit) -> QAction:
     """Add a show/hide eye button inside a password QLineEdit (UI-only behaviour)."""
-    action = QAction(icon("eye", Colors.TEXT_SUBTLE), "", edit)
+    action = QAction(icon("eye", Colors.TEXT_MUTED), "", edit)
     action.setCheckable(True)
     action.setToolTip("Show password")
 

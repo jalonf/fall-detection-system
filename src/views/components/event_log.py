@@ -14,7 +14,7 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
 )
 
-from src.views.theme import Colors, mono_font
+from src.views.theme import Colors, Radius, Space, mono_font
 
 ROLE_TYPE = Qt.ItemDataRole.UserRole
 ROLE_TIME = Qt.ItemDataRole.UserRole + 1
@@ -34,7 +34,7 @@ class _EventDelegate(QStyledItemDelegate):
     def _scheme(event_type: str):
         """Return (background, border, badge_text, badge_background)."""
         if event_type == "ALERT":
-            return Colors.DANGER_SOFT, Colors.DANGER_BORDER, Colors.DANGER, "#F9DCDC"
+            return Colors.DANGER_SOFT, Colors.DANGER_BORDER, Colors.DANGER, Colors.DANGER_SOFT_STRONG
         if event_type == "INFO":
             return Colors.SURFACE, Colors.BORDER, Colors.PRIMARY, Colors.PRIMARY_SOFT
         return Colors.SURFACE, Colors.BORDER, Colors.TEXT_MUTED, Colors.SURFACE_ALT
@@ -89,7 +89,7 @@ class _EventDelegate(QStyledItemDelegate):
         card = QRectF(option.rect).adjusted(0, self.V_MARGIN, 0, -self.V_MARGIN)
         painter.setPen(QPen(QColor(Colors.PRIMARY if selected else border), 1))
         painter.setBrush(QColor(background))
-        painter.drawRoundedRect(card.adjusted(0.5, 0.5, -0.5, -0.5), 10, 10)
+        painter.drawRoundedRect(card.adjusted(0.5, 0.5, -0.5, -0.5), Radius.MD, Radius.MD)
 
         x = card.left() + self.PAD_X
         y = card.top() + self.PAD_Y
@@ -149,7 +149,7 @@ class EventLog(QFrame):
 
     def _build_ui(self):
         log_wrapper = QVBoxLayout(self)
-        log_wrapper.setContentsMargins(16, 14, 16, 16)
+        log_wrapper.setContentsMargins(*Space.PANEL)
         log_wrapper.setSpacing(10)
 
         log_header = QHBoxLayout()
@@ -193,12 +193,6 @@ class EventLog(QFrame):
         item.setData(ROLE_TYPE, event_type)
         item.setData(ROLE_TIME, timestamp)
         item.setData(ROLE_MESSAGE, message)
-        if event_type == "ALERT":
-            item.setForeground(QColor(Colors.DANGER))
-        elif event_type == "INFO":
-            item.setForeground(QColor(Colors.PRIMARY))
-        else:
-            item.setForeground(QColor(Colors.TEXT_MUTED))
         self.event_list.insertItem(0, item)
 
     def clear_events(self):
@@ -208,7 +202,6 @@ class EventLog(QFrame):
     def _refresh_empty_log_hint(self):
         self.event_list.clear()
         hint = QListWidgetItem("System nominal. No alerts recorded.")
-        hint.setForeground(QColor(Colors.TEXT_SUBTLE))
         hint.setFlags(Qt.ItemFlag.NoItemFlags)
         self.event_list.addItem(hint)
         self._empty_hint_active = True

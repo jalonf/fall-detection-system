@@ -18,7 +18,7 @@ from PySide6.QtWidgets import (
 from src.dtos.registration_data import RegistrationData
 from src.views.components.auth_header import AuthHeader
 from src.views.icons import attach_leading_icon, attach_password_toggle, icon
-from src.views.theme import Colors, set_prop
+from src.views.theme import Colors, Size, set_prop
 
 _EMAIL_HELP = "Used for fall alerts and system notifications."
 
@@ -94,9 +94,7 @@ class RegisterForm(QWidget):
 
         layout.addStretch(1)
 
-        layout.addWidget(AuthHeader(
-            "user", "Create an", "account", "Set up your monitoring access"
-        ))
+        layout.addWidget(AuthHeader("Create an account", "Set up your monitoring access"))
         layout.addSpacing(28)
 
         meta = QHBoxLayout()
@@ -147,7 +145,7 @@ class RegisterForm(QWidget):
             "Medical Staff",
             "Administrator"
         ])
-        self.reg_role.setFixedHeight(44)
+        self.reg_role.setFixedHeight(Size.FIELD)
         page_layout.addLayout(self._combo_field("User role", self.reg_role))
         page_layout.addStretch(1)
         self.pages.addWidget(page)
@@ -177,7 +175,7 @@ class RegisterForm(QWidget):
         )
         self.reg_risk_level = QComboBox()
         self.reg_risk_level.addItems(["LOW", "HIGH"])
-        self.reg_risk_level.setFixedHeight(44)
+        self.reg_risk_level.setFixedHeight(Size.FIELD)
         risk_layout = self._combo_field("Baseline risk level", self.reg_risk_level)
         page_layout.addLayout(self._row(patient_layout, risk_layout))
 
@@ -206,23 +204,23 @@ class RegisterForm(QWidget):
 
         self.btn_back = QPushButton("Back")
         self.btn_back.setObjectName("ghost")
-        self.btn_back.setFixedHeight(46)
+        self.btn_back.setFixedHeight(Size.FIELD)
         self.btn_back.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.btn_back.setIcon(icon("arrow_left", Colors.PRIMARY_HOVER, 16))
+        self.btn_back.setIcon(icon("arrow_left", Colors.ON_GHOST, 16))
         self.btn_back.setIconSize(QSize(16, 16))
         self.btn_back.clicked.connect(self._prev_step)
         nav.addWidget(self.btn_back, 1)
 
         self.btn_next = QPushButton("Continue")
         self.btn_next.setObjectName("primary")
-        self.btn_next.setFixedHeight(46)
+        self.btn_next.setFixedHeight(Size.FIELD)
         self.btn_next.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_next.clicked.connect(self._next_step)
         nav.addWidget(self.btn_next, 1)
 
         self.btn_register = QPushButton("Create account")
         self.btn_register.setObjectName("primary")
-        self.btn_register.setFixedHeight(46)
+        self.btn_register.setFixedHeight(Size.FIELD)
         self.btn_register.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_register.clicked.connect(self._emit_register)
         nav.addWidget(self.btn_register, 1)
@@ -275,7 +273,7 @@ class RegisterForm(QWidget):
 
         edit = QLineEdit()
         edit.setPlaceholderText(placeholder)
-        edit.setFixedHeight(44)
+        edit.setFixedHeight(Size.FIELD)
 
         if icon_name:
             attach_leading_icon(edit, icon_name)

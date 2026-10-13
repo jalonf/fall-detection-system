@@ -1,7 +1,7 @@
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QVBoxLayout
 
-from src.views.theme import set_prop
+from src.views.theme import Space, set_prop
 
 
 class SystemStatusCard(QFrame):
@@ -16,7 +16,7 @@ class SystemStatusCard(QFrame):
 
     def _build_ui(self):
         sc_layout = QVBoxLayout(self)
-        sc_layout.setContentsMargins(18, 16, 18, 16)
+        sc_layout.setContentsMargins(*Space.PANEL)
         sc_layout.setSpacing(8)
 
         sc_header_layout = QHBoxLayout()

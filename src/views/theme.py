@@ -3,12 +3,22 @@ Central design tokens, reusable visual helpers, and global theme configuration.
 
 Design language: a calm "clinical care console" — a soft blue on white and blue-grey
 neutrals, with red reserved for alerts.
+
+Single source of truth
+----------------------
+Every colour, radius and font stack used by `style.qss` is declared here and injected
+into the stylesheet through `@TOKEN@` placeholders (see `ThemeManager._load_stylesheet`).
+Change a value once in this file and the Python code *and* the QSS follow.
 """
 
+import re
 from pathlib import Path
 
-from PySide6.QtGui import QColor, QFont, QPalette
+from PySide6.QtCore import Qt
+from PySide6.QtGui import QColor, QFont, QPalette, QPixmap
 from PySide6.QtWidgets import QApplication, QGraphicsDropShadowEffect
+
+APP_NAME = "Name"
 
 
 class Colors:
@@ -21,23 +31,33 @@ class Colors:
     PRIMARY_BORDER = "#C8D8EF"
     ACCENT = "#9DB9E6"           # Light blue for use on dark surfaces
 
+    # Foreground shared by outline ("ghost") buttons: label and icon use the same colour.
+    ON_GHOST = PRIMARY_HOVER
+
     # ---- Dark surfaces (video stage, tooltips) ----
     CHROME = "#1E293B"
     CHROME_BORDER = "#334155"
     CHROME_TEXT_MUTED = "#94A3B8"
     STAGE = "#0F1B2D"
     STAGE_BORDER = "#243249"
+    STAGE_TEXT = "#D5DEF2"
+    STAGE_TEXT_MUTED = "#8A9CC0"
 
     # ---- Neutrals (blue-grey scale) ----
     BACKGROUND = "#F4F6FA"       # App canvas
     SURFACE = "#FFFFFF"          # Panels and cards
     SURFACE_ALT = "#F8FAFC"      # Muted fills / idle inputs
     BORDER = "#E1E6EF"           # Soft structural border
+    BORDER_INPUT = "#D3DAE6"     # Idle input border
     BORDER_STRONG = "#CBD3E1"    # Controls
     BORDER_HOVER = "#AEB9CE"
+    TRACK = "#E8ECF3"            # Disabled button fill, progress track
+    HOVER_TINT = "#EEF1F6"       # Neutral hover on transparent controls
+    FIELD_DISABLED = "#F1F4F9"
 
     # ---- Text ----
     TEXT_MAIN = "#1E293B"
+    TEXT_LABEL = "#334155"
     TEXT_BODY = "#475569"
     TEXT_MUTED = "#64748B"
     TEXT_SUBTLE = "#94A3B8"
@@ -54,8 +74,14 @@ class Colors:
     WARNING_BORDER = "#F0D9A6"
     DANGER = "#D43D3D"
     DANGER_HOVER = "#B93030"
+    DANGER_PRESSED = "#9F2A2A"
+    DANGER_TEXT = "#922626"
+    DANGER_PULSE = "#E24B4B"     # Bright phase of the alert pulse
+    DANGER_DIM = "#8C3A3A"       # Dim phase of the alert pulse on dark surfaces
     DANGER_SOFT = "#FDF1F1"
+    DANGER_SOFT_STRONG = "#F9DCDC"
     DANGER_BORDER = "#F3BFBF"
+    FIELD_INVALID = "#FFFBFB"
 
     # ---- Ink ----
     INK = "#1E293B"
@@ -64,10 +90,31 @@ class Colors:
 
 
 class Radius:
-    SM = 6      # small chips, scrollbar handles
-    MD = 10     # inputs, buttons
-    LG = 14     # panels
-    PILL = 999
+    """One radius scale. Nested shapes step down: panel (LG) > stage/banner (MD) > inner (SM)."""
+    SM = 6      # small chips, scrollbar handles, inner tiles
+    MD = 10     # inputs, buttons, stage, banners
+    LG = 14     # panels, toasts
+    PILL = 999  # reference only: in QSS use half the widget height
+
+
+class Space:
+    """Spacing scale shared by every main view."""
+    PAGE = 24           # outer gutter of the main body
+    GUTTER = 20         # between the video column and the sidebar
+    GAP = 16            # between stacked panels
+    PANEL_X = 18        # inner horizontal padding of every panel
+    PANEL_Y = 16        # inner vertical padding of every panel
+    PANEL = (PANEL_X, PANEL_Y, PANEL_X, PANEL_Y)
+
+
+class Size:
+    """Fixed dimensions that must match across views."""
+    CONTROL = 38        # dashboard buttons / selects
+    FIELD = 46          # form inputs and primary form buttons share one height
+    TOPBAR = 72
+    SIDEBAR = 344
+    LOGO_TOPBAR = 48
+    LOGO_AUTH = 56
 
 
 class Fonts:
@@ -92,6 +139,13 @@ def mono_font(pixel_size: int = 12, bold: bool = False) -> QFont:
     if bold:
         font.setWeight(QFont.Weight.DemiBold)
     return font
+
+
+def with_alpha(color: str, alpha: int) -> QColor:
+    """Return a token colour with the given alpha (0-255), for custom painting."""
+    result = QColor(color)
+    result.setAlpha(max(0, min(255, alpha)))
+    return result
 
 
 def set_prop(widget, name: str, value) -> None:
@@ -127,6 +181,33 @@ def apply_shadow(widget, blur: int = 10, y: int = 2, alpha: int = 10, x: int = 0
     return effect
 
 
+def brand_logo(size: int) -> QPixmap | None:
+    """
+    Load `assets/logo.png` scaled to `size` x `size` (logical px) at 2x for HiDPI.
+    Returns None when the asset is missing so callers can fall back to a text mark.
+    """
+    path = ThemeManager.ASSETS_DIR / "logo.png"
+    if not path.exists():
+        return None
+    pixmap = QPixmap(str(path))
+    if pixmap.isNull():
+        return None
+    scale = 2
+    scaled = pixmap.scaled(
+        size * scale,
+        size * scale,
+        Qt.AspectRatioMode.KeepAspectRatio,
+        Qt.TransformationMode.SmoothTransformation,
+    )
+    scaled.setDevicePixelRatio(scale)
+    return scaled
+
+
+def _css_families(families) -> str:
+    generic = {"sans-serif", "serif", "monospace"}
+    return ", ".join(f if f in generic else f'"{f}"' for f in families)
+
+
 class ThemeManager:
     """
     Handles the application's visual styling, including palette configuration
@@ -134,6 +215,8 @@ class ThemeManager:
     """
     STYLESHEET_PATH = Path(__file__).resolve().parent / "style.qss"
     ASSETS_DIR = Path(__file__).resolve().parent / "assets"
+
+    _TOKEN = re.compile(r"@([A-Z0-9_]+)@")
 
     @classmethod
     def setup_theme(cls, app: QApplication) -> None:
@@ -160,11 +243,40 @@ class ThemeManager:
         app.setStyleSheet(cls._load_stylesheet())
 
     @classmethod
+    def _tokens(cls) -> dict[str, str]:
+        """Every `@NAME@` placeholder the stylesheet may use."""
+        tokens: dict[str, str] = {}
+        for name, value in vars(Colors).items():
+            if name.isupper() and isinstance(value, str):
+                tokens[name] = value
+        for name, value in vars(Radius).items():
+            if name.isupper() and isinstance(value, int):
+                tokens[f"RADIUS_{name}"] = f"{value}px"
+        tokens["FONT_UI"] = _css_families(Fonts.UI_FAMILIES)
+        tokens["FONT_MONO"] = _css_families(Fonts.MONO_FAMILIES)
+        # QSS url() paths are resolved against the CWD, so inject an absolute path.
+        tokens["ASSETS"] = cls.ASSETS_DIR.as_posix()
+        return tokens
+
+    @classmethod
     def _load_stylesheet(cls) -> str:
         try:
             css = cls.STYLESHEET_PATH.read_text(encoding="utf-8")
         except OSError as exc:
             print(f"[WARN] Could not load stylesheet ({cls.STYLESHEET_PATH}): {exc}")
             return ""
-        # QSS url() paths are resolved against the CWD, so inject an absolute path.
-        return css.replace("@ASSETS@", cls.ASSETS_DIR.as_posix())
+
+        tokens = cls._tokens()
+        unknown: set[str] = set()
+
+        def substitute(match: re.Match) -> str:
+            name = match.group(1)
+            if name in tokens:
+                return tokens[name]
+            unknown.add(name)
+            return match.group(0)
+
+        css = cls._TOKEN.sub(substitute, css)
+        if unknown:
+            print(f"[WARN] Unknown stylesheet tokens: {', '.join(sorted(unknown))}")
+        return css

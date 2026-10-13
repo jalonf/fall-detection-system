@@ -9,7 +9,10 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
 )
 
+from src.views.theme import Space
+
 _PLACEHOLDER = "Awaiting pose stream"
+_POSE_VIEW_HEIGHT = 196
 
 
 class SkeletonPanel(QFrame):
@@ -21,15 +24,15 @@ class SkeletonPanel(QFrame):
         self.setObjectName("panel")
 
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(16, 16, 16, 16)
+        layout.setContentsMargins(*Space.PANEL)
         layout.setSpacing(12)
 
         title = QLabel("Pose telemetry")
         title.setObjectName("sectionTitle")
         layout.addWidget(title)
 
-        # The preview keeps an exact, stable size so incoming frames never
-        # trigger a dynamic re-layout of the sidebar.
+        # The preview keeps a fixed height and fills the (fixed-width) sidebar, so
+        # incoming frames never trigger a dynamic re-layout.
         stage = QFrame()
         stage.setObjectName("stage")
         stage.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
@@ -39,10 +42,11 @@ class SkeletonPanel(QFrame):
         self.view = QLabel()
         self.view.setObjectName("poseView")
         self.view.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.view.setFixedSize(300, 196)
-        self.view.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+        self.view.setMinimumSize(1, _POSE_VIEW_HEIGHT)
+        self.view.setMaximumHeight(_POSE_VIEW_HEIGHT)
+        self.view.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         self.view.setText(_PLACEHOLDER)
-        stage_layout.addWidget(self.view, 0, Qt.AlignmentFlag.AlignCenter)
+        stage_layout.addWidget(self.view)
         layout.addWidget(stage)
 
         metrics = QHBoxLayout()
