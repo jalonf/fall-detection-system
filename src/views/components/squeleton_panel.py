@@ -1,78 +1,111 @@
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QFont, QPixmap
-from PySide6.QtWidgets import QFrame, QLabel, QSizePolicy, QVBoxLayout
+from PySide6.QtGui import QPixmap
+from PySide6.QtWidgets import (
+    QFrame,
+    QHBoxLayout,
+    QLabel,
+    QProgressBar,
+    QSizePolicy,
+    QVBoxLayout,
+)
 
-from src.views.theme import apply_shadow
+_PLACEHOLDER = "Awaiting pose stream"
 
 
 class SkeletonPanel(QFrame):
+    """Pose-estimation preview plus live inference telemetry."""
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         self.setObjectName("panel")
-        apply_shadow(self, blur=8, y=2, alpha=5)
-        
+
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(10, 10, 10, 10)
-        
-        title = QLabel("TELEMETRY")
+        layout.setContentsMargins(16, 16, 16, 16)
+        layout.setSpacing(12)
+
+        title = QLabel("Pose telemetry")
         title.setObjectName("sectionTitle")
         layout.addWidget(title)
-        
+
+        # The preview keeps an exact, stable size so incoming frames never
+        # trigger a dynamic re-layout of the sidebar.
+        stage = QFrame()
+        stage.setObjectName("stage")
+        stage.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+        stage_layout = QVBoxLayout(stage)
+        stage_layout.setContentsMargins(4, 4, 4, 4)
+
         self.view = QLabel()
+        self.view.setObjectName("poseView")
         self.view.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        # Fijamos un tamaño exacto (ancho y alto estables) para evitar que se redimensione dinámicamente
-        self.view.setFixedSize(280, 200)
+        self.view.setFixedSize(300, 196)
         self.view.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
-        self.view.setStyleSheet("background-color: #1E293B; border-radius: 4px; border: 1px solid #64748B;")
-        layout.addWidget(self.view, 0, Qt.AlignmentFlag.AlignCenter)
-        
-        data_layout = QVBoxLayout()
-        data_layout.setContentsMargins(15, 8, 15, 4)
-        data_layout.setSpacing(6)
-        
-        font = QFont("Consolas", 9)
-        
-        self.lbl_inf = self._create_data_label("Inference: -- ms", font)
-        self.lbl_cent = self._create_data_label("Centroid (Y): --", font)
-        self.lbl_conf = self._create_data_label("Confidence: --%", font)
-        
-        data_layout.addWidget(self.lbl_inf)
-        data_layout.addWidget(self.lbl_cent)
-        data_layout.addWidget(self.lbl_conf)
-        
-        layout.addLayout(data_layout)
-        
-    def _create_data_label(self, text, font):
-        lbl = QLabel(text)
-        lbl.setFont(font)
-        lbl.setStyleSheet("color: #475569;")
-        lbl.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
-        return lbl
-        
+        self.view.setText(_PLACEHOLDER)
+        stage_layout.addWidget(self.view, 0, Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(stage)
+
+        metrics = QHBoxLayout()
+        metrics.setContentsMargins(2, 4, 2, 0)
+        metrics.setSpacing(12)
+
+        self.lbl_inf = self._metric(metrics, "Inference")
+        self.lbl_cent = self._metric(metrics, "Centroid Y")
+        self.lbl_conf = self._metric(metrics, "Confidence")
+        layout.addLayout(metrics)
+
+        self.conf_bar = QProgressBar()
+        self.conf_bar.setObjectName("confBar")
+        self.conf_bar.setRange(0, 100)
+        self.conf_bar.setValue(0)
+        self.conf_bar.setTextVisible(False)
+        self.conf_bar.setFixedHeight(4)
+        layout.addWidget(self.conf_bar)
+
+        self.update_telemetry({})
+
+    def _metric(self, parent_layout, caption: str) -> QLabel:
+        column = QVBoxLayout()
+        column.setSpacing(2)
+        column.setContentsMargins(0, 0, 0, 0)
+
+        cap = QLabel(caption)
+        cap.setObjectName("metricCaption")
+        value = QLabel("--")
+        value.setObjectName("metricValue")
+        value.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
+
+        column.addWidget(cap)
+        column.addWidget(value)
+        parent_layout.addLayout(column, 1)
+        return value
+
     def update_frame(self, qimage):
         pixmap = QPixmap.fromImage(qimage)
         self.view.setPixmap(pixmap.scaled(
-            self.view.size(), 
-            Qt.AspectRatioMode.KeepAspectRatio, 
+            self.view.size(),
+            Qt.AspectRatioMode.KeepAspectRatio,
             Qt.TransformationMode.SmoothTransformation
         ))
-        
+
     def update_telemetry(self, data: dict):
         if not data:
-            self.lbl_inf.setText("Inference: -- ms")
-            self.lbl_cent.setText("Centroid (Y): --")
-            self.lbl_conf.setText("Confidence: --%")
+            self.lbl_inf.setText("--")
+            self.lbl_cent.setText("--")
+            self.lbl_conf.setText("--")
+            self.conf_bar.setValue(0)
             return
-            
+
         inf = data.get('inference_ms', 0.0)
         cent = data.get('centroid_y')
         conf = data.get('confidence', 0.0)
-        
-        self.lbl_inf.setText(f"Inference: {inf:.1f} ms")
-        self.lbl_cent.setText(f"Centroid (Y): {cent:.3f}" if cent is not None else "Centroid (Y): --")
-        self.lbl_conf.setText(f"Confidence: {int(conf*100)}%")
-        
+
+        self.lbl_inf.setText(f"{inf:.1f} ms")
+        self.lbl_cent.setText(f"{cent:.3f}" if cent is not None else "--")
+        self.lbl_conf.setText(f"{int(conf*100)}%")
+        self.conf_bar.setValue(max(0, min(100, int(conf * 100))))
+
     def clear_video(self):
         self.view.clear()
+        self.view.setText(_PLACEHOLDER)
         self.update_telemetry({})
