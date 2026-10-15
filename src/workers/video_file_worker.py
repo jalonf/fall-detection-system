@@ -1,7 +1,7 @@
 import collections
 import logging
 import time
-from typing import Any, cast
+from typing import Any
 
 import cv2
 import mediapipe as mp
@@ -11,15 +11,14 @@ from PySide6.QtCore import QThread, Signal, Slot
 from PySide6.QtGui import QImage
 
 from src.ai.extractor import MediaPipeExtractor
-from src.dtos.inferenceResult import InferenceResult
 from src.patterns.observer import EventSubject
 from src.workers.inference_worker import InferenceWorker
 
 logger = logging.getLogger(__name__)
 
 pb2: Any = landmark_pb2
-mp_drawing: Any = getattr(mp.solutions, "drawing_utils")
-mp_pose: Any = getattr(mp.solutions, "pose")
+mp_drawing: Any = mp.solutions.drawing_utils #type: ignore
+mp_pose: Any = mp.solutions.pose #type: ignore
 
 class VideoFileWorker(QThread, EventSubject):
     """

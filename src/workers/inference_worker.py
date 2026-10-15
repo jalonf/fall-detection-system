@@ -1,4 +1,5 @@
 import logging
+
 import numpy as np
 import tensorflow as tf
 from PySide6.QtCore import QThread, Signal
@@ -19,7 +20,7 @@ class InferenceWorker(QThread):
         try:
             self.model = tf.keras.models.load_model(model_path, compile=False)
             logger.info(f"AI model loaded in inference thread: {model_path}")
-        except Exception as e:
+        except (OSError, ValueError) as e:
             logger.error(f"Failed to load AI model: {e}")
 
     def predict(self, seq_array: np.ndarray):
@@ -38,7 +39,7 @@ class InferenceWorker(QThread):
                     probability = float(self.model(seq, training=False)[0][0])
                     is_fall = probability >= 0.5
                     self.prediction_ready.emit(is_fall, probability)
-                except Exception as e:
+                except (ValueError, TypeError, tf.errors.OpError) as e:
                     logger.error(f"Inference error: {e}")
             
             # Short sleep to prevent 100% CPU usage
