@@ -1,24 +1,27 @@
+import collections
 import logging
 import time
+from typing import Any, cast
 
 import cv2
 import mediapipe as mp
 import numpy as np
-from mediapipe.framework.formats import landmark_pb2  # type: ignore
-from PySide6.QtCore import QThread, Signal
+from mediapipe.framework.formats import landmark_pb2
+from PySide6.QtCore import QThread, Signal, Slot
 from PySide6.QtGui import QImage
-
-mp_drawing = mp.solutions.drawing_utils  # type: ignore
-mp_pose = mp.solutions.pose  # type: ignore
 
 from src.ai.extractor import MediaPipeExtractor
 from src.dtos.inferenceResult import InferenceResult
 from src.patterns.observer import EventSubject
+from src.workers.inference_worker import InferenceWorker
 
 logger = logging.getLogger(__name__)
 
+pb2: Any = landmark_pb2
+mp_drawing: Any = getattr(mp.solutions, "drawing_utils")
+mp_pose: Any = getattr(mp.solutions, "pose")
 
-class VideoFileWorker(QThread,EventSubject):
+class VideoFileWorker(QThread, EventSubject):
     """
     Responsible for loading an uploaded video file, processing frames to extract 
     the skeleton, and rendering the fall detection pipeline at natural speed.
@@ -28,9 +31,10 @@ class VideoFileWorker(QThread,EventSubject):
     skeleton_frame_ready = Signal(QImage)
     telemetry_data_ready = Signal(dict)
     playback_finished = Signal()
+    video_quality_detected = Signal(str, int, int)
 
     def __init__(self, video_path: str, parent=None):
-        QThread.__init__(self, parent)
+        super().__init__(parent)
         EventSubject.__init__(self)
 
         self.video_path = video_path
@@ -38,217 +42,160 @@ class VideoFileWorker(QThread,EventSubject):
         self.extractor = MediaPipeExtractor()
         self.last_known_landmarks = None
 
+        self.seq_len = 30 
+        self.sequence_buffer = collections.deque()
+        
+        # Current prediction state
+        self.current_is_fall = False
+
+        # Initialize and connect the inference thread
+        self.inference_worker = InferenceWorker()
+        self.inference_worker.prediction_ready.connect(self._on_prediction_ready)
+
+    @Slot(bool, float)
+    def _on_prediction_ready(self, is_fall, probability):
+        """Asynchronously updates the current fall status from the inference thread."""
+        self.current_is_fall = is_fall
+
     def run(self):
-        logger.info("Opening video file: %s", self.video_path)
+        logger.info(f"Opening video file: {self.video_path}")
         cap = cv2.VideoCapture(self.video_path)
         
         if not cap.isOpened():
-            logger.error("Could not open video file: %s", self.video_path)
+            logger.error(f"Could not open video file: {self.video_path}")
             return
 
+        w, h = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)), int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
         fps = cap.get(cv2.CAP_PROP_FPS)
+
+        labels = {2160: "4K (UHD)", 1080: "1080p (FHD)", 720: "720p (HD)", 480: "480p (SD)"}
+        quality_label = next((lbl for res, lbl in labels.items() if h >= res), f"Low Res ({w}x{h})")
+        self.video_quality_detected.emit(quality_label, w, h)
+
+        self.seq_len = 15 if fps <= 20 else 30
+        model_path = f"assets/fall_gru_{'low_risk_15fps' if self.seq_len == 15 else 'high_risk_30fps'}.keras"
+        
+        self.sequence_buffer = collections.deque(maxlen=self.seq_len)
+        
+        # Start inference background thread
+        self.inference_worker.load_model(model_path)
+        self.inference_worker.start()
+
         frame_delay = 1.0 / fps if fps > 0 else 1.0 / 30.0
-        logger.info("Video stream opened successfully. FPS: %.2f, Frame delay: %.4fs", fps, frame_delay)
 
         while self._is_running and cap.isOpened():
             loop_start = time.perf_counter()
-            
             ret, frame = cap.read()
-            if not ret or frame is None:
-                logger.info("End of video file reached or failed to read frame.")
-                break
+            if not ret or frame is None: break
 
             start_time = time.perf_counter()
-
             skeleton, landmarks_2d = self.extractor.extract_skeleton(frame_bgr=frame)
 
-            if landmarks_2d:
-                self.last_known_landmarks = landmarks_2d
-            else:
-                landmarks_2d = self.last_known_landmarks
+            landmarks_2d = landmarks_2d or self.last_known_landmarks
+            self.last_known_landmarks = landmarks_2d
 
             if landmarks_2d:
                 frame = self._censor_face(frame, landmarks_2d)
 
-            is_fall = False
-            probability = 0.0
-            inference_time = (time.perf_counter() - start_time) * 1000
-            
-            result = InferenceResult(
-                skeleton=skeleton,
-                pose_landmarks=landmarks_2d,
-                is_fall=is_fall,
-                fall_probability=probability,
-                inference_time_ms=inference_time
-            )
+            if skeleton is not None:
+                skel_array = skeleton.to_array().flatten()
+                if skel_array.size == 99:
+                    self.sequence_buffer.append(skel_array)
 
-            h, w, ch = frame.shape
-            # Color unificado exacto #1E293B en formato BGR (Blue=59, Green=41, Red=30)
-            colour_frame = np.full((h, w, ch), (59, 41, 30), dtype=np.uint8)
-            
-            telemetry_data = {
-                'inference_ms': inference_time,
-                'centroid_y': None,
-                'confidence': 0.0
-            }
+            # Send sequence to InferenceWorker asynchronously
+            if len(self.sequence_buffer) == self.seq_len:
+                seq_array = np.expand_dims(np.array(self.sequence_buffer), axis=0) 
+                self.inference_worker.predict(seq_array)
 
-            if result.pose_landmarks:
-                frame = self._draw_human_bounding_box(frame, result.pose_landmarks)
+            inference_ms = (time.perf_counter() - start_time) * 1000
+            fh, fw, ch = frame.shape
+            colour_frame = np.full((fh, fw, ch), (59, 41, 30), dtype=np.uint8)
+            telemetry = {'inference_ms': inference_ms, 'centroid_y': None, 'confidence': 0.0}
 
-                proto_landmarks = landmark_pb2.NormalizedLandmarkList()  # type: ignore
-                proto_landmarks.landmark.extend([
-                    landmark_pb2.NormalizedLandmark(  # type: ignore
-                        x=lm.x, y=lm.y, z=lm.z, visibility=lm.visibility
-                    ) for lm in result.pose_landmarks
+            if landmarks_2d:
+                # Use current state updated by the asynchronous slot
+                frame = self._draw_human_bounding_box(frame, landmarks_2d, self.current_is_fall)
+                
+                proto_lms = pb2.NormalizedLandmarkList(landmark=[
+                    pb2.NormalizedLandmark(x=lm.x, y=lm.y, z=lm.z, visibility=lm.visibility) 
+                    for lm in landmarks_2d
                 ])
+
+                lm_color = (0, 0, 255) if self.current_is_fall else (0, 255, 127)
+
+                for target_frame, thick, r in [(frame, 2, 2), (colour_frame, 4, 4)]:
+                    mp_drawing.draw_landmarks(
+                        target_frame, proto_lms, mp_pose.POSE_CONNECTIONS,
+                        mp_drawing.DrawingSpec(color=(255, 255, 255), thickness=thick, circle_radius=r),
+                        mp_drawing.DrawingSpec(color=lm_color, thickness=thick)
+                    )
+
+                vis = [lm.visibility for lm in landmarks_2d]
+                if vis: telemetry['confidence'] = sum(vis) / len(vis)
                 
-                mp_drawing.draw_landmarks(
-                    frame,
-                    proto_landmarks,
-                    mp_pose.POSE_CONNECTIONS,
-                    mp_drawing.DrawingSpec(color=(255, 255, 255), thickness=2, circle_radius=2),
-                    mp_drawing.DrawingSpec(color=(0, 255, 127), thickness=2)
-                )
+                if len(landmarks_2d) > 24 and landmarks_2d[23].visibility > 0.5 and landmarks_2d[24].visibility > 0.5:
+                    telemetry['centroid_y'] = (landmarks_2d[23].y + landmarks_2d[24].y) / 2.0
 
-                mp_drawing.draw_landmarks(
-                    colour_frame,
-                    proto_landmarks,
-                    mp_pose.POSE_CONNECTIONS,
-                    mp_drawing.DrawingSpec(color=(255, 255, 255), thickness=4, circle_radius=4),
-                    mp_drawing.DrawingSpec(color=(0, 255, 127), thickness=4)
-                )
-
-                visibilities = [lm.visibility for lm in result.pose_landmarks]
-                if visibilities:
-                    telemetry_data['confidence'] = sum(visibilities) / len(visibilities)
+                xs = [int(lm.x * fw) for lm in landmarks_2d if lm.visibility > 0.3]
+                ys = [int(lm.y * fh) for lm in landmarks_2d if lm.visibility > 0.3]
                 
-                if len(result.pose_landmarks) > 24:
-                    l_hip = result.pose_landmarks[23]
-                    r_hip = result.pose_landmarks[24]
-                    if l_hip.visibility > 0.5 and r_hip.visibility > 0.5:
-                        telemetry_data['centroid_y'] = (l_hip.y + r_hip.y) / 2.0
+                if xs and ys:
+                    colour_frame = colour_frame[
+                        max(0, min(ys)-60):min(fh, max(ys)+60), 
+                        max(0, min(xs)-60):min(fw, max(xs)+60)
+                    ]
 
-                x_coords = [int(lm.x * w) for lm in result.pose_landmarks if lm.visibility > 0.3]
-                y_coords = [int(lm.y * h) for lm in result.pose_landmarks if lm.visibility > 0.3]
-                
-                if x_coords and y_coords:
-                    pad = 60
-                    x1 = max(0, min(x_coords) - pad)
-                    y1 = max(0, min(y_coords) - pad)
-                    x2 = min(w, max(x_coords) + pad)
-                    y2 = min(h, max(y_coords) + pad)
-                    
-                    colour_frame = colour_frame[y1:y2, x1:x2]
+            self.telemetry_data_ready.emit(telemetry)
+            self.frame_ready.emit(QImage(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB).data, fw, fh, ch * fw, QImage.Format.Format_RGB888))
+            self.skeleton_frame_ready.emit(QImage(cv2.cvtColor(colour_frame, cv2.COLOR_BGR2RGB).data, colour_frame.shape[1], colour_frame.shape[0], 3 * colour_frame.shape[1], QImage.Format.Format_RGB888))
 
-            if not self._is_running:
-                break
+            sleep_time = frame_delay - (time.perf_counter() - loop_start)
+            if sleep_time > 0: time.sleep(sleep_time)
 
-            self.telemetry_data_ready.emit(telemetry_data)
-
-            bytes_per_line = ch * w
-            frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            qimg = QImage(frame_rgb.data, w, h, bytes_per_line, QImage.Format.Format_RGB888)
-            
-            black_rgb = cv2.cvtColor(colour_frame, cv2.COLOR_BGR2RGB)
-            bh, bw = black_rgb.shape[:2]
-            b_bytes_per_line = 3 * bw
-            skeleton_qimg = QImage(black_rgb.data, bw, bh, b_bytes_per_line, QImage.Format.Format_RGB888)
-
-            self.skeleton_frame_ready.emit(skeleton_qimg)
-            self.frame_ready.emit(qimg)
-
-            elapsed = time.perf_counter() - loop_start
-            sleep_time = frame_delay - elapsed
-            if sleep_time > 0:
-                time.sleep(sleep_time)
-
-        logger.info("Releasing video capture and AI extractor resources...")
+        logger.info("Releasing resources...")
         cap.release()
         self.extractor.release()
+        self.inference_worker.stop()
         self.playback_finished.emit()
-        logger.info("VideoFileWorker execution completed successfully.")
 
-    def _draw_human_bounding_box(self, frame, landmarks_2d):
-        if not landmarks_2d:
-            return frame
-
+    def _draw_human_bounding_box(self, frame, landmarks_2d, is_fall):
+        """Draws the bounding box. Removed the probability percentage per requirements."""
         h, w, _ = frame.shape
-        
-        x_coords = [int(lm.x * w) for lm in landmarks_2d if lm.visibility > 0.3]
-        y_coords = [int(lm.y * h) for lm in landmarks_2d if lm.visibility > 0.3]
-        
-        if not x_coords or not y_coords:
-            return frame
+        xs = [int(lm.x * w) for lm in landmarks_2d if lm.visibility > 0.3]
+        ys = [int(lm.y * h) for lm in landmarks_2d if lm.visibility > 0.3]
+        if not xs or not ys: return frame
 
-        padding = 25
-        x1 = max(0, min(x_coords) - padding)
-        y1 = max(0, min(y_coords) - padding)
-        x2 = min(w, max(x_coords) + padding)
-        y2 = min(h, max(y_coords) + padding)
+        x1, y1 = max(0, min(xs) - 25), max(0, min(ys) - 25)
+        x2, y2 = min(w, max(xs) + 25), min(h, max(ys) + 25)
 
-        box_color = (0, 255, 127) 
-        
-        cv2.rectangle(frame, (x1, y1), (x2, y2), box_color, 1, cv2.LINE_AA)
+        color, label, t = ((0, 0, 255), "FALL ALERT", 3) if is_fall else ((0, 255, 127), "HUMAN", 2)
+        cv2.rectangle(frame, (x1, y1), (x2, y2), color, 1, cv2.LINE_AA)
 
-        length = 20
-        thickness = 2
-        
-        cv2.line(frame, (x1, y1), (x1 + length, y1), box_color, thickness, cv2.LINE_AA)
-        cv2.line(frame, (x1, y1), (x1, y1 + length), box_color, thickness, cv2.LINE_AA)
-        cv2.line(frame, (x2, y1), (x2 - length, y1), box_color, thickness, cv2.LINE_AA)
-        cv2.line(frame, (x2, y1), (x2, y1 + length), box_color, thickness, cv2.LINE_AA)
-        cv2.line(frame, (x1, y2), (x1 + length, y2), box_color, thickness, cv2.LINE_AA)
-        cv2.line(frame, (x1, y2), (x1, y2 - length), box_color, thickness, cv2.LINE_AA)
-        cv2.line(frame, (x2, y2), (x2 - length, y2), box_color, thickness, cv2.LINE_AA)
-        cv2.line(frame, (x2, y2), (x2, y2 - length), box_color, thickness, cv2.LINE_AA)
+        for px, py in [(x1,y1), (x2,y1), (x1,y2), (x2,y2)]:
+            cv2.line(frame, (px, py), (px + (20 if px==x1 else -20), py), color, t, cv2.LINE_AA)
+            cv2.line(frame, (px, py), (px, py + (20 if py==y1 else -20)), color, t, cv2.LINE_AA)
 
-        label = "HUMAN"
-        font = cv2.FONT_HERSHEY_SIMPLEX
-        font_scale = 0.5
-        font_thickness = 1
-        (_text_width, text_height), _baseline = cv2.getTextSize(label, font, font_scale, font_thickness)
-        
-        label_y = max(y1 - 6, text_height + 6)
-        cv2.putText(frame, label, (x1, label_y), font, font_scale, box_color, font_thickness, cv2.LINE_AA)
+        tw, th = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.5, t - 1)[0]
+        ty = max(y1 - 6, th + 6)
+        cv2.rectangle(frame, (x1, ty - th - 4), (x1 + tw, ty + 2), color, -1)
+        cv2.putText(frame, label, (x1, ty), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255,255,255) if is_fall else color, t - 1, cv2.LINE_AA)
 
         return frame
 
     def _censor_face(self, frame, landmarks_2d):
-        if not landmarks_2d:
-            return frame
-
         h, w, _ = frame.shape
-        face_landmarks = landmarks_2d[:11] 
+        xs, ys = [int(lm.x * w) for lm in landmarks_2d[:11]], [int(lm.y * h) for lm in landmarks_2d[:11]]
         
-        x_coords = [int(lm.x * w) for lm in face_landmarks]
-        y_coords = [int(lm.y * h) for lm in face_landmarks]
-        
-        x_min, x_max = min(x_coords), max(x_coords)
-        y_min, y_max = min(y_coords), max(y_coords)
-        
-        face_width = x_max - x_min
-        face_height = y_max - y_min
-        
-        margin_x = int(face_width * 0.4)
-        margin_y = int(face_height * 0.5)
-        
-        x1 = max(0, x_min - margin_x)
-        y1 = max(0, y_min - int(margin_y * 1.5))
-        x2 = min(w, x_max + margin_x)
-        y2 = min(h, y_max + margin_y)
+        mx, my = int((max(xs) - min(xs)) * 0.4), int((max(ys) - min(ys)) * 0.5)
+        x1, y1 = max(0, min(xs) - mx), max(0, min(ys) - int(my * 1.5))
+        x2, y2 = min(w, max(xs) + mx), min(h, max(ys) + my)
         
         if x2 > x1 and y2 > y1:
-            face_roi = frame[y1:y2, x1:x2]
-            kernel_size = min(x2 - x1, y2 - y1) // 2
-            kernel_size = kernel_size if kernel_size % 2 != 0 else kernel_size + 1
-            
-            if kernel_size > 3:
-                blurred_face = cv2.GaussianBlur(face_roi, (kernel_size, kernel_size), 50)
-                frame[y1:y2, x1:x2] = blurred_face
-                
+            k = min(x2 - x1, y2 - y1) // 2
+            k = k + 1 if k % 2 == 0 else k
+            if k > 3: frame[y1:y2, x1:x2] = cv2.GaussianBlur(frame[y1:y2, x1:x2], (k, k), 50)
         return frame
 
     def stop(self):
-        logger.info("Stop requested for VideoFileWorker thread.")
         self._is_running = False
         self.wait()
