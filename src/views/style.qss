@@ -1,7 +1,9 @@
 /* ============================================================
-   CARE CONSOLE THEME
+   INSTRUMENT PANEL THEME
 
-   Soft blue on white, blue-grey neutrals. Red is reserved for alerts.
+   Cool white surfaces on a pale blue-grey canvas, one deep instrument blue for
+   everything interactive, hairline borders and near-square corners. Red appears
+   only when something is wrong. The video well is a soft charcoal.
 
    This file contains NO literal colours. Every value written between two
    at-signs is replaced at load time by ThemeManager (src/views/theme.py),
@@ -9,10 +11,11 @@
    To re-skin the app, edit the Colors / Radius / Fonts classes there.
 
    Scales
-     radius   SM 6 (inner tiles) · MD 10 (controls, stage) · LG 14 (panels)
-              Pills and circles use half of the widget height (noted inline).
-     type     11 caption · 12 small · 13 body · 14 lead · 16 title · 30 display
-     weight   400 body · 600 labels and values · 700 headings
+     radius   SM 4 (tags, chips) · MD 6 (controls, stage) · LG 8 (panels)
+     type     11 caption · 12 small · 13 body · 14 lead · 15 title · 24 display
+     weight   400 body · 600 labels, values and headings
+     states   every interactive element defines :hover, :pressed, :focus and
+              :disabled (and :checked where it can be toggled).
    ============================================================ */
 
 * {
@@ -20,6 +23,7 @@
 }
 
 QMainWindow,
+QWidget#authScreen,
 QWidget#monitorScreen,
 QWidget#adminScreen,
 QWidget#monitorBody {
@@ -28,8 +32,8 @@ QWidget#monitorBody {
 
 QToolTip {
     background-color: @CHROME@;
-    color: @TEXT_INVERSE@;
-    border: none;
+    color: @TEXT_MAIN@;
+    border: 1px solid @CHROME_BORDER@;
     border-radius: @RADIUS_SM@;
     padding: 6px 9px;
     font-size: 12px;
@@ -44,9 +48,9 @@ QLabel {
     font-size: 13px;
 }
 
-QLabel#cardTitle    { font-size: 16px; font-weight: 700; color: @TEXT_MAIN@; }
+QLabel#cardTitle    { font-family: @FONT_DISPLAY@; font-size: 16px; font-weight: 600; color: @TEXT_MAIN@; }
 QLabel#cardSubtitle { font-size: 12px; color: @TEXT_MUTED@; }
-QLabel#sectionTitle { font-size: 14px; font-weight: 700; color: @TEXT_MAIN@; }
+QLabel#sectionTitle { font-family: @FONT_DISPLAY@; font-size: 14px; font-weight: 600; color: @TEXT_MAIN@; }
 QLabel#fieldLabel   { font-size: 12px; font-weight: 600; color: @TEXT_LABEL@; }
 
 QLabel#metricCaption { font-size: 11px; color: @TEXT_SUBTLE@; }
@@ -59,25 +63,22 @@ QLabel#metricValue {
 QLabel#metricValue[empty="true"] { color: @TEXT_SUBTLE@; font-weight: 400; }
 
 /* ============================================================
-   BRAND MARK  (topbar + auth screen share one component)
-   Shows the logo when assets/logo.png exists, a lettermark tile otherwise.
+   WORDMARK  (typographic only: a short accent bar and the application name)
    ============================================================ */
-QLabel#brandMark {
-    background-color: @PRIMARY@;
-    color: @TEXT_INVERSE@;
-    border-radius: @RADIUS_MD@;
-    font-size: 20px;
-    font-weight: 700;
-}
-QLabel#brandMark[hasLogo="true"] { background-color: transparent; }
+QFrame#wordmarkBar     { background-color: @PRIMARY@; border: none; border-radius: 1px; }
+QLabel#wordmark        { font-family: @FONT_DISPLAY@; font-size: 16px; font-weight: 600; color: @TEXT_MAIN@; }
+QLabel#wordmarkLarge   { font-family: @FONT_DISPLAY@; font-size: 22px; font-weight: 600; color: @TEXT_MAIN@; }
+QFrame#wordmarkDivider { background-color: @BORDER_STRONG@; border: none; }
+QLabel#wordmarkCaption { font-size: 12px; color: @TEXT_MUTED@; }
 
 /* ============================================================
-   AUTH SCREEN  (brand surface and form share one light language)
+   AUTH SCREEN
+   Left: brand surface painted by PoseBackdrop. Right: a floating form card.
    ============================================================ */
-QWidget#authScreen { background-color: @SURFACE@; }
-
-QWidget#authScreen QStackedWidget,
-QWidget#authPage {
+QWidget#authRight,
+QWidget#brandPanel,
+QWidget#authPage,
+QWidget#authScreen QStackedWidget {
     background: transparent;
 }
 
@@ -88,71 +89,70 @@ QScrollArea#authScroll > QWidget > QWidget {
     border: none;
 }
 
-QFrame#authPanel {
+QFrame#authShadow {
     background-color: @SURFACE@;
     border: none;
-    border-left: 1px solid @BORDER@;
+    border-radius: @RADIUS_LG@;
 }
 
-QLabel#authBrandName { font-size: 24px; font-weight: 700; color: @TEXT_MAIN@; }
-QLabel#brandHeadline { font-size: 30px; font-weight: 700; color: @TEXT_MAIN@; }
+QFrame#authCard {
+    background-color: @SURFACE@;
+    border: 1px solid @BORDER@;
+    border-radius: @RADIUS_LG@;
+}
+
+QLabel#brandHeadline { font-family: @FONT_DISPLAY@; font-size: 28px; font-weight: 600; color: @TEXT_MAIN@; }
 QLabel#brandDesc     { font-size: 14px; color: @TEXT_BODY@; }
 QLabel#techPill {
     background-color: @SURFACE@;
-    border: 1px solid @PRIMARY_BORDER@;
-    border-radius: 15px;                 /* pill: half of the label height */
-    color: @TEXT_BODY@;
+    border: 1px solid @BORDER_STRONG@;
+    border-radius: @RADIUS_SM@;
+    color: @TEXT_MUTED@;
     padding: 6px 14px;
     font-size: 12px;
     font-weight: 600;
 }
 
-QLabel#formTitle    { font-size: 30px; font-weight: 700; color: @TEXT_MAIN@; }
+QLabel#formTitle    { font-family: @FONT_DISPLAY@; font-size: 24px; font-weight: 600; color: @TEXT_MAIN@; }
 QLabel#formSubtitle { font-size: 14px; color: @TEXT_MUTED@; }
 
-QLabel#stepTitle   { font-size: 16px; font-weight: 700; color: @TEXT_MAIN@; }
+QLabel#stepTitle   { font-family: @FONT_DISPLAY@; font-size: 15px; font-weight: 600; color: @TEXT_MAIN@; }
 QLabel#stepCounter { font-size: 12px; font-weight: 600; color: @TEXT_MUTED@; }
 QLabel#stepHint    { font-size: 13px; color: @TEXT_MUTED@; }
 
-QFrame#stepBar { border: none; border-radius: 2px; background-color: @BORDER@; }
-QFrame#stepBar[state="done"]    { background-color: @ACCENT@; }
+QFrame#stepBar { border: none; border-radius: 1px; background-color: @TRACK@; }
+QFrame#stepBar[state="done"]    { background-color: @PRIMARY_BORDER@; }
 QFrame#stepBar[state="current"] { background-color: @PRIMARY@; }
 
 QLabel#authHint   { font-size: 13px; color: @TEXT_MUTED@; }
 QLabel#authFooter { font-size: 11px; color: @TEXT_SUBTLE@; }
 
-QLabel#link       { font-size: 13px; font-weight: 700; color: @PRIMARY@; }
-QLabel#link:hover { color: @PRIMARY_PRESSED@; text-decoration: underline; }
-
 QLabel#fieldMessage[kind="help"]  { font-size: 11px; color: @TEXT_MUTED@; }
-QLabel#fieldMessage[kind="error"] { font-size: 11px; color: @DANGER@; }
+QLabel#fieldMessage[kind="error"] { font-size: 11px; color: @DANGER_TEXT@; }
 
 /* ============================================================
-   TOPBAR  (white, shares the surface language of the panels)
+   TOPBAR  (white header; a 2px rail along its bottom edge mirrors the system state)
    ============================================================ */
-QFrame#topbar {
-    background-color: @SURFACE@;
-    border: none;
-    border-bottom: 1px solid @BORDER@;
-}
+QFrame#topbar { background-color: @SURFACE@; border: none; }
 
-QFrame#topbar QLabel#appTitle    { font-size: 18px; font-weight: 700; color: @TEXT_MAIN@; }
-QFrame#topbar QLabel#appSubtitle { font-size: 13px; color: @TEXT_MUTED@; }
 
 QFrame#topbarSep { background-color: @BORDER@; border: none; }
 
+QLabel#clock { font-family: @FONT_MONO@; font-size: 12px; color: @TEXT_MUTED@; }
+
 QLabel#avatar {
-    background-color: @PRIMARY_SOFT_STRONG@;
-    color: @PRIMARY_PRESSED@;
-    border-radius: 20px;                 /* circle: half of the 40px avatar */
-    font-size: 15px;
-    font-weight: 700;
+    background-color: @PRIMARY_SOFT@;
+    border: 1px solid @PRIMARY_BORDER@;
+    color: @PRIMARY@;
+    border-radius: @RADIUS_MD@;
+    font-size: 13px;
+    font-weight: 600;
 }
-QFrame#topbar QLabel#userName { font-size: 14px; font-weight: 700; color: @TEXT_MAIN@; }
+QFrame#topbar QLabel#userName { font-size: 13px; font-weight: 600; color: @TEXT_MAIN@; }
 QFrame#topbar QLabel#userRole { font-size: 12px; color: @TEXT_MUTED@; }
 
 /* ============================================================
-   PANELS & CARDS  (one surface, one border, one radius)
+   PANELS & CARDS  (one surface, one hairline, one radius)
    ============================================================ */
 QFrame#panel,
 QFrame#statusCard {
@@ -171,19 +171,20 @@ QFrame#statusCard[state="alert"][pulse="on"] {
 
 QFrame#statusDot { border: none; border-radius: 4px; background-color: @TEXT_SUBTLE@; }
 QFrame#statusDot[state="active"] { background-color: @PRIMARY@; }
-QFrame#statusDot[state="alert"]  { background-color: @DANGER_HOVER@; }
-QFrame#statusDot[state="alert"][pulse="on"] { background-color: @DANGER@; }
+QFrame#statusDot[state="alert"]  { background-color: @DANGER@; }
+QFrame#statusDot[state="alert"][pulse="on"] { background-color: @DANGER_PULSE@; }
 
 QLabel#detectionStatus { font-size: 13px; font-weight: 600; color: @TEXT_MUTED@; }
-QLabel#detectionStatus[state="active"] { color: @PRIMARY_HOVER@; }
-QLabel#detectionStatus[state="alert"]  { color: @DANGER_HOVER@; font-weight: 700; }
-QLabel#detectionStatus[state="alert"][pulse="on"] { color: @DANGER@; }
+QLabel#detectionStatus[state="active"] { color: @PRIMARY@; }
+QLabel#detectionStatus[state="alert"]  { color: @DANGER_TEXT@; font-weight: 600; }
+QLabel#detectionStatus[state="alert"][pulse="on"] { color: @DANGER_PULSE@; }
 
 QLabel#detectionDetail { font-size: 12px; color: @TEXT_MUTED@; }
 QLabel#detectionDetail[state="alert"] { color: @DANGER_TEXT@; }
 
 /* ============================================================
    VIDEO STAGE & TELEMETRY
+   The border is always 2px so the alert pulse never shifts the layout.
    ============================================================ */
 QFrame#stage {
     background-color: @STAGE@;
@@ -195,9 +196,9 @@ QFrame#stage[alert="dim"] { border: 2px solid @DANGER_DIM@; }
 
 QLabel#videoFrame { background: transparent; }
 
-/* "Stream offline" empty state, drawn on the dark stage */
+/* "Stream offline" empty state, drawn on the charcoal stage */
 QWidget#streamPlaceholder { background: transparent; }
-QLabel#placeholderTitle   { font-size: 16px; font-weight: 700; color: @STAGE_TEXT@; }
+QLabel#placeholderTitle   { font-family: @FONT_DISPLAY@; font-size: 15px; font-weight: 600; color: @STAGE_TEXT@; }
 QLabel#placeholderHint    { font-size: 13px; color: @STAGE_TEXT_MUTED@; }
 
 QLabel#poseView {
@@ -208,15 +209,15 @@ QLabel#poseView {
 }
 
 QFrame#fallBanner {
-    background-color: @DANGER@;
-    border: 1px solid @DANGER_HOVER@;
+    background-color: @DANGER_SOLID@;
+    border: 1px solid @DANGER@;
     border-radius: @RADIUS_MD@;
 }
 QFrame#fallBanner[pulse="on"] {
-    background-color: @DANGER_PULSE@;
-    border: 1px solid @DANGER@;
+    background-color: @DANGER_SOLID_HOVER@;
+    border: 1px solid @DANGER_PULSE@;
 }
-QLabel#fallBannerText { font-size: 13px; font-weight: 700; color: @TEXT_INVERSE@; }
+QLabel#fallBannerText { font-size: 13px; font-weight: 600; color: @TEXT_INVERSE@; }
 
 QProgressBar#confBar {
     background-color: @TRACK@;
@@ -229,113 +230,145 @@ QProgressBar#confBar::chunk {
 }
 
 /* ============================================================
-   CAMERA CONFIGURATION STRIP  (inset, always visible under the stage)
-   ============================================================ */
-QFrame#cameraInfo {
-    background-color: @SURFACE_ALT@;
-    border: 1px solid @BORDER@;
-    border-radius: @RADIUS_MD@;
-}
-QFrame#cameraInfoDivider { background-color: @BORDER@; border: none; }
-
-QLabel#cameraIcon { background-color: @PRIMARY_SOFT@; border-radius: @RADIUS_SM@; }
-QLabel#cameraIcon[state="active"] { background-color: @PRIMARY_SOFT_STRONG@; }
-
-QLabel#cameraValue { font-size: 13px; font-weight: 600; color: @TEXT_MAIN@; }
-
-/* ============================================================
    STATUS CHIP  (idle · active · alert)
    ============================================================ */
-QFrame#statusChip { border-radius: 14px; }   /* pill: half of the 28px chip */
+QFrame#statusChip { border-radius: @RADIUS_SM@; }   /* tag, not pill */
 QLabel#chipText   { font-size: 12px; font-weight: 600; }
 QFrame#chipDot    { border: none; border-radius: 4px; }
 
-QFrame#statusChip[state="idle"]   { background-color: @SURFACE_ALT@;  border: 1px solid @BORDER@; }
-QFrame#statusChip[state="active"] { background-color: @PRIMARY_SOFT@; border: 1px solid @PRIMARY_BORDER@; }
-QFrame#statusChip[state="alert"]  { background-color: @DANGER_SOFT@;  border: 1px solid @DANGER_BORDER@; }
+QFrame#statusChip[state="idle"]   { background-color: @SURFACE_ALT@;      border: 1px solid @BORDER@; }
+QFrame#statusChip[state="active"] { background-color: @PRIMARY_SOFT@;     border: 1px solid @PRIMARY_BORDER@; }
+QFrame#statusChip[state="alert"]  { background-color: @DANGER_SOFT@;      border: 1px solid @DANGER_BORDER@; }
 
 QFrame#chipDot[state="idle"]   { background-color: @TEXT_SUBTLE@; }
 QFrame#chipDot[state="active"] { background-color: @PRIMARY@; }
 QFrame#chipDot[state="alert"]  { background-color: @DANGER@; }
 
 QLabel#chipText[state="idle"]   { color: @TEXT_MUTED@; }
-QLabel#chipText[state="active"] { color: @PRIMARY_PRESSED@; }
-QLabel#chipText[state="alert"]  { color: @DANGER_HOVER@; }
+QLabel#chipText[state="active"] { color: @PRIMARY@; }
+QLabel#chipText[state="alert"]  { color: @DANGER_TEXT@; }
 
 /* ============================================================
-   TOAST  (routine notifications — white, discreet, tinted icon only)
+   TOAST  (floating, one step above the panels)
    ============================================================ */
 QFrame#toast {
-    background-color: @SURFACE@;
-    border: 1px solid @BORDER@;
+    background-color: @SURFACE_RAISED@;
+    border: 1px solid @BORDER_STRONG@;
     border-radius: @RADIUS_LG@;
 }
-QLabel#toastIcon { border-radius: 16px; }    /* circle: half of the 32px icon */
+QLabel#toastIcon { border-radius: @RADIUS_MD@; }
 QLabel#toastIcon[kind="success"] { background-color: @SUCCESS_SOFT@; }
 QLabel#toastIcon[kind="info"]    { background-color: @INFO_SOFT@; }
 QLabel#toastIcon[kind="warning"] { background-color: @WARNING_SOFT@; }
 QLabel#toastIcon[kind="error"]   { background-color: @DANGER_SOFT@; }
 
-QLabel#toastTitle   { font-size: 13px; font-weight: 700; color: @TEXT_MAIN@; }
-QLabel#toastMessage { font-size: 12px; color: @TEXT_MUTED@; }
+QLabel#toastTitle   { font-size: 13px; font-weight: 600; color: @TEXT_MAIN@; }
+QLabel#toastMessage { font-size: 12px; color: @TEXT_BODY@; }
 
 QPushButton#toastClose {
     background-color: transparent;
-    border: none;
+    border: 1px solid transparent;
     border-radius: @RADIUS_SM@;
     padding: 0;
 }
-QPushButton#toastClose:hover { background-color: @HOVER_TINT@; }
+QPushButton#toastClose:hover   { background-color: @TRACK@; }
+QPushButton#toastClose:pressed { background-color: @BORDER@; }
+QPushButton#toastClose:focus   { border-color: @PRIMARY@; }
 
 /* ============================================================
-   BUTTONS  (primary · danger · ghost · subtle)
-   Label and icon colours match in every state (see icons.icon()).
+   BUTTONS  (primary · danger · ghost · subtle · link)
+   Filled buttons carry a barely-there top-to-bottom gradient and a darker 1px edge so
+   they read as pressable controls. Label and icon colours match in every state (see
+   icons.icon()). Focus is always visible for keyboard users: a 2px ring, with the
+   padding reduced by 1px so nothing moves.
    ============================================================ */
 QPushButton {
     background-color: @PRIMARY@;
-    color: @TEXT_INVERSE@;
-    border: 1px solid transparent;
+    color: @ON_PRIMARY@;
+    border: 1px solid @PRIMARY_EDGE@;
     border-radius: @RADIUS_MD@;
     padding: 0 16px;
     font-size: 13px;
     font-weight: 600;
 }
 
-QPushButton#primary { background-color: @PRIMARY@; }
+QPushButton#primary {
+    background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 @PRIMARY_TOP@, stop:1 @PRIMARY@);
+    color: @ON_PRIMARY@;
+    border: 1px solid @PRIMARY_EDGE@;
+}
 QPushButton#primary:hover   { background-color: @PRIMARY_HOVER@; }
 QPushButton#primary:pressed { background-color: @PRIMARY_PRESSED@; }
-QPushButton#primary:focus   { border-color: @PRIMARY_PRESSED@; }
-QPushButton#primary:disabled { background-color: @TRACK@; color: @TEXT_SUBTLE@; border-color: transparent; }
+QPushButton#primary:checked { background-color: @PRIMARY_PRESSED@; }
+QPushButton#primary:focus   { border: 2px solid @ACCENT@; padding: 0 15px; }
+QPushButton#primary:disabled { background-color: @FIELD_DISABLED@; color: @TEXT_SUBTLE@; border: 1px solid @BORDER@; }
 
-QPushButton#danger { background-color: @DANGER@; }
-QPushButton#danger:hover   { background-color: @DANGER_HOVER@; }
-QPushButton#danger:pressed { background-color: @DANGER_PRESSED@; }
-QPushButton#danger:focus   { border-color: @DANGER_PRESSED@; }
-QPushButton#danger:disabled { background-color: @TRACK@; color: @TEXT_SUBTLE@; border-color: transparent; }
+/* Start / stop toggle: light grey while idle, red while a stream is running. */
+QPushButton#toggle {
+    background-color: @TRACK@;
+    color: @TEXT_MAIN@;
+    border: 1px solid @BORDER_STRONG@;
+}
+QPushButton#toggle:hover   { background-color: @BORDER@; }
+QPushButton#toggle:pressed { background-color: @BORDER_STRONG@; }
+QPushButton#toggle:focus   { border: 2px solid @PRIMARY@; padding: 0 15px; }
+QPushButton#toggle[running="true"] {
+    background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 @DANGER_TOP@, stop:1 @DANGER_SOLID@);
+    color: @TEXT_INVERSE@;
+    border: 1px solid @DANGER_SOLID_PRESSED@;
+}
+QPushButton#toggle[running="true"]:hover   { background-color: @DANGER_SOLID_HOVER@; }
+QPushButton#toggle[running="true"]:pressed { background-color: @DANGER_SOLID_PRESSED@; }
+QPushButton#toggle[running="true"]:focus   { border: 2px solid @DANGER_BORDER@; padding: 0 15px; }
 
 QPushButton#ghost {
-    background-color: @SURFACE@;
+    background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 @SURFACE@, stop:1 @SURFACE_ALT@);
     color: @ON_GHOST@;
     border: 1px solid @BORDER_STRONG@;
 }
-QPushButton#ghost:hover   { background-color: @PRIMARY_SOFT@; border-color: @PRIMARY_BORDER@; }
-QPushButton#ghost:pressed { background-color: @PRIMARY_SOFT_STRONG@; }
-QPushButton#ghost:focus   { border-color: @PRIMARY@; }
+QPushButton#ghost:hover   { background-color: @HOVER_TINT@; border-color: @BORDER_HOVER@; }
+QPushButton#ghost:pressed { background-color: @TRACK@; }
+QPushButton#ghost:checked { background-color: @PRIMARY_SOFT_STRONG@; border-color: @PRIMARY_BORDER@; color: @PRIMARY@; }
+QPushButton#ghost:focus   { border: 2px solid @PRIMARY@; padding: 0 15px; }
 QPushButton#ghost:disabled {
     background-color: @SURFACE_ALT@;
     color: @TEXT_SUBTLE@;
     border: 1px solid @BORDER@;
 }
 
+/* Segmented pair: two ghost buttons joined into one control */
+QPushButton#ghost[segment="first"] { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+QPushButton#ghost[segment="last"]  { border-top-left-radius: 0;  border-bottom-left-radius: 0; border-left-width: 0; }
+QPushButton#ghost[segment="last"]:focus { border-left-width: 2px; }
+
 QPushButton#subtle {
     background-color: transparent;
     color: @TEXT_MUTED@;
-    border: none;
+    border: 1px solid transparent;
     font-size: 12px;
     font-weight: 600;
-    padding: 0 6px;
+    padding: 0 8px;
 }
-QPushButton#subtle:hover { color: @PRIMARY@; }
+QPushButton#subtle:hover   { color: @TEXT_MAIN@; background-color: @TRACK@; }
+QPushButton#subtle:pressed { background-color: @BORDER@; }
+QPushButton#subtle:focus   { border-color: @PRIMARY@; }
+QPushButton#subtle:disabled { color: @TEXT_SUBTLE@; background-color: transparent; }
+
+QPushButton#linkButton {
+    background-color: transparent;
+    color: @PRIMARY@;
+    border: 1px solid transparent;
+    border-radius: @RADIUS_SM@;
+    padding: 2px 4px;
+    font-size: 13px;
+    font-weight: 600;
+}
+QPushButton#linkButton:hover   { color: @PRIMARY_HOVER@; }
+QPushButton#linkButton:pressed { color: @PRIMARY_PRESSED@; }
+QPushButton#linkButton:focus   { border-color: @PRIMARY@; }
+QPushButton#linkButton:disabled { color: @TEXT_SUBTLE@; }
+
+QFrame#panelDivider { background-color: @BORDER@; border: none; }
 
 /* ============================================================
    INPUTS & SELECTS
@@ -369,29 +402,41 @@ QLineEdit[invalid="true"]:focus {
 QLineEdit:disabled, QComboBox:disabled {
     background-color: @FIELD_DISABLED@;
     color: @TEXT_SUBTLE@;
-    border-color: @BORDER@;
+    border: 1px solid @BORDER@;
 }
 
 QComboBox::drop-down {
     subcontrol-origin: padding;
     subcontrol-position: center right;
-    width: 30px;
+    width: 32px;
     border: none;
 }
 QComboBox::down-arrow {
-    image: url("@ASSETS@/chevron-down.svg");
+    image: url("@GLYPH_CHEVRON@");
     width: 12px;
     height: 12px;
 }
+QComboBox::down-arrow:hover,
+QComboBox::down-arrow:on {
+    image: url("@GLYPH_CHEVRON_HOVER@");
+}
 QComboBox QAbstractItemView {
-    background-color: @SURFACE@;
+    background-color: @SURFACE_RAISED@;
     border: 1px solid @BORDER_STRONG@;
     border-radius: @RADIUS_SM@;
     padding: 4px;
     outline: none;
-    selection-background-color: @PRIMARY_SOFT@;
+    color: @TEXT_MAIN@;
+    selection-background-color: @PRIMARY_SOFT_STRONG@;
     selection-color: @TEXT_MAIN@;
 }
+QComboBox QAbstractItemView::item {
+    min-height: 32px;
+    padding: 0 10px;
+    border-radius: @RADIUS_SM@;
+}
+QComboBox QAbstractItemView::item:hover    { background-color: @TRACK@; }
+QComboBox QAbstractItemView::item:selected { background-color: @PRIMARY_SOFT_STRONG@; color: @TEXT_MAIN@; }
 
 /* ============================================================
    EVENT LOG  (rows are painted by a custom delegate)
@@ -407,14 +452,16 @@ QListWidget#eventLog {
    ============================================================ */
 QScrollArea { background: transparent; border: none; }
 
-QScrollBar:vertical { background: transparent; width: 8px; margin: 2px; }
+QScrollBar:vertical { background: transparent; width: 10px; margin: 2px; }
 QScrollBar::handle:vertical { background: @BORDER_STRONG@; border-radius: 3px; min-height: 28px; }
-QScrollBar::handle:vertical:hover { background: @BORDER_HOVER@; }
+QScrollBar::handle:vertical:hover   { background: @BORDER_HOVER@; }
+QScrollBar::handle:vertical:pressed { background: @TEXT_SUBTLE@; }
 QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; }
 QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical { background: transparent; }
 
-QScrollBar:horizontal { background: transparent; height: 8px; margin: 2px; }
+QScrollBar:horizontal { background: transparent; height: 10px; margin: 2px; }
 QScrollBar::handle:horizontal { background: @BORDER_STRONG@; border-radius: 3px; min-width: 28px; }
-QScrollBar::handle:horizontal:hover { background: @BORDER_HOVER@; }
+QScrollBar::handle:horizontal:hover   { background: @BORDER_HOVER@; }
+QScrollBar::handle:horizontal:pressed { background: @TEXT_SUBTLE@; }
 QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal { width: 0; }
 QScrollBar::add-page:horizontal, QScrollBar::sub-page:horizontal { background: transparent; }

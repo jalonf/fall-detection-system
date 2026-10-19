@@ -18,7 +18,7 @@ from PySide6.QtWidgets import (
 from src.dtos.registration_data import RegistrationData
 from src.views.components.auth_header import AuthHeader
 from src.views.icons import attach_leading_icon, attach_password_toggle, icon
-from src.views.theme import Colors, Size, set_prop
+from src.views.theme import Colors, Size, set_prop, style_combo
 
 _EMAIL_HELP = "Used for fall alerts and system notifications."
 
@@ -146,6 +146,7 @@ class RegisterForm(QWidget):
             "Administrator"
         ])
         self.reg_role.setFixedHeight(Size.FIELD)
+        style_combo(self.reg_role)
         page_layout.addLayout(self._combo_field("User role", self.reg_role))
         page_layout.addStretch(1)
         self.pages.addWidget(page)
@@ -176,6 +177,7 @@ class RegisterForm(QWidget):
         self.reg_risk_level = QComboBox()
         self.reg_risk_level.addItems(["LOW", "HIGH"])
         self.reg_risk_level.setFixedHeight(Size.FIELD)
+        style_combo(self.reg_risk_level)
         risk_layout = self._combo_field("Baseline risk level", self.reg_risk_level)
         page_layout.addLayout(self._row(patient_layout, risk_layout))
 
@@ -233,15 +235,15 @@ class RegisterForm(QWidget):
 
         switch = QHBoxLayout()
         switch.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        switch.setSpacing(6)
+        switch.setSpacing(4)
 
         question = QLabel("Already have an account?")
         question.setObjectName("authHint")
 
-        link = QLabel("Sign in")
-        link.setObjectName("link")
+        link = QPushButton("Sign in")
+        link.setObjectName("linkButton")
         link.setCursor(Qt.CursorShape.PointingHandCursor)
-        link.mousePressEvent = self._handle_sign_in
+        link.clicked.connect(lambda: self._handle_sign_in(None))
 
         switch.addWidget(question)
         switch.addWidget(link)
@@ -349,7 +351,7 @@ class RegisterForm(QWidget):
                 self._go_to_step(index)
                 return
 
-    def _handle_sign_in(self, event):
+    def _handle_sign_in(self, event=None):
         self.reset_form()
         self.switch_page_requested.emit()
 

@@ -46,7 +46,7 @@ class LoginForm(QWidget):
         layout.addLayout(self._field("Password", "login_password", "••••••••", password=True, icon_name="lock"))
         layout.addSpacing(32)
 
-        self.btn_login = QPushButton("Sign In")
+        self.btn_login = QPushButton("Sign in")
         self.btn_login.setObjectName("primary")
         self.btn_login.setFixedHeight(Size.FIELD)
         self.btn_login.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -57,14 +57,13 @@ class LoginForm(QWidget):
 
         switch = QHBoxLayout()
         switch.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        switch.setSpacing(6)
+        switch.setSpacing(4)
         q = QLabel("Don't have an account?")
         q.setObjectName("authHint")
-        link = QLabel("Sign up")
-        link.setObjectName("link")
+        link = QPushButton("Sign up")
+        link.setObjectName("linkButton")
         link.setCursor(Qt.CursorShape.PointingHandCursor)
-
-        link.mousePressEvent = lambda e: self.switch_page_requested.emit()
+        link.clicked.connect(lambda: self.switch_page_requested.emit())
 
         switch.addWidget(q)
         switch.addWidget(link)

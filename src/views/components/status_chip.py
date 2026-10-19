@@ -15,10 +15,10 @@ class StatusChip(QFrame):
         super().__init__(parent)
         self.setObjectName("statusChip")
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
-        self.setFixedHeight(28)
+        self.setFixedHeight(26)
 
         layout = QHBoxLayout(self)
-        layout.setContentsMargins(11, 0, 13, 0)
+        layout.setContentsMargins(10, 0, 12, 0)
         layout.setSpacing(8)
 
         self._dot = QFrame()

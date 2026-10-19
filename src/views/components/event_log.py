@@ -1,4 +1,4 @@
-from PySide6.QtCore import QRectF, QSize, Qt, QTime
+from PySide6.QtCore import QPointF, QRectF, QSize, Qt, QTime
 from PySide6.QtGui import QColor, QFont, QFontMetrics, QPainter, QPen, QTextOption
 from PySide6.QtWidgets import (
     QAbstractItemView,
@@ -22,22 +22,28 @@ ROLE_MESSAGE = Qt.ItemDataRole.UserRole + 2
 
 
 class _EventDelegate(QStyledItemDelegate):
-    """Paints each event as a card: time, a typed badge and a wrapped message."""
+    """
+    Paints the event log as a timeline: a coloured dot per event type, a monospace
+    time, the type name and a wrapped message. Only alerts get a tinted card, so
+    the rare, important rows stand out from routine ones.
+    """
 
     PAD_X = 12
     PAD_Y = 10
-    GAP = 5
+    GAP = 4
     LINE_H = 16
     V_MARGIN = 2
+    DOT = 7
+    INDENT = 17          # message and time start after the dot
 
     @staticmethod
     def _scheme(event_type: str):
-        """Return (background, border, badge_text, badge_background)."""
+        """Return (card background, card border, accent colour, type label)."""
         if event_type == "ALERT":
-            return Colors.DANGER_SOFT, Colors.DANGER_BORDER, Colors.DANGER, Colors.DANGER_SOFT_STRONG
+            return Colors.DANGER_SOFT, Colors.DANGER_BORDER, Colors.DANGER, "Alert"
         if event_type == "INFO":
-            return Colors.SURFACE, Colors.BORDER, Colors.PRIMARY, Colors.PRIMARY_SOFT
-        return Colors.SURFACE, Colors.BORDER, Colors.TEXT_MUTED, Colors.SURFACE_ALT
+            return None, None, Colors.PRIMARY, "Info"
+        return None, None, Colors.TEXT_MUTED, event_type.capitalize()
 
     def _available_width(self, option) -> int:
         view = self.parent()
@@ -53,7 +59,7 @@ class _EventDelegate(QStyledItemDelegate):
         font = QFont(option.font)
         font.setPixelSize(12)
         metrics = QFontMetrics(font)
-        text_w = max(width - 2 * self.PAD_X, 40)
+        text_w = max(width - 2 * self.PAD_X - self.INDENT, 40)
         message = str(index.data(ROLE_MESSAGE) or "")
         msg_h = metrics.boundingRect(
             0, 0, text_w, 10000, int(Qt.TextFlag.TextWordWrap), message
@@ -83,16 +89,38 @@ class _EventDelegate(QStyledItemDelegate):
             return
 
         event_type = str(event_type)
-        background, border, badge_fg, badge_bg = self._scheme(event_type)
+        background, border, accent, label = self._scheme(event_type)
         selected = bool(option.state & QStyle.StateFlag.State_Selected)
+        hovered = bool(option.state & QStyle.StateFlag.State_MouseOver)
 
         card = QRectF(option.rect).adjusted(0, self.V_MARGIN, 0, -self.V_MARGIN)
-        painter.setPen(QPen(QColor(Colors.PRIMARY if selected else border), 1))
-        painter.setBrush(QColor(background))
-        painter.drawRoundedRect(card.adjusted(0.5, 0.5, -0.5, -0.5), Radius.MD, Radius.MD)
+
+        # Row surface: tinted for alerts, subtle highlight on hover / selection.
+        if background is not None:
+            painter.setPen(QPen(QColor(border), 1))
+            painter.setBrush(QColor(background))
+            painter.drawRoundedRect(card.adjusted(0.5, 0.5, -0.5, -0.5), Radius.MD, Radius.MD)
+        elif selected or hovered:
+            painter.setPen(Qt.PenStyle.NoPen)
+            painter.setBrush(QColor(Colors.HOVER_TINT if hovered and not selected else Colors.PRIMARY_SOFT))
+            painter.drawRoundedRect(card, Radius.MD, Radius.MD)
+        else:
+            # Hairline between routine rows keeps the list readable without boxes.
+            painter.setPen(QPen(QColor(Colors.BORDER), 1))
+            painter.drawLine(
+                QPointF(card.left() + self.PAD_X, card.bottom()),
+                QPointF(card.right() - self.PAD_X, card.bottom()),
+            )
 
         x = card.left() + self.PAD_X
         y = card.top() + self.PAD_Y
+
+        # Type dot, vertically centred on the first line
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setBrush(QColor(accent))
+        painter.drawEllipse(QPointF(x + self.DOT / 2, y + self.LINE_H / 2), self.DOT / 2, self.DOT / 2)
+
+        text_x = x + self.INDENT
 
         # Time (monospace)
         time_text = str(index.data(ROLE_TIME) or "")
@@ -101,23 +129,22 @@ class _EventDelegate(QStyledItemDelegate):
         painter.setPen(QColor(Colors.TEXT_MUTED))
         time_w = QFontMetrics(time_font).horizontalAdvance(time_text)
         painter.drawText(
-            QRectF(x, y, time_w + 2, self.LINE_H),
+            QRectF(text_x, y, time_w + 2, self.LINE_H),
             time_text,
             QTextOption(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter),
         )
 
-        # Type badge
-        badge_font = QFont(option.font)
-        badge_font.setPixelSize(10)
-        badge_font.setWeight(QFont.Weight.Bold)
-        badge_w = QFontMetrics(badge_font).horizontalAdvance(event_type) + 16
-        badge_rect = QRectF(x + time_w + 10, y, badge_w, self.LINE_H)
-        painter.setPen(Qt.PenStyle.NoPen)
-        painter.setBrush(QColor(badge_bg))
-        painter.drawRoundedRect(badge_rect, self.LINE_H / 2, self.LINE_H / 2)
-        painter.setFont(badge_font)
-        painter.setPen(QColor(badge_fg))
-        painter.drawText(badge_rect, event_type, QTextOption(Qt.AlignmentFlag.AlignCenter))
+        # Type name, right-aligned in the accent colour
+        label_font = QFont(option.font)
+        label_font.setPixelSize(11)
+        label_font.setWeight(QFont.Weight.DemiBold)
+        painter.setFont(label_font)
+        painter.setPen(QColor(Colors.DANGER_TEXT if event_type == "ALERT" else accent))
+        painter.drawText(
+            QRectF(card.left() + self.PAD_X, y, card.width() - 2 * self.PAD_X, self.LINE_H),
+            label,
+            QTextOption(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter),
+        )
 
         # Message
         msg_font = QFont(option.font)
@@ -127,9 +154,9 @@ class _EventDelegate(QStyledItemDelegate):
         msg_opt = QTextOption(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
         msg_opt.setWrapMode(QTextOption.WrapMode.WordWrap)
         msg_rect = QRectF(
-            x,
+            text_x,
             y + self.LINE_H + self.GAP,
-            card.width() - 2 * self.PAD_X,
+            card.width() - 2 * self.PAD_X - self.INDENT,
             card.bottom() - (y + self.LINE_H + self.GAP) - 2,
         )
         painter.drawText(msg_rect, str(index.data(ROLE_MESSAGE) or ""), msg_opt)
@@ -171,6 +198,7 @@ class EventLog(QFrame):
         self.event_list.setWordWrap(True)
         self.event_list.setFrameShape(QFrame.Shape.NoFrame)
         self.event_list.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.event_list.setMouseTracking(True)
         self.event_list.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.event_list.setVerticalScrollMode(QAbstractItemView.ScrollMode.ScrollPerPixel)
         self.event_list.setResizeMode(QListView.ResizeMode.Adjust)

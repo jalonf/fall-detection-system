@@ -2,8 +2,10 @@ from PySide6.QtCore import QEasingCurve, QPropertyAnimation, Qt, Signal
 from PySide6.QtWidgets import (
     QFrame,
     QGraphicsOpacityEffect,
+    QGridLayout,
     QHBoxLayout,
     QLabel,
+    QSizePolicy,
     QStackedWidget,
     QVBoxLayout,
     QWidget,
@@ -14,7 +16,8 @@ from src.views.components.login_form import LoginForm
 from src.views.components.pose_backdrop import PoseBackdrop
 from src.views.components.register_form import RegisterForm
 from src.views.components.toast import Toast
-from src.views.theme import APP_NAME, Size, brand_logo
+from src.views.components.wordmark import Wordmark
+from src.views.theme import APP_NAME, Size, apply_shadow
 
 APP_TAGLINE = "Fall Detection System"
 
@@ -53,33 +56,15 @@ class AuthView(QWidget):
         root.setContentsMargins(0, 0, 0, 0)
         root.setSpacing(0)
 
-        # ---- Left: brand surface (paints the fall-sequence illustration itself) ----
-        left_area = PoseBackdrop()
+        # ---- Left: brand copy on the canvas, with the fall-sequence figure below it ----
+        left_area = QWidget()
+        left_area.setObjectName("brandPanel")
         left_layout = QVBoxLayout(left_area)
-        left_layout.setContentsMargins(64, 56, 56, 48)
+        left_layout.setContentsMargins(64, 56, 36, 44)
         left_layout.setSpacing(0)
 
-        lockup = QHBoxLayout()
-        lockup.setSpacing(12)
-        brand_mark = QLabel()
-        brand_mark.setObjectName("brandMark")
-
-        # Logo when assets/logo.png exists, otherwise a lettermark tile (styled in QSS).
-        logo = brand_logo(Size.LOGO_AUTH)
-        if logo is not None:
-            brand_mark.setPixmap(logo)
-            brand_mark.setProperty("hasLogo", True)
-        else:
-            brand_mark.setText(APP_NAME[:1].upper())
-        brand_mark.setFixedSize(Size.LOGO_AUTH, Size.LOGO_AUTH)
-        brand_mark.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        brand_title = QLabel(APP_NAME)
-        brand_title.setObjectName("authBrandName")
-        lockup.addWidget(brand_mark)
-        lockup.addWidget(brand_title)
-        lockup.addStretch()
-        left_layout.addLayout(lockup)
-        left_layout.addSpacing(48)
+        left_layout.addWidget(Wordmark(APP_NAME, large=True), 0, Qt.AlignmentFlag.AlignLeft)
+        left_layout.addSpacing(44)
 
         brand_subtitle = QLabel("Pose Analytics & Fall Detection System")
         brand_subtitle.setObjectName("brandHeadline")
@@ -99,20 +84,42 @@ class AuthView(QWidget):
         brand_desc.setAlignment(Qt.AlignmentFlag.AlignLeft)
         left_layout.addWidget(brand_desc)
 
-        left_layout.addStretch(1)
+        left_layout.addSpacing(28)
+
+        # The figure plate takes the remaining height and resizes with the window.
+        self.pose_figure = PoseBackdrop()
+        left_layout.addWidget(self.pose_figure, 1)
+        left_layout.addSpacing(22)
 
         tech_pill = QLabel("Powered by MediaPipe & PySide6")
         tech_pill.setObjectName("techPill")
         left_layout.addWidget(tech_pill, 0, Qt.AlignmentFlag.AlignLeft)
 
-        # ---- Right: form panel ----
+        # ---- Right: floating form card ----
+        right_area = QWidget()
+        right_area.setObjectName("authRight")
+        right_area.setMinimumWidth(Size.AUTH_PANEL_MIN)
+        right_area.setMaximumWidth(Size.AUTH_PANEL_MAX)
+        right_area.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Expanding)
+        right_layout = QGridLayout(right_area)
+        right_layout.setContentsMargins(20, 28, 32, 28)
+
+        # The shadow lives on a childless plate stacked *behind* the card. Putting the
+        # effect on the card itself would nest it with the opacity effect that
+        # `_switch_page` applies to the forms inside, which Qt does not support well.
+        shadow_plate = QFrame()
+        shadow_plate.setObjectName("authShadow")
+        shadow_plate.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+        apply_shadow(shadow_plate, blur=40, y=10, alpha=38)
+        right_layout.addWidget(shadow_plate, 0, 0)
+
         right_panel = QFrame()
-        right_panel.setObjectName("authPanel")
+        right_panel.setObjectName("authCard")
         right_panel.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
-        right_panel.setFixedWidth(600)
+        right_layout.addWidget(right_panel, 0, 0)
 
         self.panel_layout = QVBoxLayout(right_panel)
-        self.panel_layout.setContentsMargins(56, 36, 46, 24)
+        self.panel_layout.setContentsMargins(44, 36, 36, 22)
         self.panel_layout.setSpacing(12)
 
         self.stacked = QStackedWidget()
@@ -136,8 +143,21 @@ class AuthView(QWidget):
         footer.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.panel_layout.addWidget(footer)
 
-        root.addWidget(left_area, 1)
-        root.addWidget(right_panel, 0)
+        self._brand_area = left_area
+        root.addWidget(left_area, 5)
+        root.addWidget(right_area, 4)
+
+    @staticmethod
+    def _release_effect(widget: QWidget) -> None:
+        """Turns off the fade effect once a transition ends.
+
+        ``setGraphicsEffect`` does not accept ``None`` in the PySide6 stubs, so the effect
+        is disabled instead; the widget then paints normally and the next transition
+        replaces the (disabled) effect.
+        """
+        effect = widget.graphicsEffect()
+        if effect is not None:
+            effect.setEnabled(False)
 
     def _switch_page(self, target_index):
         """Executes smooth opacity fade-out and fade-in transitions between sub-forms."""
@@ -156,11 +176,11 @@ class AuthView(QWidget):
         self.anim_out.setEasingCurve(QEasingCurve.Type.InOutQuad)
 
         def on_fade_in_finished(widget):
-            widget.setGraphicsEffect(None)  # type: ignore
+            self._release_effect(widget)
             self._switching = False
 
         def on_fade_out_finished():
-            current_widget.setGraphicsEffect(None)  # type: ignore
+            self._release_effect(current_widget)
             self.stacked.setCurrentIndex(target_index)
 
             next_widget = self.stacked.currentWidget()
@@ -179,19 +199,22 @@ class AuthView(QWidget):
         self.anim_out.finished.connect(on_fade_out_finished)
         self.anim_out.start()
 
+    def showEvent(self, event):
+        """Starts with the caret in the e-mail field instead of a focused button."""
+        super().showEvent(event)
+        if self.stacked.currentIndex() == 0:
+            self.login_form.login_email.setFocus(Qt.FocusReason.OtherFocusReason)
+
     def resizeEvent(self, event):
-        """Keeps the floating toast anchored if the window is resized."""
+        """Keeps the floating toast anchored and drops the brand surface on narrow windows."""
         super().resizeEvent(event)
+        self._brand_area.setVisible(self.width() >= 900)
         if self.toast.isVisible():
             self.toast.reposition()
 
     def _show_banner(self, message: str, is_error: bool = True):
         """Shows the floating toast: error (red) or success (green accent)."""
         self.toast.show_message("error" if is_error else "success", message)
-
-    def _hide_banner(self):
-        """Hides the floating toast cleanly."""
-        self.toast.dismiss()
 
     def show_error(self, message: str):
         """Triggers the display of a styled error toast notification."""
@@ -200,11 +223,3 @@ class AuthView(QWidget):
     def show_success(self, message: str):
         """Triggers the display of a styled success toast notification."""
         self._show_banner(message, is_error=False)
-
-    def show_info(self, message: str):
-        """Displays a neutral informational toast."""
-        self.toast.show_message("info", message)
-
-    def show_warning(self, message: str):
-        """Displays a warning toast."""
-        self.toast.show_message("warning", message)

@@ -1,5 +1,5 @@
 from PySide6.QtCore import Qt, QTimer, Signal
-from PySide6.QtWidgets import QHBoxLayout, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QHBoxLayout, QSizePolicy, QVBoxLayout, QWidget
 
 from src.views.components.event_log import EventLog
 from src.views.components.system_status_card import SystemStatusCard
@@ -31,6 +31,7 @@ class BaseMonitorView(QWidget):
         super().__init__(parent)
         self.setObjectName(self.SCREEN_NAME)
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
 
         self.user_name = user_name
         self.user_role = user_role
@@ -42,6 +43,12 @@ class BaseMonitorView(QWidget):
         self._pulse_state = False
 
         self._build_ui()
+
+    def showEvent(self, event):
+        """Keeps keyboard focus on the screen itself so no button shows a focus ring until Tab is pressed."""
+        super().showEvent(event)
+        if self.focusWidget() is None:
+            self.setFocus(Qt.FocusReason.OtherFocusReason)
 
     # ------------------------------------------------------------------ build
     def _build_ui(self):
@@ -66,11 +73,14 @@ class BaseMonitorView(QWidget):
         self.video_panel.stop_requested.connect(self.stop_requested.emit)
         self.video_panel.upload_requested.connect(self.upload_requested.emit)
         self.video_panel.notify_requested.connect(self.notify_requested.emit)
-        body_layout.addWidget(self.video_panel, 1)
+        body_layout.addWidget(self.video_panel, 3)
 
-        # Right column: fixed-width sidebar
+        # Right column: sidebar that flexes between a minimum and a maximum width, so the
+        # video keeps the remaining space whatever the window size.
         sidebar_panel = QWidget()
-        sidebar_panel.setFixedWidth(Size.SIDEBAR)
+        sidebar_panel.setMinimumWidth(Size.SIDEBAR_MIN)
+        sidebar_panel.setMaximumWidth(Size.SIDEBAR_MAX)
+        sidebar_panel.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Expanding)
         sidebar_layout = QVBoxLayout(sidebar_panel)
         sidebar_layout.setContentsMargins(0, 0, 0, 0)
         sidebar_layout.setSpacing(Space.GAP)
@@ -83,7 +93,7 @@ class BaseMonitorView(QWidget):
         self.event_log = EventLog()
         sidebar_layout.addWidget(self.event_log, 1)
 
-        body_layout.addWidget(sidebar_panel, 0)
+        body_layout.addWidget(sidebar_panel, 1)
         root.addWidget(body_wrapper, 1)
 
     def _add_sidebar_panels(self, sidebar_layout):

@@ -9,10 +9,16 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
 )
 
-from src.views.theme import Space
+from src.views.theme import Space, set_prop
 
 _PLACEHOLDER = "Awaiting pose stream"
 _POSE_VIEW_HEIGHT = 196
+
+# Readout shown while a metric has no value: an em dash that keeps the unit in place, so the
+# layout and meaning of each metric stay stable between "no data" and "live".
+_EMPTY_INFERENCE = "\u2014 ms"
+_EMPTY_CENTROID = "\u2014"
+_EMPTY_CONFIDENCE = "\u2014 %"
 
 
 class SkeletonPanel(QFrame):
@@ -22,6 +28,7 @@ class SkeletonPanel(QFrame):
         super().__init__(parent)
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         self.setObjectName("panel")
+        self._streaming = False
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(*Space.PANEL)
@@ -75,7 +82,8 @@ class SkeletonPanel(QFrame):
 
         cap = QLabel(caption)
         cap.setObjectName("metricCaption")
-        value = QLabel("--")
+        value = QLabel(_EMPTY_CENTROID)
+        value.setProperty("empty", "true")
         value.setObjectName("metricValue")
         value.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
 
@@ -84,7 +92,13 @@ class SkeletonPanel(QFrame):
         parent_layout.addLayout(column, 1)
         return value
 
+    def set_streaming(self, active: bool):
+        """Presentation-only: late frames queued after a stop are ignored."""
+        self._streaming = active
+
     def update_frame(self, qimage):
+        if not self._streaming:
+            return
         pixmap = QPixmap.fromImage(qimage)
         self.view.setPixmap(pixmap.scaled(
             self.view.size(),
@@ -92,11 +106,19 @@ class SkeletonPanel(QFrame):
             Qt.TransformationMode.SmoothTransformation
         ))
 
+    @staticmethod
+    def _show(label: QLabel, text: str | None, empty_text: str):
+        """Shows `text`, or the quiet empty readout (muted, regular weight) when it is None."""
+        label.setText(empty_text if text is None else text)
+        set_prop(label, "empty", "true" if text is None else "false")
+
     def update_telemetry(self, data: dict):
+        if data and not self._streaming:
+            return
         if not data:
-            self.lbl_inf.setText("--")
-            self.lbl_cent.setText("--")
-            self.lbl_conf.setText("--")
+            self._show(self.lbl_inf, None, _EMPTY_INFERENCE)
+            self._show(self.lbl_cent, None, _EMPTY_CENTROID)
+            self._show(self.lbl_conf, None, _EMPTY_CONFIDENCE)
             self.conf_bar.setValue(0)
             return
 
@@ -104,9 +126,9 @@ class SkeletonPanel(QFrame):
         cent = data.get('centroid_y')
         conf = data.get('confidence', 0.0)
 
-        self.lbl_inf.setText(f"{inf:.1f} ms")
-        self.lbl_cent.setText(f"{cent:.3f}" if cent is not None else "--")
-        self.lbl_conf.setText(f"{int(conf*100)}%")
+        self._show(self.lbl_inf, f"{inf:.1f} ms", _EMPTY_INFERENCE)
+        self._show(self.lbl_cent, f"{cent:.3f}" if cent is not None else None, _EMPTY_CENTROID)
+        self._show(self.lbl_conf, f"{int(conf*100)}%", _EMPTY_CONFIDENCE)
         self.conf_bar.setValue(max(0, min(100, int(conf * 100))))
 
     def clear_video(self):

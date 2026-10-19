@@ -209,13 +209,34 @@ def _paths(name: str):
         l2.lineTo(13, 13)
         paths.extend([body, l1, l2])
 
+    elif name == "chevron_down":
+        p = QPainterPath()
+        p.moveTo(6, 9.5)
+        p.lineTo(12, 15.5)
+        p.lineTo(18, 9.5)
+        paths.append(p)
+
+    elif name == "pulse":
+        p = QPainterPath()
+        p.moveTo(2.5, 12.5)
+        p.lineTo(7, 12.5)
+        p.lineTo(9.5, 6)
+        p.lineTo(13, 18.5)
+        p.lineTo(15.5, 12.5)
+        p.lineTo(21.5, 12.5)
+        paths.append(p)
+
     return paths, filled
 
 
-def _render(name: str, color: str, size: int) -> QPixmap:
-    pixmap = QPixmap(size * _SCALE, size * _SCALE)
+def render(name: str, color: str, size: int, scale: int = _SCALE) -> QPixmap:
+    """
+    Draw an icon into a transparent pixmap of `size` logical px, rasterised at
+    `scale`x for crisp HiDPI output. Antialiasing is always on.
+    """
+    pixmap = QPixmap(size * scale, size * scale)
     pixmap.fill(Qt.GlobalColor.transparent)
-    pixmap.setDevicePixelRatio(_SCALE)
+    pixmap.setDevicePixelRatio(scale)
 
     painter = QPainter(pixmap)
     painter.setRenderHint(QPainter.RenderHint.Antialiasing)
@@ -236,11 +257,16 @@ def _render(name: str, color: str, size: int) -> QPixmap:
     return pixmap
 
 
-def icon(name: str, color: str = Colors.TEXT_INVERSE, size: int = 18,
+def _render(name: str, color: str, size: int) -> QPixmap:
+    return render(name, color, size)
+
+
+def icon(name: str, color: str = Colors.ON_PRIMARY, size: int = 18,
          disabled: str = Colors.TEXT_SUBTLE) -> QIcon:
     """Build a QIcon with distinct normal and disabled renderings."""
     result = QIcon()
     result.addPixmap(_render(name, color, size), QIcon.Mode.Normal)
+    result.addPixmap(_render(name, color, size), QIcon.Mode.Active)
     result.addPixmap(_render(name, disabled, size), QIcon.Mode.Disabled)
     return result
 

@@ -1,5 +1,3 @@
-import math
-
 from PySide6.QtCore import QPointF, QRectF, Qt
 from PySide6.QtGui import (
     QColor,
@@ -7,88 +5,51 @@ from PySide6.QtGui import (
     QPainter,
     QPainterPath,
     QPen,
+    QPixmap,
     QTextOption,
 )
 from PySide6.QtWidgets import QWidget
 
-from src.views.theme import Colors, ui_font, with_alpha
+from src.views.components.pose_landmarks import (
+    FRAME_LABELS,
+    LANDMARK_COUNT,
+    MINOR_LANDMARKS,
+    POSE_CONNECTIONS,
+    fall_sequence,
+    mid_hip,
+)
+from src.views.theme import Colors, Radius, mono_font, ui_font, with_alpha
 
-# Standing pose in normalised coordinates: x is relative to the spine,
-# y runs from the top of the head (0) to the ground (1).
-_JOINTS = {
-    "head": (0.0, 0.065),
-    "chin": (0.0, 0.113),
-    "neck": (0.0, 0.15),
-    "sh_l": (-0.09, 0.18),
-    "sh_r": (0.09, 0.18),
-    "el_l": (-0.13, 0.32),
-    "el_r": (0.13, 0.32),
-    "wr_l": (-0.14, 0.46),
-    "wr_r": (0.14, 0.46),
-    "mid_hip": (0.0, 0.53),
-    "hip_l": (-0.055, 0.53),
-    "hip_r": (0.055, 0.53),
-    "kn_l": (-0.065, 0.75),
-    "kn_r": (0.065, 0.75),
-    "an_l": (-0.065, 0.97),
-    "an_r": (0.065, 0.97),
-}
+_GHOST_ALPHA = (95, 140, 190)     # earlier frames are fainter
+_X_SPAN = 2.35                    # width of the sequence, in body heights
 
-_BONES = [
-    ("chin", "neck"),
-    ("neck", "sh_l"), ("neck", "sh_r"),
-    ("sh_l", "el_l"), ("el_l", "wr_l"),
-    ("sh_r", "el_r"), ("el_r", "wr_r"),
-    ("neck", "mid_hip"),
-    ("sh_l", "hip_l"), ("sh_r", "hip_r"), ("hip_l", "hip_r"),
-    ("hip_l", "kn_l"), ("kn_l", "an_l"),
-    ("hip_r", "kn_r"), ("kn_r", "an_r"),
-]
-
-_NO_DOT = {"head", "chin"}
-_FEET_Y = 0.97
-_HEAD_RADIUS = 0.048
-
-# (progress along the sequence, rotation in degrees, limb spread, opacity)
-_POSES = [
-    (0.0, 0.0, 0.0, 90),
-    (0.5, 34.0, 0.6, 165),
-    (1.0, 84.0, 1.4, 255),
-]
-
-_GHOST = Colors.PRIMARY     # soft blue strokes for the 'before' frames
-_ALERT = Colors.DANGER      # the single alert colour
-
-
-def _local(name: str, height: float, spread: float) -> QPointF:
-    x, y = _JOINTS[name]
-    if name.startswith(("el", "wr")):
-        x *= 1.0 + spread
-    elif name.startswith(("kn", "an")):
-        x *= 1.0 + spread * 0.8
-    return QPointF(x * height, (y - _FEET_Y) * height)
-
-
-def _world(pivot: QPointF, angle_deg: float, point: QPointF) -> QPointF:
-    rad = math.radians(angle_deg)
-    cos_a, sin_a = math.cos(rad), math.sin(rad)
-    return QPointF(
-        pivot.x() + point.x() * cos_a - point.y() * sin_a,
-        pivot.y() + point.x() * sin_a + point.y() * cos_a,
-    )
+_GRID_MINOR = 20
+_GRID_MAJOR_EVERY = 5
+_RULER_X = 40.0                   # x of the height ruler; the ground line starts here
+_PAD_TOP = 46                     # room for the figure caption
+_PAD_BOTTOM = 40                  # room for the frame labels
+_CAPTION = "Fall sequence  ·  MediaPipe Pose, 33 landmarks"
 
 
 class PoseBackdrop(QWidget):
     """
-    Branding surface for the authentication screen. Paints a soft blue-tinted
-    field with a measurement grid and a three-step fall sequence rendered as
-    pose-estimation skeletons — the exact signal the product watches for.
-    Child widgets (brand copy) are laid out on top by the owner.
+    Figure plate for the authentication screen, drawn like an engineering report figure:
+    a bordered sheet with a millimetre grid, a height ruler normalised to the person, and
+    a four-frame fall rendered with the 33 MediaPipe Pose landmarks and the official
+    POSE_CONNECTIONS, the exact signal the product watches for. The path of the hip
+    centroid is traced through the frames and the last frame carries the detection box.
+
+    The plate fills the widget, so the owner places it below the brand copy. It is fully
+    static: nothing animates and it only repaints when resized.
     """
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setObjectName("brandSurface")
+        self.setMinimumHeight(280)
+
+        self._frames = fall_sequence()
+        self._grid: QPixmap | None = None
+        self._grid_key = None
 
     # ------------------------------------------------------------------ paint
     def paintEvent(self, event):
@@ -96,115 +57,185 @@ class PoseBackdrop(QWidget):
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
 
         w, h = float(self.width()), float(self.height())
-        self._paint_field(painter, w, h)
-        self._paint_sequence(painter, w, h)
+        sheet = QRectF(0.5, 0.5, w - 1.0, h - 1.0)
+        clip = QPainterPath()
+        clip.addRoundedRect(sheet, Radius.LG, Radius.LG)
+
+        # Everything inside the sheet is clipped to its rounded outline.
+        painter.save()
+        painter.setClipPath(clip)
+        painter.fillRect(QRectF(0, 0, w, h), QColor(Colors.SURFACE))
+        painter.drawPixmap(0, 0, self._grid_pixmap(int(w), int(h)))
+
+        floor_y = h - _PAD_BOTTOM
+        body_h = max(110.0, min((floor_y - _PAD_TOP) / 0.97, w * 0.78 / _X_SPAN))
+        ruler_x = _RULER_X
+        # Centre the sequence (it spans x = -0.07 .. 2.21 body heights around the pelvis of
+        # the first frame), but never closer to the height ruler than a fixed gap.
+        x0 = max(w * 0.5 - 1.07 * body_h, ruler_x + 52.0 + 0.07 * body_h)
+
+        self._paint_caption(painter)
+        self._paint_ruler(painter, ruler_x, floor_y, body_h)
+        self._paint_sequence(painter, w, floor_y, body_h, x0)
+        painter.restore()
+
+        painter.setPen(QPen(QColor(Colors.BORDER_STRONG), 1))
+        painter.setBrush(Qt.BrushStyle.NoBrush)
+        painter.drawRoundedRect(sheet, Radius.LG, Radius.LG)
         painter.end()
 
-    def _paint_field(self, painter: QPainter, w: float, h: float):
-        # Flat, softly tinted surface (no gradient) with a faint measurement grid.
-        painter.fillRect(QRectF(0, 0, w, h), QColor(Colors.PRIMARY_SOFT))
+    def _grid_pixmap(self, w: int, h: int) -> QPixmap:
+        """Millimetre grid, cached per size and device pixel ratio."""
+        dpr = self.devicePixelRatioF()
+        key = (w, h, dpr)
+        if self._grid is not None and self._grid_key == key:
+            return self._grid
 
-        painter.setPen(QPen(with_alpha(Colors.PRIMARY, 22), 1))
-        step = 48
-        x = 0
-        while x < w:
-            painter.drawLine(QPointF(x, 0), QPointF(x, h))
-            x += step
-        y = 0
-        while y < h:
-            painter.drawLine(QPointF(0, y), QPointF(w, y))
-            y += step
+        pixmap = QPixmap(max(1, int(w * dpr)), max(1, int(h * dpr)))
+        pixmap.setDevicePixelRatio(dpr)
+        pixmap.fill(Qt.GlobalColor.transparent)
 
-    def _paint_sequence(self, painter: QPainter, w: float, h: float):
-        body_h = max(90.0, min(h * 0.32, w * 0.30))
-        floor_y = h * 0.80
-        x_start = w * 0.14 + body_h * 0.2
-        x_end = max(w * 0.92 - body_h, x_start + body_h * 1.2)
+        painter = QPainter(pixmap)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing, False)
+        minor = QPen(with_alpha(Colors.BORDER, 150), 1)
+        major = QPen(with_alpha(Colors.BORDER_STRONG, 120), 1)
+        for index, x in enumerate(range(0, w + 1, _GRID_MINOR)):
+            painter.setPen(major if index % _GRID_MAJOR_EVERY == 0 else minor)
+            painter.drawLine(x, 0, x, h)
+        for index, y in enumerate(range(0, h + 1, _GRID_MINOR)):
+            painter.setPen(major if index % _GRID_MAJOR_EVERY == 0 else minor)
+            painter.drawLine(0, y, w, y)
+        painter.end()
+
+        self._grid, self._grid_key = pixmap, key
+        return pixmap
+
+    @staticmethod
+    def _paint_caption(painter: QPainter):
+        font = mono_font(11)
+        painter.setFont(font)
+        painter.setPen(QColor(Colors.TEXT_MUTED))
+        painter.drawText(QPointF(18, 28), _CAPTION)
+
+    @staticmethod
+    def _paint_ruler(painter: QPainter, x: float, floor_y: float, body_h: float):
+        """Vertical scale normalised to the person's height (0 = ground, 1 = standing height)."""
+        color = QColor(Colors.TEXT_SUBTLE)
+        painter.setPen(QPen(color, 1.2))
+        painter.drawLine(QPointF(x, floor_y), QPointF(x, floor_y - body_h))
+
+        font = mono_font(10)
+        painter.setFont(font)
+        metrics = QFontMetrics(font)
+        for i in range(5):
+            value = i / 4.0
+            y = floor_y - value * body_h
+            length = 8.0 if i % 2 == 0 else 5.0
+            painter.drawLine(QPointF(x, y), QPointF(x + length, y))
+            if i % 2 == 0:
+                label = f"{value:.1f}"
+                label_w = metrics.horizontalAdvance(label)
+                # Plate-coloured backing, so a grid line passing through the value never
+                # strikes it out.
+                painter.fillRect(
+                    QRectF(x - label_w - 10, y - metrics.height() / 2.0, label_w + 8, metrics.height()),
+                    QColor(Colors.SURFACE),
+                )
+                painter.drawText(
+                    QPointF(x - label_w - 6, y + metrics.ascent() / 2 - 1),
+                    label,
+                )
+
+    def _paint_sequence(self, painter: QPainter, w: float, floor_y: float, body_h: float, x0: float):
+        def canvas(point):
+            return QPointF(x0 + point[0] * body_h, floor_y - point[1] * body_h)
 
         # Ground line
-        painter.setPen(QPen(with_alpha(Colors.PRIMARY, 70), 1.2))
-        painter.drawLine(QPointF(w * 0.10, floor_y), QPointF(w * 0.94, floor_y))
+        painter.setPen(QPen(QColor(Colors.BORDER_HOVER), 1.4))
+        painter.drawLine(QPointF(_RULER_X, floor_y), QPointF(w - 14, floor_y))
 
-        head_trace = []
+        label_font = mono_font(10)
+        centroids = []
         final_points = []
+        last = len(self._frames) - 1
 
-        for progress, angle, spread, alpha in _POSES:
-            is_final = progress >= 1.0
-            pivot_x = x_start + (x_end - x_start) * progress
-            pivot_y = floor_y - 0.11 * body_h * math.sin(math.radians(angle))
-            pivot = QPointF(pivot_x, pivot_y)
-
-            line_color = with_alpha(_ALERT if is_final else _GHOST, alpha)
-            self._draw_pose(painter, pivot, angle, body_h, spread, line_color, is_final)
-
-            head_trace.append(_world(pivot, angle, _local("head", body_h, spread)))
+        for index, landmarks in enumerate(self._frames):
+            points = [canvas(p) for p in landmarks]
+            centroids.append(canvas(mid_hip(landmarks)))
+            is_final = index == last
             if is_final:
-                final_points = [
-                    _world(pivot, angle, _local(name, body_h, spread))
-                    for name in _JOINTS
-                ]
+                final_points = points
 
-        self._draw_trace(painter, head_trace)
+            alpha = 255 if is_final else _GHOST_ALPHA[index]
+            color = with_alpha(Colors.DANGER if is_final else Colors.PRIMARY, alpha)
+            self._draw_skeleton(painter, points, color, thick=is_final)
+
+            # Frame label under the ground line, aligned with the pelvis.
+            painter.setFont(label_font)
+            painter.setPen(QColor(Colors.TEXT_MUTED))
+            cx = centroids[-1].x()
+            painter.drawLine(QPointF(cx, floor_y), QPointF(cx, floor_y + 5))
+            painter.drawText(
+                QRectF(cx - 30, floor_y + 7, 60, 16),
+                FRAME_LABELS[index],
+                QTextOption(Qt.AlignmentFlag.AlignCenter),
+            )
+
+        self._draw_centroid_trace(painter, centroids)
         if final_points:
-            self._draw_detection_box(painter, final_points, body_h)
+            self._draw_detection_box(painter, final_points)
 
-    def _draw_pose(self, painter, pivot, angle, body_h, spread, color, emphasised):
-        painter.save()
-        painter.translate(pivot)
-        painter.rotate(angle)
-
-        pen = QPen(color, 2.4 if emphasised else 2.0)
+    @staticmethod
+    def _draw_skeleton(painter: QPainter, points, color: QColor, thick: bool):
+        """MediaPipe-style overlay: POSE_CONNECTIONS as lines, the 33 landmarks as dots."""
+        pen = QPen(color, 2.0 if thick else 1.6)
         pen.setCapStyle(Qt.PenCapStyle.RoundCap)
         pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
         painter.setPen(pen)
         painter.setBrush(Qt.BrushStyle.NoBrush)
-
-        for a, b in _BONES:
-            painter.drawLine(_local(a, body_h, spread), _local(b, body_h, spread))
-
-        head = _local("head", body_h, spread)
-        radius = _HEAD_RADIUS * body_h
-        painter.drawEllipse(head, radius, radius)
+        for a, b in POSE_CONNECTIONS:
+            painter.drawLine(points[a], points[b])
 
         painter.setPen(Qt.PenStyle.NoPen)
         painter.setBrush(color)
-        dot = 3.6 if emphasised else 3.0
-        for name in _JOINTS:
-            if name in _NO_DOT or name == "mid_hip":
-                continue
-            painter.drawEllipse(_local(name, body_h, spread), dot, dot)
+        for i in range(LANDMARK_COUNT):
+            radius = 1.7 if i in MINOR_LANDMARKS else 3.0
+            painter.drawEllipse(points[i], radius, radius)
 
-        painter.restore()
-
-    def _draw_trace(self, painter, head_trace):
-        if len(head_trace) < 3:
+    @staticmethod
+    def _draw_centroid_trace(painter: QPainter, centroids):
+        """Dashed path of the hip centroid (the signal the detector follows) with a marker per frame."""
+        if len(centroids) < 2:
             return
-        p0, p1, p2 = head_trace
-        control = QPointF(2 * p1.x() - 0.5 * (p0.x() + p2.x()),
-                          2 * p1.y() - 0.5 * (p0.y() + p2.y()))
-        path = QPainterPath(p0)
-        path.quadTo(control, p2)
-        pen = QPen(with_alpha(_GHOST, 130), 1.5, Qt.PenStyle.DotLine)
+        pen = QPen(with_alpha(Colors.PRIMARY, 200), 1.2, Qt.PenStyle.DashLine)
         painter.setPen(pen)
         painter.setBrush(Qt.BrushStyle.NoBrush)
+        path = QPainterPath(centroids[0])
+        for point in centroids[1:]:
+            path.lineTo(point)
         painter.drawPath(path)
 
-    def _draw_detection_box(self, painter, points, body_h):
-        pad = 16.0
-        head_pad = _HEAD_RADIUS * body_h
-        left = min(p.x() for p in points) - pad - head_pad
-        right = max(p.x() for p in points) + pad + head_pad
-        top = min(p.y() for p in points) - pad - head_pad
+        painter.setPen(QPen(QColor(Colors.PRIMARY), 1.4))
+        painter.setBrush(QColor(Colors.SURFACE))
+        for point in centroids:
+            painter.drawEllipse(point, 3.6, 3.6)
+
+    @staticmethod
+    def _draw_detection_box(painter: QPainter, points):
+        pad = 14.0
+        left = min(p.x() for p in points) - pad
+        right = max(p.x() for p in points) + pad
+        top = min(p.y() for p in points) - pad
         bottom = max(p.y() for p in points) + pad
 
-        color = QColor(_ALERT)
-        pen = QPen(color, 2.0)
-        pen.setCapStyle(Qt.PenCapStyle.RoundCap)
-        pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
+        color = QColor(Colors.DANGER)
+        pen = QPen(color, 1.8)
+        pen.setCapStyle(Qt.PenCapStyle.SquareCap)
+        pen.setJoinStyle(Qt.PenJoinStyle.MiterJoin)
         painter.setPen(pen)
         painter.setBrush(Qt.BrushStyle.NoBrush)
 
-        arm = 16.0
+        arm = 14.0
         for cx, cy, dx, dy in (
             (left, top, 1, 1), (right, top, -1, 1),
             (left, bottom, 1, -1), (right, bottom, -1, -1),
@@ -219,12 +250,11 @@ class PoseBackdrop(QWidget):
         font = ui_font(11, bold=True)
         painter.setFont(font)
         text = "Fall detected"
-        metrics = QFontMetrics(font)
-        tag_w = metrics.horizontalAdvance(text) + 18
+        tag_w = QFontMetrics(font).horizontalAdvance(text) + 18
         tag_h = 20.0
-        tag = QRectF(left, top - tag_h - 6, tag_w, tag_h)
+        tag = QRectF(left, top - tag_h - 4, tag_w, tag_h)
         painter.setPen(Qt.PenStyle.NoPen)
-        painter.setBrush(color)
-        painter.drawRoundedRect(tag, 5, 5)
+        painter.setBrush(QColor(Colors.DANGER_SOLID))
+        painter.drawRoundedRect(tag, 3, 3)
         painter.setPen(QColor(Colors.TEXT_INVERSE))
         painter.drawText(tag, text, QTextOption(Qt.AlignmentFlag.AlignCenter))

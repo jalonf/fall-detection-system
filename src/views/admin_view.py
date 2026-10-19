@@ -19,6 +19,10 @@ class AdminView(BaseMonitorView):
         self.skeleton_panel = SkeletonPanel()
         sidebar_layout.addWidget(self.skeleton_panel)
 
+    def set_monitoring_state(self, active: bool):
+        super().set_monitoring_state(active)
+        self.skeleton_panel.set_streaming(active)
+
     def clear_video(self):
         super().clear_video()
         self.skeleton_panel.clear_video()

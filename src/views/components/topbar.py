@@ -1,4 +1,4 @@
-from PySide6.QtCore import QSize, Qt, Signal
+from PySide6.QtCore import QDateTime, QSize, Qt, QTimer, Signal
 from PySide6.QtWidgets import (
     QFrame,
     QHBoxLayout,
@@ -8,14 +8,16 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from src.views.components.wordmark import Wordmark
 from src.views.icons import icon
-from src.views.theme import Colors, Size, brand_logo
+from src.views.theme import Colors, Size, Space
 
 
 class Topbar(QFrame):
     """
-    Component for the application header, branding, and user session controls.
-    Emits a signal when the user requests to sign out.
+    Application header: wordmark and section name on the left, a live clock and the
+    signed-in user on the right. It is calm by design: it does not react to the
+    monitoring state. Emits a signal when the user requests to sign out.
     """
 
     logout_requested = Signal()
@@ -31,62 +33,34 @@ class Topbar(QFrame):
         self.app_tagline = app_tagline
         self._build_ui()
 
+        # Presentation-only clock, refreshed once a second.
+        self._clock_timer = QTimer(self)
+        self._clock_timer.setInterval(1000)
+        self._clock_timer.timeout.connect(self._tick)
+        self._clock_timer.start()
+        self._tick()
+
     @staticmethod
     def _separator() -> QFrame:
         line = QFrame()
         line.setObjectName("topbarSep")
-        line.setFixedSize(1, 24)
+        line.setFixedSize(1, 28)
         return line
-
-    def _build_brand(self) -> QWidget:
-        container = QWidget()
-        layout = QHBoxLayout(container)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(12)
-        layout.setAlignment(Qt.AlignmentFlag.AlignVCenter)
-
-        # Logo when the asset exists, otherwise a lettermark tile (styled in QSS).
-        brand_mark = QLabel()
-        brand_mark.setObjectName("brandMark")
-        logo = brand_logo(Size.LOGO_TOPBAR)
-        if logo is not None:
-            brand_mark.setPixmap(logo)
-            brand_mark.setProperty("hasLogo", True)
-        else:
-            brand_mark.setText(self.app_name[:1].upper())
-        brand_mark.setFixedSize(Size.LOGO_TOPBAR, Size.LOGO_TOPBAR)
-        brand_mark.setAlignment(Qt.AlignmentFlag.AlignCenter)
-
-        text = QVBoxLayout()
-        text.setSpacing(1)
-        text.setContentsMargins(0, 0, 0, 0)
-        text.setAlignment(Qt.AlignmentFlag.AlignVCenter)
-
-        title = QLabel(self.app_name)
-        title.setObjectName("appTitle")
-        tagline = QLabel(self.app_tagline)
-        tagline.setObjectName("appSubtitle")
-        text.addWidget(title)
-        text.addWidget(tagline)
-
-        layout.addWidget(brand_mark)
-        layout.addLayout(text)
-        return container
 
     def _build_session(self) -> QWidget:
         container = QWidget()
         layout = QHBoxLayout(container)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(12)
+        layout.setSpacing(10)
         layout.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
 
         avatar = QLabel(self.user_name[0].upper() if self.user_name else "U")
         avatar.setObjectName("avatar")
-        avatar.setFixedSize(40, 40)
+        avatar.setFixedSize(34, 34)
         avatar.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         identity = QVBoxLayout()
-        identity.setSpacing(2)
+        identity.setSpacing(1)
         identity.setContentsMargins(0, 0, 0, 0)
         identity.setAlignment(Qt.AlignmentFlag.AlignVCenter)
 
@@ -99,31 +73,48 @@ class Topbar(QFrame):
             role_lbl.setObjectName("userRole")
             identity.addWidget(role_lbl)
 
-        self.btn_logout = QPushButton("Sign Out")
+        self.btn_logout = QPushButton("Sign out")
         self.btn_logout.setObjectName("ghost")
         self.btn_logout.setFixedHeight(Size.CONTROL)
         self.btn_logout.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.btn_logout.setIcon(icon("logout", Colors.ON_GHOST, 18))
-        self.btn_logout.setIconSize(QSize(18, 18))
+        self.btn_logout.setIcon(icon("logout", Colors.ON_GHOST, 16))
+        self.btn_logout.setIconSize(QSize(16, 16))
+        self.btn_logout.setToolTip("Sign out of this session")
         self.btn_logout.clicked.connect(self.logout_requested.emit)
 
         layout.addWidget(avatar)
         layout.addLayout(identity)
-        layout.addSpacing(12)
-        layout.addWidget(self._separator())
-        layout.addSpacing(12)
+        layout.addSpacing(14)
         layout.addWidget(self.btn_logout)
         return container
 
     def _build_ui(self):
-        layout = QHBoxLayout(self)
-        layout.setContentsMargins(24, 0, 20, 0)
-        layout.setSpacing(16)
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(0, 0, 0, 0)
+        outer.setSpacing(0)
 
-        layout.addWidget(self._build_brand())
-        layout.addStretch()
-        layout.addWidget(self._build_session())
+        row = QHBoxLayout()
+        row.setContentsMargins(Space.PAGE, 0, Space.PAGE, 0)
+        row.setSpacing(16)
 
+        row.addWidget(Wordmark(self.app_name, self.app_tagline))
+        row.addStretch()
+
+        self.clock_label = QLabel("")
+        self.clock_label.setObjectName("clock")
+        self.clock_label.setToolTip("Local time")
+        row.addWidget(self.clock_label)
+        row.addSpacing(6)
+        row.addWidget(self._separator())
+        row.addSpacing(6)
+        row.addWidget(self._build_session())
+        outer.addLayout(row, 1)
+
+    def _tick(self):
+        self.clock_label.setText(QDateTime.currentDateTime().toString("yyyy-MM-dd  HH:mm:ss"))
+
+    # ------------------------------------------------------------------ state
+    # Kept so the owning view can keep calling them; the header shows no state indicator.
     def set_monitoring_state(self, active: bool):
         pass
 

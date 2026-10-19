@@ -17,7 +17,7 @@ class SystemStatusCard(QFrame):
     def _build_ui(self):
         sc_layout = QVBoxLayout(self)
         sc_layout.setContentsMargins(*Space.PANEL)
-        sc_layout.setSpacing(8)
+        sc_layout.setSpacing(10)
 
         sc_header_layout = QHBoxLayout()
         sc_header_layout.setSpacing(8)

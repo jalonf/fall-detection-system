@@ -46,7 +46,7 @@ class Toast(QFrame):
         self._target = QPoint(0, 0)
 
         root = QHBoxLayout(self)
-        root.setContentsMargins(14, 14, 10, 14)
+        root.setContentsMargins(14, 12, 10, 12)
         root.setSpacing(12)
 
         self.icon_label = QLabel()
@@ -78,7 +78,7 @@ class Toast(QFrame):
         self.btn_close.clicked.connect(self.dismiss)
         root.addWidget(self.btn_close, 0, Qt.AlignmentFlag.AlignTop)
 
-        apply_shadow(self, blur=28, y=8, alpha=38)
+        apply_shadow(self, blur=28, y=8, alpha=60)
 
         self._timer = QTimer(self)
         self._timer.setSingleShot(True)

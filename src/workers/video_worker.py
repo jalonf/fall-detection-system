@@ -4,9 +4,9 @@ import time
 from typing import Any
 
 import cv2
-import mediapipe as mp
 import numpy as np
 from mediapipe.framework.formats import landmark_pb2
+from mediapipe.python.solutions import drawing_utils, pose
 from PySide6.QtCore import QThread, Signal, Slot
 from PySide6.QtGui import QImage
 
@@ -18,8 +18,8 @@ from src.workers.strategies import LowRiskStrategy, MonitoringStrategy
 logger = logging.getLogger(__name__)
 
 pb2: Any = landmark_pb2
-mp_drawing: Any = mp.solutions.drawing_utils #type: ignore
-mp_pose: Any = mp.solutions.pose #type: ignore
+mp_drawing: Any = drawing_utils
+mp_pose: Any = pose
 
 class VideoWorker(QThread, EventSubject):
     """
