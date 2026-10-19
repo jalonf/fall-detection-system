@@ -1,6 +1,6 @@
 import logging
 import sys
-
+import os
 from PySide6.QtWidgets import QApplication, QMainWindow
 
 from src.controllers.admin_controller import AdminController
@@ -15,6 +15,9 @@ from src.views.auth_view import AuthView
 from src.views.monitor_view import MonitorView
 from src.views.theme import ThemeManager
 
+
+os.environ.setdefault("TF_ENABLE_ONEDNN_OPTS", "0")
+os.environ.setdefault("TF_CPP_MIN_LOG_LEVEL", "2")
 logger = logging.getLogger(__name__)
 
 
