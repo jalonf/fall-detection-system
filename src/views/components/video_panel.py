@@ -221,7 +221,7 @@ class VideoPanel(QFrame):
         cam_label.setObjectName("fieldLabel")
 
         self.camera_select = QComboBox()
-        self.camera_select.addItems(["Camera 0 (Built-in)", "Camera 1 (USB)", "IP Stream"])
+        self.camera_select.addItems(["Camera 0 (Built-in)", "Camera 1 (USB)"])
         self.camera_select.setFixedHeight(Size.CONTROL)
         self.camera_select.setFixedWidth(196)
         self.camera_select.setCursor(Qt.CursorShape.PointingHandCursor)

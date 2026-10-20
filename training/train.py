@@ -1,14 +1,20 @@
 import os
+
 os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 
 import logging
+
+import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
 from keras import layers, models
+from sklearn.metrics import (
+    ConfusionMatrixDisplay,
+    classification_report,
+    confusion_matrix,
+)
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import classification_report, confusion_matrix, ConfusionMatrixDisplay
-import matplotlib.pyplot as plt
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger(__name__)
@@ -33,7 +39,7 @@ def train_fall_detector(processed_dir: str, model_save_path: str, seq_len: int, 
     # 1. Load dataset
     try:
         X, y = load_dataset(processed_dir)
-    except Exception as e:
+    except FileNotFoundError as e:
         logger.error("%s", e)
         return
 
@@ -77,7 +83,7 @@ def train_fall_detector(processed_dir: str, model_save_path: str, seq_len: int, 
 
     # 5. Evaluate best model on validation set
     logger.info("Evaluating best model for %s...", mode_name)
-    best_model = tf.keras.models.load_model(MODEL_SAVE_PATH_STR := model_save_path, compile=False)
+    best_model = tf.keras.models.load_model(model_save_path, compile=False)
     y_pred = (best_model.predict(X_val) >= 0.5).astype(int).flatten()
 
     cm = confusion_matrix(y_val, y_pred)
@@ -90,14 +96,14 @@ def train_fall_detector(processed_dir: str, model_save_path: str, seq_len: int, 
     os.makedirs(docs_sub_dir, exist_ok=True)
     
     # Confusion Matrix Plot
-    fig, ax = plt.subplots(figsize=(6, 4))
+    _, ax = plt.subplots(figsize=(6, 4))
     ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=["ADL", "Fall"]).plot(cmap=plt.cm.Blues, ax=ax, colorbar=False)
     plt.title(f"Confusion Matrix - {mode_name}")
     plt.savefig(os.path.join(docs_sub_dir, "confusion_matrix.png"), dpi=300, bbox_inches='tight')
     plt.close()
 
     # Training Curves Plot
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 4))
+    _, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 4))
     ax1.plot(history.history['loss'], label='Train')
     ax1.plot(history.history['val_loss'], label='Val', linestyle='--')
     ax1.set_title(f'Loss Evolution ({mode_name})')

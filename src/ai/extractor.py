@@ -15,11 +15,16 @@ from mediapipe.tasks.python.vision.pose_landmarker import (
     PoseLandmarkerOptions,
 )
 
-from src.dtos.squeleton import Skeleton
-
 load_dotenv()
 
 logger = logging.getLogger(__name__)
+
+LEFT_HIP, RIGHT_HIP = 23, 24
+
+
+def center_on_hips(coords: np.ndarray) -> np.ndarray:
+    """Moves the pose so the midpoint of the hips is the origin (where the person stands no longer matters)."""
+    return coords - (coords[LEFT_HIP] + coords[RIGHT_HIP]) / 2
 
 
 class MediaPipeExtractor:
@@ -51,7 +56,7 @@ class MediaPipeExtractor:
         self._last_timestamp_ms = 0
         logger.info("MediaPipe PoseLandmarker successfully initialized.")
 
-    def extract_skeleton(self, frame_bgr: np.ndarray) -> tuple[Skeleton | None, list | None]:
+    def extract_pose(self, frame_bgr: np.ndarray) -> tuple[np.ndarray | None, list | None]:
         """
         Processes a BGR frame, calculating a safe monotonic timestamp resistant to frame drops or FPS drops.
 
@@ -59,7 +64,8 @@ class MediaPipeExtractor:
             frame_bgr (np.ndarray): Raw OpenCV frame (H, W, 3) in BGR format.
 
         Returns:
-            Tuple[Optional[Skeleton], Optional[list]]: Normalized 3D skeleton and 2D landmarks.
+            The model input, 33x3 coordinates in meters centred on the hips, and the
+            2D screen-space landmarks used for drawing. Both are None when no person is found.
         """
         # 1. Ensure memory continuity and color conversion
         frame_rgb = np.ascontiguousarray(cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB))
@@ -78,33 +84,14 @@ class MediaPipeExtractor:
             logger.debug("No pose detected in the current frame.")
             return None, None
 
-        # 4. Efficient extraction of 3D world landmarks (in meters)
+        # 4. 3D world landmarks (in meters), centred on the hips: the model input
         landmarks_3d = result.pose_world_landmarks[0]
-        num_landmarks = len(landmarks_3d)
-        
-        coords_3d = np.empty((num_landmarks, 3), dtype=np.float32)
-        visibility = np.empty(num_landmarks, dtype=np.float32)
+        pose = center_on_hips(np.array([(lm.x, lm.y, lm.z) for lm in landmarks_3d], dtype=np.float32))
 
-        for i, lm in enumerate(landmarks_3d):
-            coords_3d[i, 0] = lm.x
-            coords_3d[i, 1] = lm.y
-            coords_3d[i, 2] = lm.z
-            visibility[i] = lm.visibility if lm.visibility is not None else 0.0
-
-        # Creation and normalization of the skeleton DTO
-        skeleton = Skeleton(
-            coordinates_3d=coords_3d, visibility=visibility
-        ).normalize_center_of_mass()
-
-        # 5. Normalized 2D screen-space landmarks for optional visualization
+        # 5. Normalized 2D screen-space landmarks for drawing
         landmarks_2d = result.pose_landmarks[0]
 
-        return skeleton, landmarks_2d
-
-    def reset_sequence(self) -> None:
-        """Resets the timestamp tracking if you radically change the video source."""
-        self._last_timestamp_ms = 0
-        logger.info("Extractor timestamp sequence reset.")
+        return pose, landmarks_2d
 
     def release(self) -> None:
         """Safely releases underlying C++ native resources."""

@@ -1,12 +1,14 @@
 import os
+
 os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 os.environ["GLOG_minloglevel"] = "3"
 
 import logging
+from pathlib import Path
+
 import cv2
 import numpy as np
-from pathlib import Path
 from tqdm import tqdm
 
 from src.ai.extractor import MediaPipeExtractor
@@ -72,9 +74,9 @@ def process_dataset(dataset_root: str, output_dir: str, target_fps: int = 30) ->
                     if not ret or frame is None:
                         break
                         
-                    skeleton, _ = extractor.extract_skeleton(frame_bgr=frame)
-                    if skeleton is not None:
-                        raw_frames.append(skeleton.coordinates_3d.flatten())
+                    pose, _ = extractor.extract_pose(frame_bgr=frame)
+                    if pose is not None:
+                        raw_frames.append(pose.flatten())
                     else:
                         if raw_frames:
                             raw_frames.append(raw_frames[-1])

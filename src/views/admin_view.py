@@ -1,5 +1,5 @@
 from src.views.base_monitor_view import BaseMonitorView
-from src.views.components.squeleton_panel import SkeletonPanel
+from src.views.components.skeleton_panel import SkeletonPanel
 
 
 class AdminView(BaseMonitorView):

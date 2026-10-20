@@ -83,7 +83,7 @@ class BaseVideoWorker(QThread):
         started = time.perf_counter()
 
         # 1. Pose. If MediaPipe finds nobody, keep the last pose so the drawing does not flicker.
-        skeleton, landmarks = self.extractor.extract_skeleton(frame_bgr=frame)
+        pose, landmarks = self.extractor.extract_pose(frame_bgr=frame)
         landmarks = landmarks or self.last_known_landmarks
         self.last_known_landmarks = landmarks
 
@@ -93,8 +93,8 @@ class BaseVideoWorker(QThread):
 
         # 3. Model: add the pose to the window and ask for a prediction once it is full.
         #    The prediction runs in another thread; here we only read its latest result.
-        if skeleton is not None:
-            pose_values = skeleton.to_array().flatten()
+        if pose is not None:
+            pose_values = pose.flatten()
             if pose_values.size == POSE_VALUES:
                 self.sequence_buffer.append(pose_values)
         if len(self.sequence_buffer) == self.seq_len:
