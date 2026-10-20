@@ -5,7 +5,7 @@ from pathlib import Path
 import resend
 from dotenv import load_dotenv
 
-from src.notifications.template import render_fall_alert_email
+from src.notifications.template import BRAND_NAME, render_fall_alert_email
 
 load_dotenv()
 
@@ -30,7 +30,7 @@ class EmailNotifier:
         self.email = email
         self.api_key = os.getenv("RESEND_API_KEY", "")
         self.from_email = os.getenv(
-            "RESEND_FROM_EMAIL", "Safeguard Alerts <onboarding@resend.dev>"
+            "RESEND_FROM_EMAIL", f"{BRAND_NAME} Alerts <onboarding@resend.dev>"
         )
         resend.api_key = self.api_key
 
@@ -59,7 +59,7 @@ class EmailNotifier:
         params: resend.Emails.SendParams = {
             "from": self.from_email,
             "to": [self.email],
-            "subject": f"Safeguard: Fall Alert - {patient_name}",
+            "subject": f"{BRAND_NAME}: Fall Alert - {patient_name}",
             "html": html_content,
             "text": plain_text,
         }

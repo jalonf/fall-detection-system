@@ -14,6 +14,7 @@ from PySide6.QtGui import QImage
 from src.ai.extractor import MediaPipeExtractor
 from src.notifications.email_notifier import EmailNotifier, fall_event_data
 from src.repositories.fall_repository import FallRepository
+from src.views.theme import Colors
 from src.workers.frame_utils import (
     FALL_COLOR,
     OK_COLOR,
@@ -31,8 +32,9 @@ logger = logging.getLogger(__name__)
 
 SNAPSHOT_DIR = Path(__file__).resolve().parents[2] / "snapshots"
 
-SKELETON_BACKGROUND = (59, 41, 30)   # BGR of the skeleton panel
-POSE_VALUES = 99                     # 33 landmarks x (x, y, z)
+_STAGE_RGB = bytes.fromhex(Colors.STAGE.lstrip("#"))
+SKELETON_BACKGROUND = tuple(reversed(_STAGE_RGB))   # BGR of the panel's stage, so the image blends in
+POSE_VALUES = 99                                    # 33 landmarks x (x, y, z)
 
 
 class BaseVideoWorker(QThread):

@@ -17,9 +17,7 @@ from src.views.components.pose_backdrop import PoseBackdrop
 from src.views.components.register_form import RegisterForm
 from src.views.components.toast import Toast
 from src.views.components.wordmark import Wordmark
-from src.views.theme import APP_NAME, Size, apply_shadow
-
-APP_TAGLINE = "Fall Detection System"
+from src.views.theme import APP_DESCRIPTION, APP_NAME, Size, apply_shadow
 
 
 class AuthView(QWidget):
@@ -64,19 +62,19 @@ class AuthView(QWidget):
         left_layout.setSpacing(0)
 
         left_layout.addWidget(Wordmark(APP_NAME, large=True), 0, Qt.AlignmentFlag.AlignLeft)
-        left_layout.addSpacing(44)
+        left_layout.addSpacing(32)
 
-        brand_subtitle = QLabel("Pose Analytics & Fall Detection System")
-        brand_subtitle.setObjectName("brandHeadline")
-        brand_subtitle.setWordWrap(True)
-        brand_subtitle.setMaximumWidth(460)
-        brand_subtitle.setAlignment(Qt.AlignmentFlag.AlignLeft)
-        left_layout.addWidget(brand_subtitle)
-        left_layout.addSpacing(14)
+        brand_headline = QLabel("Real-time fall detection and risk monitoring")
+        brand_headline.setObjectName("brandHeadline")
+        brand_headline.setWordWrap(True)
+        brand_headline.setMaximumWidth(460)
+        left_layout.addWidget(brand_headline)
+        left_layout.addSpacing(10)
 
         brand_desc = QLabel(
-            "An enterprise-grade computer vision platform designed for continuous safety monitoring, "
-            "leveraging gated recurrent unit neural networks and MediaPipe pipelines."
+            "Monitors patients through a camera, estimates their 3D pose with MediaPipe and "
+            "detects falls in real time with a recurrent neural network. Each patient's fall "
+            "risk sets how closely they are monitored."
         )
         brand_desc.setObjectName("brandDesc")
         brand_desc.setWordWrap(True)
@@ -91,9 +89,9 @@ class AuthView(QWidget):
         left_layout.addWidget(self.pose_figure, 1)
         left_layout.addSpacing(22)
 
-        tech_pill = QLabel("Powered by MediaPipe & PySide6")
-        tech_pill.setObjectName("techPill")
-        left_layout.addWidget(tech_pill, 0, Qt.AlignmentFlag.AlignLeft)
+        tech_credit = QLabel("Built with MediaPipe, TensorFlow and PySide6")
+        tech_credit.setObjectName("techCredit")
+        left_layout.addWidget(tech_credit, 0, Qt.AlignmentFlag.AlignLeft)
 
         # ---- Right: floating form card ----
         right_area = QWidget()
@@ -138,10 +136,11 @@ class AuthView(QWidget):
 
         self.panel_layout.addWidget(self.stacked, 1)
 
-        footer = QLabel(APP_TAGLINE)
-        footer.setObjectName("authFooter")
-        footer.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.panel_layout.addWidget(footer)
+        # Only shown on narrow windows, where the brand surface on the left is hidden.
+        self._footer = QLabel(f"{APP_NAME} · {APP_DESCRIPTION}")
+        self._footer.setObjectName("authFooter")
+        self._footer.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.panel_layout.addWidget(self._footer)
 
         self._brand_area = left_area
         root.addWidget(left_area, 5)
@@ -208,7 +207,9 @@ class AuthView(QWidget):
     def resizeEvent(self, event):
         """Keeps the floating toast anchored and drops the brand surface on narrow windows."""
         super().resizeEvent(event)
-        self._brand_area.setVisible(self.width() >= 900)
+        wide = self.width() >= 900
+        self._brand_area.setVisible(wide)
+        self._footer.setVisible(not wide)
         if self.toast.isVisible():
             self.toast.reposition()
 

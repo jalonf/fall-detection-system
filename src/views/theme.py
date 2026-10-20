@@ -33,7 +33,9 @@ from PySide6.QtWidgets import (
     QListView,
 )
 
-APP_NAME = "Name"
+APP_NAME = "FallSense"
+APP_NAME_ACCENT = "Sense"   # end of the name drawn in the accent colour by the wordmark
+APP_DESCRIPTION = "Fall risk assessment and detection"
 
 
 class Colors:
@@ -142,6 +144,9 @@ class Fonts:
         "Segoe UI Variable Display", "Segoe UI Semibold", "Segoe UI", "Inter",
         "SF Pro Display", "Helvetica Neue", "Roboto", "sans-serif",
     )
+    # "Segoe UI Variable Display" only ships Regular and Bold, so weight 600 renders as Bold.
+    # Its real semibold is a family of its own, listed first here.
+    DISPLAY_SEMIBOLD_FAMILIES = ("Segoe UI Variable Display Semibold", *DISPLAY_FAMILIES[1:])
     MONO_FAMILIES = ("Cascadia Mono", "SF Mono", "Consolas", "Menlo", "monospace")
 
 
@@ -274,6 +279,7 @@ class ThemeManager:
                 tokens[f"RADIUS_{name}"] = f"{value}px"
         tokens["FONT_UI"] = _css_families(Fonts.UI_FAMILIES)
         tokens["FONT_DISPLAY"] = _css_families(Fonts.DISPLAY_FAMILIES)
+        tokens["FONT_DISPLAY_SEMIBOLD"] = _css_families(Fonts.DISPLAY_SEMIBOLD_FAMILIES)
         tokens["FONT_MONO"] = _css_families(Fonts.MONO_FAMILIES)
         tokens.update(cls._render_glyphs())
         return tokens

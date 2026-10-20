@@ -121,7 +121,7 @@ def train_fall_detector(processed_dir: str, model_save_path: str, seq_len: int, 
 
 
 if __name__ == "__main__":
-    logger.info("Starting Safeguard Dual-Mode Training Pipeline")
+    logger.info("Starting FallSense Dual-Mode Training Pipeline")
     
     # 1. Train High-Risk Model (30 FPS, window size 30)
     train_fall_detector(

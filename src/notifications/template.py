@@ -2,15 +2,15 @@
 
 from html import escape
 
-from src.views.theme import Colors
+from src.views.theme import APP_DESCRIPTION, APP_NAME, Colors
 
 # E-mail clients ignore custom fonts and stylesheets, so every style is inline and the
 # stacks below mirror the ones in `views.theme.Fonts` (Segoe UI first, system fallbacks).
 _FONT_UI = "'Segoe UI', -apple-system, BlinkMacSystemFont, Inter, 'Helvetica Neue', Roboto, Arial, sans-serif"
 _FONT_MONO = "'Cascadia Mono', 'SF Mono', Consolas, Menlo, monospace"
 
-BRAND_NAME = "Safeguard"
-BRAND_CAPTION = "Fall detection"
+BRAND_NAME = APP_NAME
+BRAND_CAPTION = APP_DESCRIPTION
 
 
 def render_fall_alert_email(

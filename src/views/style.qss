@@ -63,11 +63,10 @@ QLabel#metricValue {
 QLabel#metricValue[empty="true"] { color: @TEXT_SUBTLE@; font-weight: 400; }
 
 /* ============================================================
-   WORDMARK  (typographic only: a short accent bar and the application name)
+   WORDMARK  (logo drawn in code, and the name with its ending in the accent colour)
    ============================================================ */
-QFrame#wordmarkBar     { background-color: @PRIMARY@; border: none; border-radius: 1px; }
-QLabel#wordmark        { font-family: @FONT_DISPLAY@; font-size: 16px; font-weight: 600; color: @TEXT_MAIN@; }
-QLabel#wordmarkLarge   { font-family: @FONT_DISPLAY@; font-size: 22px; font-weight: 600; color: @TEXT_MAIN@; }
+QLabel#wordmark        { font-family: @FONT_DISPLAY@; font-size: 16px; font-weight: 700; color: @TEXT_MAIN@; }
+QLabel#wordmarkLarge   { font-family: @FONT_DISPLAY@; font-size: 32px; font-weight: 700; color: @TEXT_MAIN@; }
 QFrame#wordmarkDivider { background-color: @BORDER_STRONG@; border: none; }
 QLabel#wordmarkCaption { font-size: 12px; color: @TEXT_MUTED@; }
 
@@ -101,17 +100,9 @@ QFrame#authCard {
     border-radius: @RADIUS_LG@;
 }
 
-QLabel#brandHeadline { font-family: @FONT_DISPLAY@; font-size: 28px; font-weight: 600; color: @TEXT_MAIN@; }
+QLabel#brandHeadline { font-family: @FONT_DISPLAY_SEMIBOLD@; font-size: 20px; font-weight: 600; color: @TEXT_MAIN@; }
 QLabel#brandDesc     { font-size: 14px; color: @TEXT_BODY@; }
-QLabel#techPill {
-    background-color: @SURFACE@;
-    border: 1px solid @BORDER_STRONG@;
-    border-radius: @RADIUS_SM@;
-    color: @TEXT_MUTED@;
-    padding: 6px 14px;
-    font-size: 12px;
-    font-weight: 600;
-}
+QLabel#techCredit    { font-size: 12px; color: @TEXT_SUBTLE@; }
 
 QLabel#formTitle    { font-family: @FONT_DISPLAY@; font-size: 24px; font-weight: 600; color: @TEXT_MAIN@; }
 QLabel#formSubtitle { font-size: 14px; color: @TEXT_MUTED@; }

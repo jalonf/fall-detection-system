@@ -14,18 +14,19 @@ from src.database.models.user import User
 from src.router.router import ViewRouter
 from src.views.admin_view import AdminView
 from src.views.auth_view import AuthView
+from src.views.components.wordmark import brand_icon
 from src.views.monitor_view import MonitorView
-from src.views.theme import ThemeManager
+from src.views.theme import APP_NAME, ThemeManager
 
 os.environ.setdefault("TF_ENABLE_ONEDNN_OPTS", "0")
 os.environ.setdefault("TF_CPP_MIN_LOG_LEVEL", "2")
 logger = logging.getLogger(__name__)
 
 
-class ExampleApp(QMainWindow):
+class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("EXAMPLE")
+        self.setWindowTitle(APP_NAME)
         self.setMinimumSize(1120, 720)
         self.resize(1280, 820)
         
@@ -107,10 +108,11 @@ if __name__ == "__main__":
     app = QApplication(sys.argv)
     
     ThemeManager.setup_theme(app)
+    app.setWindowIcon(brand_icon())
 
     databaseManager.init_tables([User, Patient, FallEvent])
     
-    window = ExampleApp()
+    window = MainWindow()
     window.showMaximized()
     
     logger.info("Application main event loop started.")
