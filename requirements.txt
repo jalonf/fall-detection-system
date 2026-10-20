@@ -1,5 +1,7 @@
-# Runtime dependencies of the application. Only the packages the code imports are
-# listed; pip resolves their own dependencies.
+# Dependencies of the project. Only the packages the code imports are listed;
+# pip resolves their own dependencies.
+
+# Application
 PySide6-Essentials==6.11.1
 # mediapipe depends on the contrib build of OpenCV. Do not add opencv-python as well:
 # both install the same `cv2` module and overwrite each other.
@@ -11,3 +13,8 @@ peewee==4.3.0
 bcrypt==5.0.0
 python-dotenv==1.0.1
 resend==2.50.0
+
+# Training scripts (training/)
+scikit-learn==1.6.1
+matplotlib==3.11.1
+tqdm==4.67.1

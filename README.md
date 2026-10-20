@@ -106,9 +106,7 @@ fall-detection-system/
 ├── training/
 │   ├── preprocess.py       # Videos → pose sequences (.npy)
 │   └── train.py            # Trains and evaluates both GRU models
-├── tests/                  # pytest suite
-├── requirements.txt        # Application dependencies
-└── requirements-dev.txt    # Tests, linter and training dependencies
+└── requirements.txt        # Dependencies of the application and the training scripts
 ```
 
 Created at runtime and ignored by Git: `app.db` (database), `app.log` (log) and `snapshots/`
@@ -150,7 +148,6 @@ Created at runtime and ignored by Git: `app.db` (database), `app.log` (log) and 
    pip install --upgrade pip
    pip install -r requirements.txt
    ```
-   To run the tests, the linter or the training scripts, install `requirements-dev.txt` instead.
 
 4. **Create a `.env` file** in the project root:
    ```dotenv
@@ -199,14 +196,12 @@ The trained models are already in `assets/`. To train them again:
 
 ---
 
-## Tests and code quality
+## Code quality
 
 ```bash
-pip install -r requirements-dev.txt
-pytest tests/ -v
-ruff check src/ training/ tests/
+pip install ruff
+ruff check src/ training/
 ```
 
-The tests do not need a camera: the database tests use an in-memory SQLite database and the
-camera is replaced by a fake object. GitHub Actions runs the linter and the tests on every
-push and pull request to `main` (`.github/workflows/ci.yml`).
+GitHub Actions installs the dependencies and runs the linter on every push and pull request
+to `main` (`.github/workflows/ci.yml`).
