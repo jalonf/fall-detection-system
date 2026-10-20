@@ -63,6 +63,7 @@ class BaseVideoWorker(QThread):
         self.extractor = MediaPipeExtractor()
         self.inference_worker = InferenceWorker()
         self.last_known_landmarks = None
+        self.last_pose = None   # last model input seen, repeated while nobody is detected
 
         self.seq_len = 15
         self.sequence_buffer = collections.deque(maxlen=self.seq_len)
@@ -93,10 +94,12 @@ class BaseVideoWorker(QThread):
 
         # 3. Model: add the pose to the window and ask for a prediction once it is full.
         #    The prediction runs in another thread; here we only read its latest result.
-        if pose is not None:
-            pose_values = pose.flatten()
-            if pose_values.size == POSE_VALUES:
-                self.sequence_buffer.append(pose_values)
+        #    Every frame takes a slot, as in training: if MediaPipe finds nobody, the last
+        #    pose is repeated (nothing is added until someone has been seen once).
+        if pose is not None and pose.size == POSE_VALUES:
+            self.last_pose = pose.flatten()
+        if self.last_pose is not None:
+            self.sequence_buffer.append(self.last_pose)
         if len(self.sequence_buffer) == self.seq_len:
             self.inference_worker.predict(np.expand_dims(np.array(self.sequence_buffer), axis=0))
         fall_probability = self._poll_fall()
