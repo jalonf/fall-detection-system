@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 
-# Roles anyone can pick when signing up. Administrators are not created from the form.
-SELF_SERVICE_ROLES = ("Family / Caregiver", "Medical Staff")
+# Roles that can be chosen when signing up.
+USER_ROLES = ("Family / Caregiver", "Medical Staff", "Administrator")
 
 
 @dataclass

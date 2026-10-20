@@ -3,7 +3,7 @@ import logging
 from PySide6.QtCore import QTimer
 
 from src.database.database_manager import db
-from src.dtos.registration_data import SELF_SERVICE_ROLES, RegistrationData
+from src.dtos.registration_data import USER_ROLES, RegistrationData
 from src.repositories.patient_repository import PatientRepository
 from src.repositories.user_repository import UserRepository
 
@@ -47,9 +47,9 @@ class AuthController:
         """Handles new user registration and creates the associated patient."""
         logger.info("The controller is about to handle the registration process for: %s", data.email)
 
-        if data.role not in SELF_SERVICE_ROLES:
-            logger.warning("Registration rejected: role %r cannot be chosen when signing up", data.role)
-            self.view.show_error("That role cannot be chosen when signing up.")
+        if data.role not in USER_ROLES:
+            logger.warning("Registration rejected: unknown role %r", data.role)
+            self.view.show_error("Please choose a valid user role.")
             return
 
         if self.user_repo.get_user_by_email(data.email):

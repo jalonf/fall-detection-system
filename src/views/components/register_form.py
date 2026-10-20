@@ -15,7 +15,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from src.dtos.registration_data import SELF_SERVICE_ROLES, RegistrationData
+from src.dtos.registration_data import USER_ROLES, RegistrationData
 from src.views.components.auth_header import AuthHeader
 from src.views.icons import attach_leading_icon, attach_password_toggle, icon
 from src.views.theme import Colors, Size, set_prop, style_combo
@@ -140,7 +140,7 @@ class RegisterForm(QWidget):
         page_layout.addLayout(self._row(name_layout, phone_layout))
 
         self.reg_role = QComboBox()
-        self.reg_role.addItems(SELF_SERVICE_ROLES)
+        self.reg_role.addItems(USER_ROLES)
         self.reg_role.setFixedHeight(Size.FIELD)
         style_combo(self.reg_role)
         page_layout.addLayout(self._combo_field("User role", self.reg_role))

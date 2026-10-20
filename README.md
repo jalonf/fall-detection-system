@@ -165,15 +165,14 @@ From the project root:
 python -m src.main
 ```
 
-The database is created on the first run. Sign up as **Family / Caregiver** or
-**Medical Staff**, fill in the patient's data and risk level, and press **Start detection**.
+The database is created on the first run. Sign up, fill in the patient's data and risk level,
+and press **Start detection**. The role chosen at sign-up decides the screen:
 
-Administrator accounts cannot be created from the sign-up form. To turn an existing account
-into an administrator:
-
-```bash
-python -c "from src.database.models.user import User; User.update(role='Administrator').where(User.email == 'you@example.com').execute()"
-```
+| Role | Screen |
+|------|--------|
+| Family / Caregiver | Monitoring screen |
+| Medical Staff | Monitoring screen |
+| Administrator | Monitoring screen plus the skeleton panel, live telemetry and video upload |
 
 ---
 
