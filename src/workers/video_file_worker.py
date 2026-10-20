@@ -4,6 +4,7 @@ import cv2
 from PySide6.QtCore import Signal
 
 from src.workers.base_video_worker import BaseVideoWorker
+from src.workers.strategies import HighRiskStrategy, LowRiskStrategy
 
 logger = logging.getLogger(__name__)
 
@@ -38,8 +39,9 @@ class VideoFileWorker(BaseVideoWorker):
         quality_label = next((lbl for res, lbl in labels.items() if h >= res), f"Low Res ({w}x{h})")
         self.video_quality_detected.emit(quality_label, w, h)
 
-        self._load_model(15 if fps <= 20 else 30)
-
+        # Unlike the camera (configured from the patient's risk level), a file comes with
+        # its own frame rate, so the model must be the one trained for those FPS.
+        self._load_model(LowRiskStrategy() if fps <= 20 else HighRiskStrategy())
 
         while self._is_running and cap.isOpened():
             ret, frame = cap.read()

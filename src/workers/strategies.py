@@ -1,33 +1,39 @@
-from abc import ABC, abstractmethod
-
 import cv2
 
 
-class MonitoringStrategy(ABC):
-    @abstractmethod
-    def apply_config(self, cap: cv2.VideoCapture) -> None:
-        """Applies the corresponding resolution and FPS to the camera."""
+class MonitoringStrategy:
+    """
+    How to monitor a patient: camera resolution and FPS, and the model trained
+    for those FPS. Each subclass only fills in the values.
+    """
 
-    @abstractmethod
-    def get_risk_level(self) -> str:
-        pass
+    name: str
+    width: int
+    height: int
+    fps: int
+    model_path: str
+
+    def open_camera(self, camera_index: int) -> cv2.VideoCapture:
+        """Opens the camera already configured for this strategy."""
+        cap = cv2.VideoCapture(camera_index)
+        cap.set(cv2.CAP_PROP_FRAME_WIDTH, self.width)
+        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self.height)
+        cap.set(cv2.CAP_PROP_FPS, self.fps)
+        return cap
 
 
 class LowRiskStrategy(MonitoringStrategy):
-    def apply_config(self, cap: cv2.VideoCapture) -> None:
-        cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
-        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
-        cap.set(cv2.CAP_PROP_FPS, 15)
-
-    def get_risk_level(self) -> str:
-        return "LOW"
+    name = "LOW"
+    width, height, fps = 640, 480, 15
+    model_path = "assets/fall_gru_low_risk_15fps.keras"
 
 
 class HighRiskStrategy(MonitoringStrategy):
-    def apply_config(self, cap: cv2.VideoCapture) -> None:
-        cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
-        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
-        cap.set(cv2.CAP_PROP_FPS, 30)
+    name = "HIGH"
+    width, height, fps = 1280, 720, 30
+    model_path = "assets/fall_gru_high_risk_30fps.keras"
 
-    def get_risk_level(self) -> str:
-        return "HIGH"
+
+def strategy_for(risk_level: str) -> MonitoringStrategy:
+    """HIGH risk gets the high-quality camera; anything else, the low one."""
+    return HighRiskStrategy() if risk_level == "HIGH" else LowRiskStrategy()

@@ -37,3 +37,13 @@ class PatientRepository:
         if patient is None:
             logger.debug("No patient found for caregiver ID: %s", caregiver_id)
         return patient
+
+    def get_risk_level(self, patient) -> str:
+        """
+        Returns the patient's stored risk level as "HIGH" or "LOW".
+        Without a patient, or with an unknown value, it is "LOW".
+        """
+        if patient is None:
+            return "LOW"
+        stored = Patient.select(Patient.risk_level).where(Patient.id == patient.id).scalar()
+        return "HIGH" if (stored or "").strip().upper() == "HIGH" else "LOW"

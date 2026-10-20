@@ -25,6 +25,7 @@ from src.workers.frame_utils import (
     to_qimage,
 )
 from src.workers.inference_worker import InferenceWorker
+from src.workers.strategies import MonitoringStrategy
 
 logger = logging.getLogger(__name__)
 
@@ -38,8 +39,8 @@ class BaseVideoWorker(QThread):
     """
     Processes frames: pose extraction, face blur, fall inference and drawing.
 
-    Subclasses only decide where the frames come from (`run`) and which model
-    (sequence length) to load. Everything else lives here, so the fall logic exists
+    Subclasses only decide where the frames come from (`run`) and which strategy's
+    model to load. Everything else lives here, so the fall logic exists
     once and runs in a single thread (the one executing `run`).
 
     When a fall starts, the worker itself stores the capture, creates the `FallEvent`
@@ -68,12 +69,11 @@ class BaseVideoWorker(QThread):
         self.current_is_fall = False
 
 
-    def _load_model(self, seq_len: int):
-        """Loads the GRU model that matches the sequence length and starts inference."""
-        self.seq_len = seq_len
-        self.sequence_buffer = collections.deque(self.sequence_buffer, maxlen=seq_len)
-        name = "high_risk_30fps" if seq_len == 30 else "low_risk_15fps"
-        self.inference_worker.load_model(f"assets/fall_gru_{name}.keras")
+    def _load_model(self, strategy: MonitoringStrategy):
+        """Loads the GRU model of `strategy` and starts inference."""
+        self.seq_len = strategy.fps   # the model sees one second of frames
+        self.sequence_buffer = collections.deque(self.sequence_buffer, maxlen=self.seq_len)
+        self.inference_worker.load_model(strategy.model_path)
 
         if not self.inference_worker.isRunning():
             self.inference_worker.start()
@@ -162,6 +162,8 @@ class BaseVideoWorker(QThread):
         if self.user is not None:
             timestamp = datetime.now().astimezone().strftime("%d/%m/%Y %H:%M:%S")
             event_data = fall_event_data(self.patient, self.user, probability, timestamp, snapshot_path)
+
+            # Send the e-mail in a separate thread so the video does not freeze while waiting for Resend.
             threading.Thread(
                 target=self._send_alert,
                 args=(self.user.email, event_data, fall_event),

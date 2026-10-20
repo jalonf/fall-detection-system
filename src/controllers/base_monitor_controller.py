@@ -1,7 +1,8 @@
 import logging
 import os
 
-from src.workers.strategies import HighRiskStrategy, LowRiskStrategy
+from src.repositories.patient_repository import PatientRepository
+from src.workers.strategies import strategy_for
 from src.workers.video_file_worker import VideoFileWorker
 from src.workers.video_worker import VideoWorker
 
@@ -36,11 +37,10 @@ class BaseMonitorController:
             logger.warning("Attempted to start camera stream, but a worker is already active.")
             return
 
-        high_risk = str(getattr(self.patient, "risk_level", "LOW")).upper() == "HIGH"
         self._start(
             VideoWorker(
                 camera_index=camera_index,
-                strategy=HighRiskStrategy() if high_risk else LowRiskStrategy(),
+                strategy=strategy_for(PatientRepository().get_risk_level(self.patient)),
                 user=self.user,
                 patient=self.patient,
             ),
