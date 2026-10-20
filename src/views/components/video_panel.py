@@ -94,7 +94,6 @@ class VideoPanel(QFrame):
     start_requested = Signal(int)
     upload_requested = Signal(str)
     stop_requested = Signal()
-    notify_requested = Signal()
 
     def __init__(self, user_role="Family / Caregiver", parent=None):
         super().__init__(parent)
@@ -234,24 +233,14 @@ class VideoPanel(QFrame):
         # -- administrator tools
         self._tools_group = None
         if self.user_role == "Administrator":
-            # Segmented pair: the two tools read as one control.
             self._tools_group, tools = self._group(spacing=0)
 
             self.btn_upload = self._action_button(
                 "Upload video", "ghost", "upload", Colors.ON_GHOST, 130
             )
-            self.btn_upload.setProperty("segment", "first")
             self.btn_upload.setToolTip("Analyse a video file instead of a live camera")
             self.btn_upload.clicked.connect(self._open_file_dialog)
             tools.addWidget(self.btn_upload)
-
-            self.btn_notify = self._action_button(
-                "Send test alert", "ghost", "bell", Colors.ON_GHOST, 145
-            )
-            self.btn_notify.setProperty("segment", "last")
-            self.btn_notify.setToolTip("Send a sample fall alert by email")
-            self.btn_notify.clicked.connect(self.notify_requested.emit)
-            tools.addWidget(self.btn_notify)
 
         # -- run controls
         self._run_group, run = self._group()

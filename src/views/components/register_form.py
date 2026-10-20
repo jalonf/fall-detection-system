@@ -427,7 +427,7 @@ class RegisterForm(QWidget):
             is_valid = False
 
         if wants(1) and not re.match(
-            r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z]{2,}$",
+            r"^[a-zA-Z0-9_.+-]+@(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}$",
             email
         ):
             self._show_field_error(

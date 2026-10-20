@@ -6,14 +6,25 @@ import resend
 from dotenv import load_dotenv
 
 from src.notifications.template import render_fall_alert_email
-from src.patterns.observer import Observer
 
 load_dotenv()
 
 logger = logging.getLogger(__name__)
 
 
-class EmailNotifier(Observer):
+def fall_event_data(patient, user, probability: float, timestamp: str, snapshot_path: str | None) -> dict:
+    """Builds the dictionary `EmailNotifier.update` expects from a fall."""
+    return {
+        "event_name": "fall_detected",
+        "patient_name": getattr(patient, "name", None) or user.name,
+        "medical_history": getattr(patient, "medical_notes", None) or "N/A",
+        "prediction_probability": probability,
+        "timestamp": timestamp,
+        "snapshot_path": snapshot_path,
+    }
+
+
+class EmailNotifier:
 
     def __init__(self, email: str):
         self.email = email
@@ -23,7 +34,8 @@ class EmailNotifier(Observer):
         )
         resend.api_key = self.api_key
 
-    def update(self, event_data: dict) -> None:
+    def update(self, event_data: dict) -> bool:
+        """Sends the fall alert. Returns True when the e-mail was accepted by Resend."""
         patient_name = event_data.get("patient_name", "Unknown Patient")
         timestamp = event_data.get("timestamp", "Recent")
         probability = float(event_data.get("prediction_probability", 0.0))
@@ -69,5 +81,7 @@ class EmailNotifier(Observer):
         try:
             response = resend.Emails.send(params)
             logger.info("Alert email sent to %s (ID: %s)", self.email, response.get("id"))
+            return True
         except Exception as err:  # noqa: BLE001
             logger.error("Failed to send email to %s via Resend: %s", self.email, err)
+            return False

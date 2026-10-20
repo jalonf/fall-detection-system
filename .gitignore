@@ -30,3 +30,6 @@ app.db
 
 # Logs
 app.log
+
+# Fall event captures
+snapshots/

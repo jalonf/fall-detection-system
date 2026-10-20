@@ -1,4 +1,4 @@
-from PySide6.QtCore import Qt, QTimer, Signal
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import QHBoxLayout, QSizePolicy, QVBoxLayout, QWidget
 
 from src.views.components.event_log import EventLog
@@ -21,7 +21,6 @@ class BaseMonitorView(QWidget):
     logout_requested = Signal()
     start_requested = Signal(int)
     stop_requested = Signal()
-    notify_requested = Signal()
     upload_requested = Signal(str)
 
     SCREEN_NAME = "monitorScreen"
@@ -36,11 +35,6 @@ class BaseMonitorView(QWidget):
         self.user_name = user_name
         self.user_role = user_role
         self._is_monitoring = False
-        self._current_alert_msg = ""
-
-        self.alert_timer = QTimer(self)
-        self.alert_timer.timeout.connect(self._pulse_alert)
-        self._pulse_state = False
 
         self._build_ui()
 
@@ -72,7 +66,6 @@ class BaseMonitorView(QWidget):
         self.video_panel.start_requested.connect(self.start_requested.emit)
         self.video_panel.stop_requested.connect(self.stop_requested.emit)
         self.video_panel.upload_requested.connect(self.upload_requested.emit)
-        self.video_panel.notify_requested.connect(self.notify_requested.emit)
         body_layout.addWidget(self.video_panel, 3)
 
         # Right column: sidebar that flexes between a minimum and a maximum width, so the
@@ -114,28 +107,8 @@ class BaseMonitorView(QWidget):
         self.topbar.set_monitoring_state(active)
 
     def trigger_fall_alert(self, message="Possible fall detected"):
-        self._current_alert_msg = message
+        """A detected fall is reported only as an ALERT line in the event log."""
         self.event_log.add_event("ALERT", message)
-        self.video_panel.show_fall_banner(message)
-
-        self._pulse_state = False
-        self.alert_timer.start(350)
-        QTimer.singleShot(4000, self.clear_alert)
-
-    def _pulse_alert(self):
-        self._pulse_state = not self._pulse_state
-        self.video_panel.set_alert_state(self._pulse_state)
-        self.system_status.set_alert_state(self._current_alert_msg, self._pulse_state)
-        self.topbar.set_alert_state(self._pulse_state)
-
-    def clear_alert(self):
-        self.alert_timer.stop()
-        self.video_panel.reset_alert_state()
-        self.set_monitoring_state(self._is_monitoring)
-
-    def update_fall_count(self, count_str: str):
-        # Kept for API compatibility: callers may still invoke it.
-        pass
 
     def log_event(self, event_type: str, message: str):
         self.event_log.add_event(event_type, message)

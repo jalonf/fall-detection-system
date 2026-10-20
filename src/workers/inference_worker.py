@@ -2,18 +2,24 @@ import logging
 
 import numpy as np
 import tensorflow as tf
-from PySide6.QtCore import QThread, Signal
+from PySide6.QtCore import QThread
 
 logger = logging.getLogger(__name__)
 
 class InferenceWorker(QThread):
-    prediction_ready = Signal(bool, float)
+    """
+    Runs the fall model in its own thread.
+
+    The video thread hands over the newest sequence with `predict` and reads the most
+    recent result from `latest` (an `(is_fall, probability)` tuple; assigning it is atomic).
+    """
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self._is_running = True
         self.model = None
         self.current_sequence = None
+        self.latest: tuple[bool, float] | None = None
 
     def load_model(self, model_path: str):
         """Loads the Keras model directly into memory."""
@@ -33,15 +39,14 @@ class InferenceWorker(QThread):
             if self.model is not None and self.current_sequence is not None:
                 seq = self.current_sequence
                 self.current_sequence = None  # Clear to avoid repeated inference
-                
+
                 try:
                     # Direct tensor call (faster than .predict() for real-time)
                     probability = float(self.model(seq, training=False)[0][0])
-                    is_fall = probability >= 0.5
-                    self.prediction_ready.emit(is_fall, probability)
+                    self.latest = (probability >= 0.5, probability)
                 except (ValueError, TypeError, tf.errors.OpError) as e:
                     logger.error(f"Inference error: {e}")
-            
+
             # Short sleep to prevent 100% CPU usage
             self.msleep(5)
 

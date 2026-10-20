@@ -25,6 +25,14 @@ class FallRepository:
             logger.error("Could not create fall event for patient ID %s: %s", patient.id, e)
             return None
 
+    def mark_notification_sent(self, fall_event) -> None:
+        """Flags a stored fall event as notified by e-mail."""
+        try:
+            fall_event.notification_sent = True
+            fall_event.save()
+        except Exception as e:  # noqa: BLE001
+            logger.error("Could not update the notification flag of the fall event: %s", e)
+
     def get_falls_by_patient(self, patient_id):
         """Retrieves all fall event records associated with a specific patient."""
         logger.debug("Querying fall events for patient ID: %s", patient_id)

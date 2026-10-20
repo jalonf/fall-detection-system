@@ -8,6 +8,7 @@ from src.controllers.admin_controller import AdminController
 from src.controllers.auth_controller import AuthController
 from src.controllers.monitor_controller import MonitorController
 from src.database.database_manager import databaseManager
+from src.database.models.fall_event import FallEvent
 from src.database.models.patient import Patient
 from src.database.models.user import User
 from src.router.router import ViewRouter
@@ -107,7 +108,7 @@ if __name__ == "__main__":
     
     ThemeManager.setup_theme(app)
 
-    databaseManager.init_tables([User, Patient])
+    databaseManager.init_tables([User, Patient, FallEvent])
     
     window = ExampleApp()
     window.showMaximized()
