@@ -63,16 +63,8 @@ QLabel#metricValue {
 QLabel#metricValue[empty="true"] { color: @TEXT_SUBTLE@; font-weight: 400; }
 
 /* ============================================================
-   WORDMARK  (logo drawn in code, and the name with its ending in the accent colour)
-   ============================================================ */
-QLabel#wordmark        { font-family: @FONT_DISPLAY@; font-size: 16px; font-weight: 700; color: @TEXT_MAIN@; }
-QLabel#wordmarkLarge   { font-family: @FONT_DISPLAY@; font-size: 32px; font-weight: 700; color: @TEXT_MAIN@; }
-QFrame#wordmarkDivider { background-color: @BORDER_STRONG@; border: none; }
-QLabel#wordmarkCaption { font-size: 12px; color: @TEXT_MUTED@; }
-
-/* ============================================================
    AUTH SCREEN
-   Left: brand surface painted by PoseBackdrop. Right: a floating form card.
+   Left: brand panel (BrandPanel) on the canvas. Right: a floating form card.
    ============================================================ */
 QWidget#authRight,
 QWidget#brandPanel,
@@ -100,9 +92,26 @@ QFrame#authCard {
     border-radius: @RADIUS_LG@;
 }
 
-QLabel#brandHeadline { font-family: @FONT_DISPLAY_SEMIBOLD@; font-size: 20px; font-weight: 600; color: @TEXT_MAIN@; }
-QLabel#brandDesc     { font-size: 14px; color: @TEXT_BODY@; }
-QLabel#techCredit    { font-size: 12px; color: @TEXT_SUBTLE@; }
+QLabel#brandEyebrow  { font-family: @FONT_DISPLAY@; font-size: 24px; font-weight: 700; color: @TEXT_MAIN@; }
+QFrame#brandAccent   { background-color: @PRIMARY@; border: none; border-radius: 2px; }
+QLabel#brandHeadline { font-family: @FONT_DISPLAY@; font-size: 38px; font-weight: 700; color: @TEXT_MAIN@; }
+QLabel#brandDesc     { font-size: 16px; color: @TEXT_MUTED@; }
+QFrame#brandRule     { background-color: @BORDER@; border: none; }
+QLabel#brandFactValue   { font-family: @FONT_DISPLAY@; font-size: 18px; font-weight: 600; color: @TEXT_MAIN@; }
+QLabel#brandFactCaption { font-size: 12px; color: @TEXT_MUTED@; }
+
+/* Narrow and wide windows: the type of the brand column follows its width. */
+QWidget#brandPanel[scale="sm"] QLabel#brandEyebrow     { font-size: 20px; }
+QWidget#brandPanel[scale="sm"] QLabel#brandHeadline    { font-size: 28px; }
+QWidget#brandPanel[scale="sm"] QLabel#brandDesc        { font-size: 14px; }
+QWidget#brandPanel[scale="sm"] QLabel#brandFactValue   { font-size: 16px; }
+QWidget#brandPanel[scale="sm"] QLabel#brandFactCaption { font-size: 11px; }
+
+QWidget#brandPanel[scale="lg"] QLabel#brandEyebrow     { font-size: 30px; }
+QWidget#brandPanel[scale="lg"] QLabel#brandHeadline    { font-size: 48px; }
+QWidget#brandPanel[scale="lg"] QLabel#brandDesc        { font-size: 18px; }
+QWidget#brandPanel[scale="lg"] QLabel#brandFactValue   { font-size: 22px; }
+QWidget#brandPanel[scale="lg"] QLabel#brandFactCaption { font-size: 13px; }
 
 QLabel#formTitle    { font-family: @FONT_DISPLAY@; font-size: 24px; font-weight: 600; color: @TEXT_MAIN@; }
 QLabel#formSubtitle { font-size: 14px; color: @TEXT_MUTED@; }
@@ -122,20 +131,22 @@ QLabel#fieldMessage[kind="help"]  { font-size: 11px; color: @TEXT_MUTED@; }
 QLabel#fieldMessage[kind="error"] { font-size: 11px; color: @DANGER_TEXT@; }
 
 /* ============================================================
-   TOPBAR  (white header; a 2px rail along its bottom edge mirrors the system state)
+   TOPBAR  (white header closed by a hairline: section and date, time, signed-in user)
    ============================================================ */
-QFrame#topbar { background-color: @SURFACE@; border: none; }
+QFrame#topbar { background-color: @SURFACE@; border: none; border-bottom: 1px solid @BORDER@; }
 
+QFrame#topbar QLabel#topbarTitle { font-family: @FONT_DISPLAY@; font-size: 16px; font-weight: 600; color: @TEXT_MAIN@; }
+QFrame#topbar QLabel#topbarDate  { font-size: 12px; color: @TEXT_MUTED@; }
 
 QFrame#topbarSep { background-color: @BORDER@; border: none; }
 
-QLabel#clock { font-family: @FONT_MONO@; font-size: 12px; color: @TEXT_MUTED@; }
+QLabel#clock { font-family: @FONT_MONO@; font-size: 13px; font-weight: 600; color: @TEXT_LABEL@; }
 
 QLabel#avatar {
     background-color: @PRIMARY_SOFT@;
     border: 1px solid @PRIMARY_BORDER@;
     color: @PRIMARY@;
-    border-radius: @RADIUS_MD@;
+    border-radius: 17px;
     font-size: 13px;
     font-weight: 600;
 }

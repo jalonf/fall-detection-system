@@ -1,14 +1,13 @@
-from PySide6.QtCore import QPointF, QRectF, Qt
+from PySide6.QtCore import QPointF, QRectF, QSize, Qt
 from PySide6.QtGui import (
     QColor,
     QFontMetrics,
     QPainter,
     QPainterPath,
     QPen,
-    QPixmap,
     QTextOption,
 )
-from PySide6.QtWidgets import QWidget
+from PySide6.QtWidgets import QSizePolicy, QWidget
 
 from src.views.components.pose_landmarks import (
     FRAME_LABELS,
@@ -18,38 +17,37 @@ from src.views.components.pose_landmarks import (
     fall_sequence,
     mid_hip,
 )
-from src.views.theme import Colors, Radius, mono_font, ui_font, with_alpha
+from src.views.theme import Colors, mono_font, ui_font, with_alpha
 
-_GHOST_ALPHA = (95, 140, 190)     # earlier frames are fainter
-_X_SPAN = 2.35                    # width of the sequence, in body heights
+_GHOST_ALPHA = (95, 150, 215)    # earlier frames are fainter
+_X_SPAN = 2.43                    # width of the sequence, in body heights
 
-_GRID_MINOR = 20
-_GRID_MAJOR_EVERY = 5
-_RULER_X = 40.0                   # x of the height ruler; the ground line starts here
-_PAD_TOP = 46                     # room for the figure caption
-_PAD_BOTTOM = 40                  # room for the frame labels
-_CAPTION = "Fall sequence  ·  MediaPipe Pose, 33 landmarks"
+_PAD = 0                          # the figure has no frame: it sits flush with the text column
+_RULER_X = _PAD + 30.0            # x of the height ruler; the ground line starts here
+_PAD_TOP = 44                     # room for the figure caption
+_PAD_BOTTOM = 36                  # room for the frame labels
+_CAPTION = "MediaPipe Pose  ·  33 landmarks  ·  4 frames"
 
 
 class PoseBackdrop(QWidget):
     """
-    Figure plate for the authentication screen, drawn like an engineering report figure:
-    a bordered sheet with a millimetre grid, a height ruler normalised to the person, and
-    a four-frame fall rendered with the 33 MediaPipe Pose landmarks and the official
-    POSE_CONNECTIONS, the exact signal the product watches for. The path of the hip
-    centroid is traced through the frames and the last frame carries the detection box.
+    Figure of the authentication screen, drawn like a plot in a technical report: a height ruler normalised to the person and a four-frame fall rendered with the 33
+    MediaPipe Pose landmarks and the official POSE_CONNECTIONS, the exact signal the
+    product watches for. The path of the hip centroid is traced through the frames and
+    the last frame carries the detection box.
 
-    The plate fills the widget, so the owner places it below the brand copy. It is fully
-    static: nothing animates and it only repaints when resized.
+    It paints no background: the plot sits directly on the canvas and is drawn in the
+    accent blue so it reads as part of it. It is fully static: nothing animates and it only repaints when resized.
     """
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setMinimumHeight(280)
-
+        self.setMinimumHeight(240)
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
         self._frames = fall_sequence()
-        self._grid: QPixmap | None = None
-        self._grid_key = None
+
+    def sizeHint(self):
+        return QSize(720, 360)
 
     # ------------------------------------------------------------------ paint
     def paintEvent(self, event):
@@ -57,65 +55,25 @@ class PoseBackdrop(QWidget):
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
 
         w, h = float(self.width()), float(self.height())
-        sheet = QRectF(0.5, 0.5, w - 1.0, h - 1.0)
-        clip = QPainterPath()
-        clip.addRoundedRect(sheet, Radius.LG, Radius.LG)
-
-        # Everything inside the sheet is clipped to its rounded outline.
-        painter.save()
-        painter.setClipPath(clip)
-        painter.fillRect(QRectF(0, 0, w, h), QColor(Colors.SURFACE))
-        painter.drawPixmap(0, 0, self._grid_pixmap(int(w), int(h)))
-
-        floor_y = h - _PAD_BOTTOM
-        body_h = max(110.0, min((floor_y - _PAD_TOP) / 0.97, w * 0.78 / _X_SPAN))
-        ruler_x = _RULER_X
-        # Centre the sequence (it spans x = -0.07 .. 2.21 body heights around the pelvis of
-        # the first frame), but never closer to the height ruler than a fixed gap.
-        x0 = max(w * 0.5 - 1.07 * body_h, ruler_x + 52.0 + 0.07 * body_h)
+        # The sequence spans x = -0.07 .. 2.29 body heights around the pelvis of the first
+        # frame, plus the detection box around the last one.
+        avail = h - _PAD_TOP - _PAD_BOTTOM
+        body_h = max(110.0, min(avail / 0.97, (w - _RULER_X - _PAD - 40.0) / _X_SPAN))
+        # When the width is the limit, centre the plot vertically instead of leaving the gap on top.
+        floor_y = _PAD_TOP + (avail + 0.97 * body_h) / 2.0
+        free = w - _PAD - _RULER_X - 2.36 * body_h
+        x0 = _RULER_X + free / 2.0 + 0.07 * body_h
 
         self._paint_caption(painter)
-        self._paint_ruler(painter, ruler_x, floor_y, body_h)
+        self._paint_ruler(painter, _RULER_X, floor_y, body_h)
         self._paint_sequence(painter, w, floor_y, body_h, x0)
-        painter.restore()
-
-        painter.setPen(QPen(QColor(Colors.BORDER_STRONG), 1))
-        painter.setBrush(Qt.BrushStyle.NoBrush)
-        painter.drawRoundedRect(sheet, Radius.LG, Radius.LG)
         painter.end()
-
-    def _grid_pixmap(self, w: int, h: int) -> QPixmap:
-        """Millimetre grid, cached per size and device pixel ratio."""
-        dpr = self.devicePixelRatioF()
-        key = (w, h, dpr)
-        if self._grid is not None and self._grid_key == key:
-            return self._grid
-
-        pixmap = QPixmap(max(1, int(w * dpr)), max(1, int(h * dpr)))
-        pixmap.setDevicePixelRatio(dpr)
-        pixmap.fill(Qt.GlobalColor.transparent)
-
-        painter = QPainter(pixmap)
-        painter.setRenderHint(QPainter.RenderHint.Antialiasing, False)
-        minor = QPen(with_alpha(Colors.BORDER, 150), 1)
-        major = QPen(with_alpha(Colors.BORDER_STRONG, 120), 1)
-        for index, x in enumerate(range(0, w + 1, _GRID_MINOR)):
-            painter.setPen(major if index % _GRID_MAJOR_EVERY == 0 else minor)
-            painter.drawLine(x, 0, x, h)
-        for index, y in enumerate(range(0, h + 1, _GRID_MINOR)):
-            painter.setPen(major if index % _GRID_MAJOR_EVERY == 0 else minor)
-            painter.drawLine(0, y, w, y)
-        painter.end()
-
-        self._grid, self._grid_key = pixmap, key
-        return pixmap
 
     @staticmethod
     def _paint_caption(painter: QPainter):
-        font = mono_font(11)
-        painter.setFont(font)
+        painter.setFont(mono_font(11))
         painter.setPen(QColor(Colors.TEXT_MUTED))
-        painter.drawText(QPointF(18, 28), _CAPTION)
+        painter.drawText(QPointF(_PAD, 12), _CAPTION)
 
     @staticmethod
     def _paint_ruler(painter: QPainter, x: float, floor_y: float, body_h: float):
@@ -135,12 +93,6 @@ class PoseBackdrop(QWidget):
             if i % 2 == 0:
                 label = f"{value:.1f}"
                 label_w = metrics.horizontalAdvance(label)
-                # Plate-coloured backing, so a grid line passing through the value never
-                # strikes it out.
-                painter.fillRect(
-                    QRectF(x - label_w - 10, y - metrics.height() / 2.0, label_w + 8, metrics.height()),
-                    QColor(Colors.SURFACE),
-                )
                 painter.drawText(
                     QPointF(x - label_w - 6, y + metrics.ascent() / 2 - 1),
                     label,
@@ -150,9 +102,15 @@ class PoseBackdrop(QWidget):
         def canvas(point):
             return QPointF(x0 + point[0] * body_h, floor_y - point[1] * body_h)
 
+        # Faint guides at the ruler's labelled heights
+        painter.setPen(QPen(with_alpha(Colors.BORDER_STRONG, 150), 1, Qt.PenStyle.DotLine))
+        for value in (0.5, 1.0):
+            y = floor_y - value * body_h
+            painter.drawLine(QPointF(_RULER_X, y), QPointF(w - _PAD, y))
+
         # Ground line
-        painter.setPen(QPen(QColor(Colors.BORDER_HOVER), 1.4))
-        painter.drawLine(QPointF(_RULER_X, floor_y), QPointF(w - 14, floor_y))
+        painter.setPen(QPen(QColor(Colors.BORDER_STRONG), 1.4))
+        painter.drawLine(QPointF(_RULER_X, floor_y), QPointF(w - _PAD, floor_y))
 
         label_font = mono_font(10)
         centroids = []
@@ -207,7 +165,7 @@ class PoseBackdrop(QWidget):
         """Dashed path of the hip centroid (the signal the detector follows) with a marker per frame."""
         if len(centroids) < 2:
             return
-        pen = QPen(with_alpha(Colors.PRIMARY, 200), 1.2, Qt.PenStyle.DashLine)
+        pen = QPen(with_alpha(Colors.PRIMARY, 190), 1.2, Qt.PenStyle.DashLine)
         painter.setPen(pen)
         painter.setBrush(Qt.BrushStyle.NoBrush)
         path = QPainterPath(centroids[0])
@@ -215,14 +173,14 @@ class PoseBackdrop(QWidget):
             path.lineTo(point)
         painter.drawPath(path)
 
-        painter.setPen(QPen(QColor(Colors.PRIMARY), 1.4))
-        painter.setBrush(QColor(Colors.SURFACE))
+        painter.setPen(QPen(QColor(Colors.PRIMARY), 1.6))
+        painter.setBrush(QColor(Colors.BACKGROUND))
         for point in centroids:
             painter.drawEllipse(point, 3.6, 3.6)
 
     @staticmethod
     def _draw_detection_box(painter: QPainter, points):
-        pad = 14.0
+        pad = 12.0
         left = min(p.x() for p in points) - pad
         right = max(p.x() for p in points) + pad
         top = min(p.y() for p in points) - pad

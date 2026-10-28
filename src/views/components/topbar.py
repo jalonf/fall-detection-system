@@ -1,4 +1,4 @@
-from PySide6.QtCore import QDateTime, QSize, Qt, QTimer, Signal
+from PySide6.QtCore import QDateTime, QLocale, QSize, Qt, QTimer, Signal
 from PySide6.QtWidgets import (
     QFrame,
     QHBoxLayout,
@@ -8,29 +8,27 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from src.views.components.wordmark import Wordmark
 from src.views.icons import icon
 from src.views.theme import Colors, Size, Space
 
 
 class Topbar(QFrame):
     """
-    Application header: wordmark and section name on the left, a live clock and the
-    signed-in user on the right. It is calm by design: it does not react to the
-    monitoring state. Emits a signal when the user requests to sign out.
+    Application header: the name of the current section and today's date on the left,
+    the time and the signed-in user on the right. It is calm by design: it does not
+    react to the monitoring state. Emits a signal when the user requests to sign out.
     """
 
     logout_requested = Signal()
 
-    def __init__(self, app_name, app_tagline, user_name, parent=None, *, user_role=""):
+    def __init__(self, section_title, user_name, parent=None, *, user_role=""):
         super().__init__(parent)
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         self.setObjectName("topbar")
         self.setFixedHeight(Size.TOPBAR)
+        self.section_title = section_title
         self.user_name = user_name
         self.user_role = user_role
-        self.app_name = app_name
-        self.app_tagline = app_tagline
         self._build_ui()
 
         # Presentation-only clock, refreshed once a second.
@@ -44,8 +42,24 @@ class Topbar(QFrame):
     def _separator() -> QFrame:
         line = QFrame()
         line.setObjectName("topbarSep")
-        line.setFixedSize(1, 28)
+        line.setFixedSize(1, 24)
         return line
+
+    def _build_section(self) -> QWidget:
+        container = QWidget()
+        layout = QVBoxLayout(container)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(1)
+        layout.setAlignment(Qt.AlignmentFlag.AlignVCenter)
+
+        title = QLabel(self.section_title)
+        title.setObjectName("topbarTitle")
+        layout.addWidget(title)
+
+        self.date_label = QLabel("")
+        self.date_label.setObjectName("topbarDate")
+        layout.addWidget(self.date_label)
+        return container
 
     def _build_session(self) -> QWidget:
         container = QWidget()
@@ -84,34 +98,31 @@ class Topbar(QFrame):
 
         layout.addWidget(avatar)
         layout.addLayout(identity)
-        layout.addSpacing(14)
+        layout.addSpacing(12)
         layout.addWidget(self.btn_logout)
         return container
 
     def _build_ui(self):
-        outer = QVBoxLayout(self)
-        outer.setContentsMargins(0, 0, 0, 0)
-        outer.setSpacing(0)
-
-        row = QHBoxLayout()
+        row = QHBoxLayout(self)
         row.setContentsMargins(Space.PAGE, 0, Space.PAGE, 0)
         row.setSpacing(16)
 
-        row.addWidget(Wordmark(self.app_name, self.app_tagline))
+        row.addWidget(self._build_section())
         row.addStretch()
 
         self.clock_label = QLabel("")
         self.clock_label.setObjectName("clock")
         self.clock_label.setToolTip("Local time")
         row.addWidget(self.clock_label)
-        row.addSpacing(6)
+        row.addSpacing(4)
         row.addWidget(self._separator())
-        row.addSpacing(6)
+        row.addSpacing(4)
         row.addWidget(self._build_session())
-        outer.addLayout(row, 1)
 
     def _tick(self):
-        self.clock_label.setText(QDateTime.currentDateTime().toString("yyyy-MM-dd  HH:mm:ss"))
+        now = QDateTime.currentDateTime()
+        self.clock_label.setText(now.toString("HH:mm:ss"))
+        self.date_label.setText(QLocale(QLocale.Language.English).toString(now.date(), "dddd, d MMMM yyyy"))
 
     # ------------------------------------------------------------------ state
     # Kept so the owning view can keep calling them; the header shows no state indicator.

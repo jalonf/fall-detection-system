@@ -5,7 +5,7 @@ from src.views.components.event_log import EventLog
 from src.views.components.system_status_card import SystemStatusCard
 from src.views.components.topbar import Topbar
 from src.views.components.video_panel import VideoPanel
-from src.views.theme import APP_NAME, Size, Space
+from src.views.theme import Size, Space
 
 
 class BaseMonitorView(QWidget):
@@ -50,7 +50,7 @@ class BaseMonitorView(QWidget):
         root.setContentsMargins(0, 0, 0, 0)
         root.setSpacing(0)
 
-        self.topbar = Topbar(APP_NAME, self.APP_TAGLINE, self.user_name, user_role=self.user_role)
+        self.topbar = Topbar(self.APP_TAGLINE, self.user_name, user_role=self.user_role)
         self.topbar.logout_requested.connect(self.logout_requested.emit)
         root.addWidget(self.topbar)
 

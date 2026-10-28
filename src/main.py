@@ -14,7 +14,7 @@ from src.database.models.user import User
 from src.router.router import ViewRouter
 from src.views.admin_view import AdminView
 from src.views.auth_view import AuthView
-from src.views.components.wordmark import brand_icon
+from src.views.components.brand_mark import brand_icon
 from src.views.monitor_view import MonitorView
 from src.views.theme import APP_NAME, ThemeManager
 

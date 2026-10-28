@@ -172,7 +172,7 @@ FALL_KEYFRAMES = (
 )
 
 # Pelvis x position of each frame, in body heights (increases to the right).
-FRAME_X = (0.0, 0.36, 0.84, 1.52)
+FRAME_X = (0.0, 0.36, 0.84, 1.60)
 
 FRAME_LABELS = ("t-3", "t-2", "t-1", "t")
 

@@ -12,11 +12,10 @@ from PySide6.QtWidgets import (
 )
 
 from src.dtos.registration_data import RegistrationData
+from src.views.components.brand_panel import BrandPanel
 from src.views.components.login_form import LoginForm
-from src.views.components.pose_backdrop import PoseBackdrop
 from src.views.components.register_form import RegisterForm
 from src.views.components.toast import Toast
-from src.views.components.wordmark import Wordmark
 from src.views.theme import APP_DESCRIPTION, APP_NAME, Size, apply_shadow
 
 
@@ -54,44 +53,8 @@ class AuthView(QWidget):
         root.setContentsMargins(0, 0, 0, 0)
         root.setSpacing(0)
 
-        # ---- Left: brand copy on the canvas, with the fall-sequence figure below it ----
-        left_area = QWidget()
-        left_area.setObjectName("brandPanel")
-        left_layout = QVBoxLayout(left_area)
-        left_layout.setContentsMargins(64, 56, 36, 44)
-        left_layout.setSpacing(0)
-
-        left_layout.addWidget(Wordmark(APP_NAME, large=True), 0, Qt.AlignmentFlag.AlignLeft)
-        left_layout.addSpacing(32)
-
-        brand_headline = QLabel("Real-time fall detection and risk monitoring")
-        brand_headline.setObjectName("brandHeadline")
-        brand_headline.setWordWrap(True)
-        brand_headline.setMaximumWidth(460)
-        left_layout.addWidget(brand_headline)
-        left_layout.addSpacing(10)
-
-        brand_desc = QLabel(
-            "Monitors patients through a camera, estimates their 3D pose with MediaPipe and "
-            "detects falls in real time with a recurrent neural network. Each patient's fall "
-            "risk sets how closely they are monitored."
-        )
-        brand_desc.setObjectName("brandDesc")
-        brand_desc.setWordWrap(True)
-        brand_desc.setMaximumWidth(440)
-        brand_desc.setAlignment(Qt.AlignmentFlag.AlignLeft)
-        left_layout.addWidget(brand_desc)
-
-        left_layout.addSpacing(28)
-
-        # The figure plate takes the remaining height and resizes with the window.
-        self.pose_figure = PoseBackdrop()
-        left_layout.addWidget(self.pose_figure, 1)
-        left_layout.addSpacing(22)
-
-        tech_credit = QLabel("Built with MediaPipe, TensorFlow and PySide6")
-        tech_credit.setObjectName("techCredit")
-        left_layout.addWidget(tech_credit, 0, Qt.AlignmentFlag.AlignLeft)
+        # ---- Left: brand panel on the canvas (name, fall-sequence figure, headline, facts) ----
+        left_area = BrandPanel()
 
         # ---- Right: floating form card ----
         right_area = QWidget()

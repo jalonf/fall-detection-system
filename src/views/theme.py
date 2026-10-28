@@ -34,7 +34,6 @@ from PySide6.QtWidgets import (
 )
 
 APP_NAME = "FallSense"
-APP_NAME_ACCENT = "Sense"   # end of the name drawn in the accent colour by the wordmark
 APP_DESCRIPTION = "Fall risk assessment and detection"
 
 
@@ -128,7 +127,7 @@ class Size:
     """Fixed dimensions that must match across views."""
     CONTROL = 36        # dashboard buttons / selects
     FIELD = 42          # form inputs and primary form buttons share one height
-    TOPBAR = 60
+    TOPBAR = 64
     SIDEBAR_MIN = 320   # the sidebar flexes between these two widths
     SIDEBAR_MAX = 400
     AUTH_PANEL_MIN = 480
