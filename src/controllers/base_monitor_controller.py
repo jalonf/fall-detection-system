@@ -1,7 +1,7 @@
 import logging
 import os
 
-from src.repositories.patient_repository import PatientRepository
+from src.database.models.patient import Patient
 from src.workers.strategies import strategy_for
 from src.workers.video_file_worker import VideoFileWorker
 from src.workers.video_worker import VideoWorker
@@ -18,7 +18,7 @@ class BaseMonitorController:
     Subclasses extend `_connect_worker` to wire extra signals to their view.
     """
 
-    def __init__(self, view, current_user, patient, on_logout_callback):
+    def __init__(self, view, current_user, patient:Patient, on_logout_callback):
         self.view = view
         self.user = current_user
         self.patient = patient
@@ -40,7 +40,7 @@ class BaseMonitorController:
         self._start(
             VideoWorker(
                 camera_index=camera_index,
-                strategy=strategy_for(PatientRepository().get_risk_level(self.patient)),
+                strategy=strategy_for(self.patient.risk_level),
                 user=self.user,
                 patient=self.patient,
             ),
