@@ -84,11 +84,17 @@ class BaseVideoWorker(QThread):
     def _process_frame(self, frame) -> None:
         """Runs the whole pipeline for one BGR frame and emits the results."""
         started = time.perf_counter()
-
+        
         # 1. Pose. If MediaPipe finds nobody, keep the last pose so the drawing does not flicker.
-        pose, landmarks = self.extractor.extract_pose(frame_bgr=frame)
-        landmarks = landmarks or self.last_known_landmarks
-        self.last_known_landmarks = landmarks
+        skeleton = self.extractor.extract_pose(frame_bgr=frame)
+        
+        if skeleton:
+            pose = skeleton.pose
+            landmarks = skeleton.landmarks_2d
+            self.last_known_landmarks = landmarks
+        else:
+            pose = None
+            landmarks = self.last_known_landmarks
 
         # 2. Privacy: blur the face before drawing, displaying or storing anything.
         if landmarks:
@@ -104,6 +110,7 @@ class BaseVideoWorker(QThread):
             self.sequence_buffer.append(self.last_pose)
         if len(self.sequence_buffer) == self.seq_len:
             self.inference_worker.predict(np.expand_dims(np.array(self.sequence_buffer), axis=0))
+        
         fall_probability = self._poll_fall()
 
         # 4. Drawing and telemetry. The skeleton panel gets its own image.

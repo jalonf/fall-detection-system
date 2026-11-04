@@ -15,6 +15,8 @@ from mediapipe.tasks.python.vision.pose_landmarker import (
     PoseLandmarkerOptions,
 )
 
+from src.dtos.skeleton import Skeleton
+
 load_dotenv()
 
 logger = logging.getLogger(__name__)
@@ -56,7 +58,7 @@ class MediaPipeExtractor:
         self._last_timestamp_ms = 0
         logger.info("MediaPipe PoseLandmarker successfully initialized.")
 
-    def extract_pose(self, frame_bgr: np.ndarray) -> tuple[np.ndarray | None, list | None]:
+    def extract_pose(self, frame_bgr: np.ndarray) -> Skeleton:
         """
         Processes a BGR frame, calculating a safe monotonic timestamp resistant to frame drops or FPS drops.
 
@@ -80,10 +82,6 @@ class MediaPipeExtractor:
         # 3. MediaPipe inference
         result = self._landmarker.detect_for_video(mp_image, current_ms)
 
-        if not result.pose_world_landmarks or not result.pose_landmarks:
-            logger.debug("No pose detected in the current frame.")
-            return None, None
-
         # 4. 3D world landmarks (in meters), centred on the hips: the model input
         landmarks_3d = result.pose_world_landmarks[0]
         pose = center_on_hips(np.array([(lm.x, lm.y, lm.z) for lm in landmarks_3d], dtype=np.float32))
@@ -91,7 +89,10 @@ class MediaPipeExtractor:
         # 5. Normalized 2D screen-space landmarks for drawing
         landmarks_2d = result.pose_landmarks[0]
 
-        return pose, landmarks_2d
+        return Skeleton(
+            pose =pose,
+            landmarks_2d=landmarks_2d
+        )
 
     def release(self) -> None:
         """Safely releases underlying C++ native resources."""
