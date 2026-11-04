@@ -45,8 +45,8 @@ which model is used (`src/workers/strategies.py`):
 
 | Risk | Camera | Model window | Model file |
 |------|--------|--------------|------------|
-| LOW  | 640 × 480, 15 FPS  | 15 frames (1 s) | `assets/fall_gru_low_risk_15fps.keras` |
-| HIGH | 1280 × 720, 30 FPS | 30 frames (1 s) | `assets/fall_gru_high_risk_30fps.keras` |
+| LOW  | 640 × 480, 15 FPS  | 15 frames (1 s) | `models/fall_detection/fall_gru_low_risk_15fps.keras` |
+| HIGH | 1280 × 720, 30 FPS | 30 frames (1 s) | `models/fall_detection/fall_gru_high_risk_30fps.keras` |
 
 For an uploaded video the model is chosen from the file's own frame rate instead
 (20 FPS or less → 15-frame model, otherwise the 30-frame model), because the model has to
@@ -90,7 +90,13 @@ The application follows **Model-View-Controller** on top of PySide6 (Qt):
 
 ```text
 fall-detection-system/
-├── assets/                 # Trained GRU models (.keras) and MediaPipe pose models (.task)
+├── data/                   # Datasets, one folder per model (ignored by Git, see data/README.md)
+│   ├── fall_detection/     # Videos (raw/) and pose sequences (processed/) of the GRU detector
+│   └── risk_assessment/    # ESdE 2025 microdata (raw/) and the risk-level dataset (processed/)
+├── models/                 # Trained and downloaded models, one folder per model
+│   ├── fall_detection/     # GRU fall detectors (.keras)
+│   ├── pose/               # MediaPipe pose landmarker models (.task)
+│   └── risk_assessment/    # Patient risk-level model
 ├── docs/                   # Evaluation plots of both models and the UML diagram
 ├── src/
 │   ├── main.py             # Entry point: main window, login and role-based navigation
@@ -105,7 +111,8 @@ fall-detection-system/
 │   └── workers/            # Video, inference and monitoring-strategy classes
 ├── training/
 │   ├── preprocess.py       # Videos → pose sequences (.npy)
-│   └── train.py            # Trains and evaluates both GRU models
+│   ├── train.py            # Trains and evaluates both GRU models
+│   └── build_risk_dataset_esde.py  # ESdE 2025 microdata → risk-assessment dataset (.csv)
 └── requirements.txt        # Dependencies of the application and the training scripts
 ```
 
@@ -154,7 +161,7 @@ Created at runtime and ignored by Git: `app.db` (database), `app.log` (log) and 
    RESEND_API_KEY=your-resend-api-key
    RESEND_FROM_EMAIL=FallSense Alerts <alerts@your-domain.com>
    # Optional: use the more accurate (and slower) pose model
-   POSE_LANDMARKER_MODEL_PATH=assets/pose_landmarker_heavy.task
+   POSE_LANDMARKER_MODEL_PATH=models/pose/pose_landmarker_heavy.task
    ```
 
 ### Running the application
@@ -178,20 +185,20 @@ and press **Start detection**. The role chosen at sign-up decides the screen:
 
 ## Training the models
 
-The trained models are already in `assets/`. To train them again:
+The trained models are already in `models/fall_detection/`. To train them again:
 
-1. Place the videos (`.mp4`) in `fall_dataset/ADL/` (normal activities) and
-   `fall_dataset/Fall/` (falls). Subfolders are allowed.
-2. Extract the pose sequences for both modes (written to `processed_features/`):
+1. Place the videos (`.mp4`) in `data/fall_detection/raw/VideoDataset/ADL/` (normal activities) and
+   `data/fall_detection/raw/VideoDataset/Fall/` (falls). Subfolders are allowed.
+2. Extract the pose sequences for both modes (written to `data/fall_detection/processed/`):
    ```bash
    python -m training.preprocess
    ```
-3. Train and evaluate both models (written to `assets/`, plots to `docs/`):
+3. Train and evaluate both models (written to `models/fall_detection/`, plots to `docs/`):
    ```bash
    python -m training.train
    ```
 
-`fall_dataset/` and `processed_features/` are ignored by Git.
+`data/` is ignored by Git, except `data/README.md`, which describes its layout.
 
 ---
 

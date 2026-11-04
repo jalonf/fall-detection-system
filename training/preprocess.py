@@ -124,21 +124,21 @@ def process_dataset(dataset_root: str, output_dir: str, target_fps: int = 30) ->
 
 
 if __name__ == "__main__":
-    DATASET_ROOT = "./fall_dataset" 
+    DATASET_ROOT = "./data/fall_detection/raw/VideoDataset"
     
     logger.info("Starting Dual-Mode Preprocessing")
     
     # 1. High-Risk / Precision Mode (30 FPS, window = 30 frames)
     process_dataset(
         dataset_root=DATASET_ROOT, 
-        output_dir="./processed_features/high_risk_30fps", 
+        output_dir="./data/fall_detection/processed/high_risk_30fps", 
         target_fps=30
     )
     
     # 2. Low-Risk / Eco Mode (15 FPS with adaptive sub-sampling, window = 15 frames)
     process_dataset(
         dataset_root=DATASET_ROOT, 
-        output_dir="./processed_features/low_risk_15fps", 
+        output_dir="./data/fall_detection/processed/low_risk_15fps", 
         target_fps=15
     )
     

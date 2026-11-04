@@ -25,13 +25,13 @@ class MonitoringStrategy:
 class LowRiskStrategy(MonitoringStrategy):
     name = "LOW"
     width, height, fps = 640, 480, 15
-    model_path = "assets/fall_gru_low_risk_15fps.keras"
+    model_path = "models/fall_detection/fall_gru_low_risk_15fps.keras"
 
 
 class HighRiskStrategy(MonitoringStrategy):
     name = "HIGH"
     width, height, fps = 1280, 720, 30
-    model_path = "assets/fall_gru_high_risk_30fps.keras"
+    model_path = "models/fall_detection/fall_gru_high_risk_30fps.keras"
 
 
 def strategy_for(risk_level: str) -> MonitoringStrategy:

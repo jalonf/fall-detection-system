@@ -37,7 +37,7 @@ class MediaPipeExtractor:
         self,
         min_detection_confidence: float = 0.6,
         min_tracking_confidence: float = 0.6,
-        model_path: str = os.getenv("POSE_LANDMARKER_MODEL_PATH", "assets/pose_landmarker_full.task"),
+        model_path: str = os.getenv("POSE_LANDMARKER_MODEL_PATH", "models/pose/pose_landmarker_full.task"),
     ):
         logger.info("Initializing robust MediaPipeExtractor with model path: %s", model_path)
         

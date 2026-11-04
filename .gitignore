@@ -5,15 +5,13 @@ env/
 __pycache__/
 *.py[cod]
 
-# Data folders and heavy models (DO NOT push to Git!)
-data/
-fall_dataset/
-processed_features/
-assets/*.pth
-models/*.pth
-models/*.pt
-models/*.onnx
-models/*.h5
+# Datasets and heavy models (DO NOT push to Git!)
+data/*
+!data/README.md
+models/**/*.pth
+models/**/*.pt
+models/**/*.onnx
+models/**/*.h5
 
 # Temporary notebooks and IDE caches
 .ipynb_checkpoints/

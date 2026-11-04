@@ -125,16 +125,16 @@ if __name__ == "__main__":
     
     # 1. Train High-Risk Model (30 FPS, window size 30)
     train_fall_detector(
-        processed_dir="./processed_features/high_risk_30fps",
-        model_save_path="assets/fall_gru_high_risk_30fps.keras",
+        processed_dir="./data/fall_detection/processed/high_risk_30fps",
+        model_save_path="models/fall_detection/fall_gru_high_risk_30fps.keras",
         seq_len=30,
         mode_name="High_Risk_30FPS"
     )
     
     # 2. Train Low-Risk Model (15 FPS, window size 15)
     train_fall_detector(
-        processed_dir="./processed_features/low_risk_15fps",
-        model_save_path="assets/fall_gru_low_risk_15fps.keras",
+        processed_dir="./data/fall_detection/processed/low_risk_15fps",
+        model_save_path="models/fall_detection/fall_gru_low_risk_15fps.keras",
         seq_len=15,
         mode_name="Low_Risk_15FPS"
     )
