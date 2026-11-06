@@ -57,4 +57,4 @@ class DatabaseManager:
 
 
 databaseManager = DatabaseManager()
-db = databaseManager.connection
+db_connection = databaseManager.connection

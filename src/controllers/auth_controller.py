@@ -2,7 +2,7 @@ import logging
 
 from PySide6.QtCore import QTimer
 
-from src.database.database_manager import db
+from src.database.database_manager import db_connection
 from src.dtos.registration_data import USER_ROLES, RegistrationData
 from src.repositories.patient_repository import PatientRepository
 from src.repositories.user_repository import UserRepository
@@ -58,7 +58,7 @@ class AuthController:
             return
 
         # The user and its patient are saved together: if the patient fails, the user is undone too.
-        with db.atomic() as transaction:
+        with db_connection.atomic() as transaction:
             new_user = self.user_repo.create_user(
                 name=data.name,
                 email=data.email,
