@@ -12,7 +12,7 @@ class DatabaseManager:
     It is implemented as a Singleton to ensure a single global connection.
     """
     instance = None
-    connection: SqliteDatabase   # always set by configure() when the singleton is created
+    connection: SqliteDatabase
     
     def __new__(cls, *args, **kwargs):
         if cls.instance is None:
@@ -23,7 +23,7 @@ class DatabaseManager:
 
     def configure(self):
         """Configures the path and prepares the connection object."""
-        project_root = Path(__file__).resolve().parents[2]   # src/database/ -> project root
+        project_root = Path(__file__).resolve().parents[2]
 
         db_file = project_root / 'app.db'
         
@@ -33,21 +33,22 @@ class DatabaseManager:
         else:
             logger.info("Database file not found. A new database will be created from scratch at: %s", db_file)
         
-        self.connection = SqliteDatabase(str(db_file), check_same_thread=False)
+        self.connection = SqliteDatabase(
+            str(db_file),
+            pragmas={
+                "journal_mode": "wal",
+                "foreign_keys": 1,         
+                "busy_timeout": 5000,      
+            },
+        )
 
     def init_tables(self, models: list):
-        """
-        Connects to the database and creates the necessary tables safely,
-        then closes the connection to release the file.
-        """
+        """Creates the necessary tables, closing the connection even if something fails."""
         logger.info("Connecting to the database to initialize tables...")
-        self.connection.connect()
 
-        tables_exist = all(model.table_exists() for model in models)
-
-        # The create_tables method executes "CREATE TABLE IF NOT EXISTS" under the hood.
-        self.connection.create_tables(models)
-        self.connection.close()
+        with self.connection.connection_context():
+            tables_exist = all(model.table_exists() for model in models)
+            self.connection.create_tables(models)
 
         if tables_exist:
             logger.info("Database schema verified. All tables are ready.")
