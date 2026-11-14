@@ -12,7 +12,7 @@ class DatabaseManager:
     It is implemented as a Singleton to ensure a single global connection.
     """
     instance = None
-    connection: SqliteDatabase
+    db_connection: SqliteDatabase
     
     def __new__(cls, *args, **kwargs):
         if cls.instance is None:
@@ -33,7 +33,7 @@ class DatabaseManager:
         else:
             logger.info("Database file not found. A new database will be created from scratch at: %s", db_file)
         
-        self.connection = SqliteDatabase(
+        self.db_connection = SqliteDatabase(
             str(db_file),
             pragmas={
                 "journal_mode": "wal",
@@ -46,9 +46,9 @@ class DatabaseManager:
         """Creates the necessary tables, closing the connection even if something fails."""
         logger.info("Connecting to the database to initialize tables...")
 
-        with self.connection.connection_context():
+        with self.db_connection.connection_context():
             tables_exist = all(model.table_exists() for model in models)
-            self.connection.create_tables(models)
+            self.db_connection.create_tables(models)
 
         if tables_exist:
             logger.info("Database schema verified. All tables are ready.")
@@ -57,4 +57,4 @@ class DatabaseManager:
 
 
 databaseManager = DatabaseManager()
-db_connection = databaseManager.connection
+db_connection = databaseManager.db_connection
