@@ -2,7 +2,6 @@ import logging
 import os
 
 from src.database.models.patient import Patient
-from src.workers.strategies import strategy_for
 from src.workers.video_file_worker import VideoFileWorker
 from src.workers.video_worker import VideoWorker
 
@@ -40,7 +39,6 @@ class BaseMonitorController:
         self._start(
             VideoWorker(
                 camera_index=camera_index,
-                strategy=strategy_for(self.patient.risk_level),
                 user=self.user,
                 patient=self.patient,
             ),

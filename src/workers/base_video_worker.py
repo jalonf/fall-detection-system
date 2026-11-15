@@ -7,6 +7,7 @@ import time
 from datetime import datetime
 from pathlib import Path
 
+import cv2
 import numpy as np
 from PySide6.QtCore import QThread, Signal
 from PySide6.QtGui import QImage
@@ -57,8 +58,11 @@ class BaseVideoWorker(QThread):
     fall_detected = Signal(float, str)   # probability (0-1) and the capture path ('' if none)
     notification_sent = Signal(bool)     # result of the alert e-mail
 
-    def __init__(self, user=None, patient=None, parent=None):
+    def __init__(self, cap: cv2.VideoCapture, strategy: MonitoringStrategy,
+                 user=None, patient=None, parent=None):
         super().__init__(parent)
+        self.cap = cap                # already opened by the subclass
+        self.strategy = strategy
         self.user = user
         self.patient = patient
         self._is_running = True
@@ -67,18 +71,12 @@ class BaseVideoWorker(QThread):
         self.last_known_landmarks = None
         self.last_pose = None   # last model input seen, repeated while nobody is detected
 
-        self.seq_len = 15
+        self.seq_len = strategy.fps   # the model sees one second of frames
         self.sequence_buffer = collections.deque(maxlen=self.seq_len)
         self.current_is_fall = False
 
-
-    def _load_model(self, strategy: MonitoringStrategy):
-        """Loads the GRU model of `strategy` and starts inference."""
-        self.seq_len = strategy.fps   # the model sees one second of frames
-        self.sequence_buffer = collections.deque(self.sequence_buffer, maxlen=self.seq_len)
-        self.inference_worker.load_model(strategy.model_path)
-
-        if not self.inference_worker.isRunning():
+        if cap.isOpened():
+            self.inference_worker.load_model(strategy.model_path)
             self.inference_worker.start()
 
     def _process_frame(self, frame) -> None:
