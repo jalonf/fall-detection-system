@@ -55,7 +55,7 @@ match the speed of the frames it receives.
 
 ### Model
 
-Both models share the same architecture, trained with Keras (`training/train.py`):
+Both models share the same architecture, trained with Keras (`training/train_fall_model.py`):
 
 ```text
 Input (window, 99) → GRU(64) → Dropout(0.3) → Dense(32, ReLU) → Dense(1, sigmoid)
@@ -101,6 +101,7 @@ fall-detection-system/
 ├── docs/                   # Evaluation plots of both models and the UML diagram
 ├── src/
 │   ├── main.py             # Entry point: main window, login and role-based navigation
+│   ├── paths.py            # Locations of the models, datasets and database (built from the project root)
 │   ├── ai/                 # MediaPipe pose extractor
 │   ├── controllers/        # Auth and monitoring controllers
 │   ├── database/           # SQLite connection and Peewee models
@@ -111,9 +112,9 @@ fall-detection-system/
 │   ├── views/              # Screens, components, theme and stylesheet
 │   └── workers/            # Video, inference and monitoring-strategy classes
 ├── training/
-│   ├── preprocess.py       # Videos → pose sequences (.npy)
-│   ├── train.py            # Trains and evaluates both GRU models
-│   └── build_risk_dataset_esde.py  # ESdE 2025 microdata → risk-assessment dataset (.csv)
+│   ├── build_fall_dataset.py       # Videos → pose sequences (.npy)
+│   ├── build_risk_dataset_esde.py  # ESdE 2025 microdata → risk-assessment dataset (.csv)
+│   └── train_fall_model.py         # Trains and evaluates both GRU models
 └── requirements.txt        # Dependencies of the application and the training scripts
 ```
 
@@ -193,14 +194,28 @@ The trained models are already in `models/fall_detection/`. To train them again:
    `data/fall_detection/raw/VideoDataset/Fall/` (falls). Subfolders are allowed.
 2. Extract the pose sequences for both modes (written to `data/fall_detection/processed/`):
    ```bash
-   python -m training.preprocess
+   python -m training.build_fall_dataset
    ```
 3. Train and evaluate both models (written to `models/fall_detection/`, plots to `docs/`):
    ```bash
-   python -m training.train
+   python -m training.train_fall_model
    ```
 
 `data/` is ignored by Git, except `data/README.md`, which describes its layout.
+
+### Risk-assessment dataset
+
+The patient's risk level will come from a Random Forest trained on the ESdE 2025 health survey (INE).
+The microdata zip goes in `data/risk_assessment/raw/ESdEadulto_2025.zip`; then, from the project root:
+
+```bash
+python -m training.build_risk_dataset_esde
+```
+
+This writes `data/risk_assessment/processed/risk_dataset_esde2025.csv` (people aged 65+, the 28
+predictors that the application asks the patient, the targets and the survey weight) and a
+`..._dictionary.csv` that explains every column. The survey has no question about falls, so the
+targets are a proxy: accidents at home or during leisure time in the last 12 months.
 
 ---
 

@@ -12,6 +12,7 @@ import numpy as np
 from tqdm import tqdm
 
 from src.ai.extractor import MediaPipeExtractor
+from src.paths import FALL_PROCESSED_DIR, FALL_VIDEOS_DIR
 
 # Configure clean logging format
 logging.basicConfig(
@@ -74,9 +75,9 @@ def process_dataset(dataset_root: str, output_dir: str, target_fps: int = 30) ->
                     if not ret or frame is None:
                         break
                         
-                    pose, _ = extractor.extract_pose(frame_bgr=frame)
-                    if pose is not None:
-                        raw_frames.append(pose.flatten())
+                    skeleton = extractor.extract_pose(frame_bgr=frame)
+                    if skeleton is not None:
+                        raw_frames.append(skeleton.pose.flatten())
                     else:
                         if raw_frames:
                             raw_frames.append(raw_frames[-1])
@@ -124,21 +125,21 @@ def process_dataset(dataset_root: str, output_dir: str, target_fps: int = 30) ->
 
 
 if __name__ == "__main__":
-    DATASET_ROOT = "./data/fall_detection/raw/VideoDataset"
-    
+    DATASET_ROOT = str(FALL_VIDEOS_DIR)
+
     logger.info("Starting Dual-Mode Preprocessing")
     
     # 1. High-Risk / Precision Mode (30 FPS, window = 30 frames)
     process_dataset(
         dataset_root=DATASET_ROOT, 
-        output_dir="./data/fall_detection/processed/high_risk_30fps", 
+        output_dir=str(FALL_PROCESSED_DIR / "high_risk_30fps"),
         target_fps=30
     )
     
     # 2. Low-Risk / Eco Mode (15 FPS with adaptive sub-sampling, window = 15 frames)
     process_dataset(
         dataset_root=DATASET_ROOT, 
-        output_dir="./data/fall_detection/processed/low_risk_15fps", 
+        output_dir=str(FALL_PROCESSED_DIR / "low_risk_15fps"),
         target_fps=15
     )
     

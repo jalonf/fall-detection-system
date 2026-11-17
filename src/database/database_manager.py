@@ -1,7 +1,8 @@
 import logging
-from pathlib import Path
 
 from peewee import SqliteDatabase
+
+from src.paths import DATABASE_FILE
 
 logger = logging.getLogger(__name__)
 
@@ -23,10 +24,8 @@ class DatabaseManager:
 
     def configure(self):
         """Configures the path and prepares the connection object."""
-        project_root = Path(__file__).resolve().parents[2]
+        db_file = DATABASE_FILE
 
-        db_file = project_root / 'app.db'
-        
         db_exists = db_file.exists()
         if db_exists:
             logger.info("Existing database detected at: %s", db_file)
