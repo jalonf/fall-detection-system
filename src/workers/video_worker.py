@@ -18,7 +18,7 @@ class VideoWorker(BaseVideoWorker):
     def __init__(self, camera_index=0, user=None, patient=None, parent=None):
         strategy = strategy_for(patient.risk_level if patient else "LOW")
         super().__init__(
-            cap=strategy.open_camera(camera_index),
+            cap=strategy.configure_camera(camera_index),
             strategy=strategy,
             user=user,
             patient=patient,

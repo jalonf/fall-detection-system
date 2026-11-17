@@ -16,6 +16,7 @@ from mediapipe.tasks.python.vision.pose_landmarker import (
 )
 
 from src.dtos.skeleton import Skeleton
+from src.paths import POSE_MODEL
 
 load_dotenv()
 
@@ -39,7 +40,7 @@ class MediaPipeExtractor:
         self,
         min_detection_confidence: float = 0.6,
         min_tracking_confidence: float = 0.6,
-        model_path: str = os.getenv("POSE_LANDMARKER_MODEL_PATH", "models/pose/pose_landmarker_full.task"),
+        model_path: str = os.getenv("POSE_LANDMARKER_MODEL_PATH", str(POSE_MODEL)),
     ):
         logger.info("Initializing robust MediaPipeExtractor with model path: %s", model_path)
         
@@ -58,7 +59,7 @@ class MediaPipeExtractor:
         self._last_timestamp_ms = 0
         logger.info("MediaPipe PoseLandmarker successfully initialized.")
 
-    def extract_pose(self, frame_bgr: np.ndarray) -> Skeleton:
+    def extract_pose(self, frame_bgr: np.ndarray) -> Skeleton | None:
         """
         Processes a BGR frame, calculating a safe monotonic timestamp resistant to frame drops or FPS drops.
 
@@ -66,8 +67,8 @@ class MediaPipeExtractor:
             frame_bgr (np.ndarray): Raw OpenCV frame (H, W, 3) in BGR format.
 
         Returns:
-            The model input, 33x3 coordinates in meters centred on the hips, and the
-            2D screen-space landmarks used for drawing. Both are None when no person is found.
+            A `Skeleton` with the model input (33x3 coordinates in meters centred on the hips) and
+            the 2D screen-space landmarks used for drawing, or None when no person is found.
         """
         # 1. Ensure memory continuity and color conversion
         frame_rgb = np.ascontiguousarray(cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB))
@@ -81,6 +82,10 @@ class MediaPipeExtractor:
 
         # 3. MediaPipe inference
         result = self._landmarker.detect_for_video(mp_image, current_ms)
+
+        if not result.pose_world_landmarks or not result.pose_landmarks:
+            logger.debug("No pose detected in the current frame.")
+            return None
 
         # 4. 3D world landmarks (in meters), centred on the hips: the model input
         landmarks_3d = result.pose_world_landmarks[0]

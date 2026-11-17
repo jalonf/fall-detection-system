@@ -16,6 +16,8 @@ from sklearn.metrics import (
 )
 from sklearn.model_selection import train_test_split
 
+from src.paths import DOCS_DIR, FALL_MODELS_DIR, FALL_PROCESSED_DIR
+
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger(__name__)
 
@@ -92,7 +94,7 @@ def train_fall_detector(processed_dir: str, model_save_path: str, seq_len: int, 
 
     # 6. Generate evaluation plots inside mode-specific directories under ./docs/
     mode_folder_name = mode_name.lower()
-    docs_sub_dir = os.path.join("./docs", mode_folder_name)
+    docs_sub_dir = os.path.join(DOCS_DIR, mode_folder_name)
     os.makedirs(docs_sub_dir, exist_ok=True)
     
     # Confusion Matrix Plot
@@ -125,16 +127,16 @@ if __name__ == "__main__":
     
     # 1. Train High-Risk Model (30 FPS, window size 30)
     train_fall_detector(
-        processed_dir="./data/fall_detection/processed/high_risk_30fps",
-        model_save_path="models/fall_detection/fall_gru_high_risk_30fps.keras",
+        processed_dir=str(FALL_PROCESSED_DIR / "high_risk_30fps"),
+        model_save_path=str(FALL_MODELS_DIR / "fall_gru_high_risk_30fps.keras"),
         seq_len=30,
         mode_name="High_Risk_30FPS"
     )
     
     # 2. Train Low-Risk Model (15 FPS, window size 15)
     train_fall_detector(
-        processed_dir="./data/fall_detection/processed/low_risk_15fps",
-        model_save_path="models/fall_detection/fall_gru_low_risk_15fps.keras",
+        processed_dir=str(FALL_PROCESSED_DIR / "low_risk_15fps"),
+        model_save_path=str(FALL_MODELS_DIR / "fall_gru_low_risk_15fps.keras"),
         seq_len=15,
         mode_name="Low_Risk_15FPS"
     )
