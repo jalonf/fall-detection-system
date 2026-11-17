@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 class FallRepository:
     """Handles all database operations for fall events and inference logs."""
 
-    def create_fall_event(self, patient, prediction_probability, notification_sent=False, snapshot_path=None):
+    def create_fall_event(self, patient, prediction_probability, notification_sent=False):
         """Saves a new fall event record linked to a patient."""
         try:
             logger.info("Attempting to create fall event for patient ID: %s with probability: %s", patient.id, prediction_probability)
@@ -17,7 +17,6 @@ class FallRepository:
                 patient_id=patient,
                 prediction_probability=prediction_probability,
                 notification_sent=notification_sent,
-                snapshot_path=snapshot_path
             )
             logger.info("Fall event successfully created")
             return fall_event

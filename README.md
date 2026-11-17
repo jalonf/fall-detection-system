@@ -3,8 +3,8 @@
 **FallSense** is a desktop application that watches a person through a camera and raises an
 alert when it detects a fall. MediaPipe extracts the 3D pose of the person in every frame and a GRU
 recurrent network classifies the last second of movement as a normal activity or a fall.
-When a fall starts, the application stores a capture, records the event and e-mails the
-caregiver.
+When a fall starts, the application records the event and e-mails the caregiver with a
+capture of the fall.
 
 Developed as a **Bachelor's Thesis (Trabajo de Fin de Grado, TFG)**.
 
@@ -15,8 +15,8 @@ Developed as a **Bachelor's Thesis (Trabajo de Fin de Grado, TFG)**.
 * **Live monitoring** from a webcam, with the person's skeleton and bounding box drawn on the video.
 * **Two detection modes** chosen from the patient's risk level (see [Risk levels](#risk-levels)).
 * **Privacy:** the face is blurred before anything is displayed, stored or sent.
-* **Fall alerts:** a capture of the fall is saved in `snapshots/`, the event is stored in the
-  database and an e-mail with the capture is sent through [Resend](https://resend.com).
+* **Fall alerts:** the event is stored in the database and an e-mail with a capture of the fall
+  is sent through Gmail (SMTP). The capture only lives in memory: it is never written to disk.
 * **User accounts** (login and sign-up) with a patient linked to each caregiver.
 * **Administrator view** with an extra skeleton panel, live telemetry (inference time, pose
   confidence, hip height) and the option to analyse an uploaded video file.
@@ -35,8 +35,9 @@ For every frame, `BaseVideoWorker` runs this pipeline in its own thread:
    full, `InferenceWorker` runs the GRU model in a separate thread. A probability of 0.5 or
    more is a fall.
 4. **Drawing and telemetry:** skeleton, bounding box and the administrator's telemetry.
-5. **Fall:** when the prediction changes to "fall", the capture is saved, a `FallEvent` is
-   stored and the alert e-mail is sent in the background so the video does not stall.
+5. **Fall:** when the prediction changes to "fall", a `FallEvent` is stored and the alert
+   e-mail (with the capture attached from memory) is sent in the background so the video does
+   not stall.
 
 ### Risk levels
 
@@ -116,8 +117,7 @@ fall-detection-system/
 └── requirements.txt        # Dependencies of the application and the training scripts
 ```
 
-Created at runtime and ignored by Git: `app.db` (database), `app.log` (log) and `snapshots/`
-(fall captures).
+Created at runtime and ignored by Git: `app.db` (database) and `app.log` (log).
 
 ---
 
@@ -127,8 +127,10 @@ Created at runtime and ignored by Git: `app.db` (database), `app.log` (log) and 
 
 * **Python 3.11** (TensorFlow 2.18 supports 3.9 to 3.12)
 * A webcam
-* A [Resend](https://resend.com) API key to send the alert e-mails (optional: without it the
-  application works, but the e-mails fail)
+* A Gmail account with 2-step verification and an
+  [app password](https://myaccount.google.com/apppasswords) to send the alert e-mails
+  (optional: without it the application works, but the e-mails fail). A dedicated account
+  is recommended, because sent alerts stay in its "Sent" folder.
 
 ### Installation
 
@@ -158,8 +160,8 @@ Created at runtime and ignored by Git: `app.db` (database), `app.log` (log) and 
 
 4. **Create a `.env` file** in the project root:
    ```dotenv
-   RESEND_API_KEY=your-resend-api-key
-   RESEND_FROM_EMAIL=FallSense Alerts <alerts@your-domain.com>
+   GMAIL_USER=your-account@gmail.com
+   GMAIL_APP_PASSWORD=your-16-character-app-password
    # Optional: use the more accurate (and slower) pose model
    POSE_LANDMARKER_MODEL_PATH=models/pose/pose_landmarker_heavy.task
    ```

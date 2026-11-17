@@ -1,8 +1,8 @@
 import logging
 import os
-from pathlib import Path
+import smtplib
+from email.message import EmailMessage
 
-import resend
 from dotenv import load_dotenv
 
 from src.notifications.template import BRAND_NAME, render_fall_alert_email
@@ -11,77 +11,66 @@ load_dotenv()
 
 logger = logging.getLogger(__name__)
 
+SMTP_HOST = "smtp.gmail.com"
+SMTP_PORT = 465   # implicit TLS
+SMTP_TIMEOUT = 15
 
-def fall_event_data(patient, user, probability: float, timestamp: str, snapshot_path: str | None) -> dict:
-    """Builds the dictionary `EmailNotifier.update` expects from a fall."""
+
+def fall_event_data(patient, user, probability: float, timestamp: str, snapshot: bytes | None) -> dict:
+    """Builds the dictionary `EmailNotifier.update` expects from a fall.
+
+    `snapshot` is the JPEG of the incident frame, kept only in memory (never written to disk).
+    """
     return {
         "event_name": "fall_detected",
         "patient_name": getattr(patient, "name", None) or user.name,
         "medical_history": getattr(patient, "medical_notes", None) or "N/A",
         "prediction_probability": probability,
         "timestamp": timestamp,
-        "snapshot_path": snapshot_path,
+        "snapshot": snapshot,
     }
 
 
 class EmailNotifier:
+    """Sends the fall alert through Gmail SMTP using an app password (see README)."""
 
     def __init__(self, email: str):
         self.email = email
-        self.api_key = os.getenv("RESEND_API_KEY", "")
-        self.from_email = os.getenv(
-            "RESEND_FROM_EMAIL", f"{BRAND_NAME} Alerts <onboarding@resend.dev>"
-        )
-        resend.api_key = self.api_key
+        self.gmail_user = os.getenv("GMAIL_USER", "")
+        self.gmail_app_password = os.getenv("GMAIL_APP_PASSWORD", "")
 
     def update(self, event_data: dict) -> bool:
-        """Sends the fall alert. Returns True when the e-mail was accepted by Resend."""
+        """Sends the fall alert. Returns True when Gmail accepted the e-mail."""
+        if not self.gmail_user or not self.gmail_app_password:
+            logger.error("GMAIL_USER / GMAIL_APP_PASSWORD are not set: the alert e-mail was not sent")
+            return False
+
         patient_name = event_data.get("patient_name", "Unknown Patient")
-        timestamp = event_data.get("timestamp", "Recent")
-        probability = float(event_data.get("prediction_probability", 0.0))
-        medical_info = event_data.get("medical_history", "No medical records available.")
+        snapshot = event_data.get("snapshot")   # bytes | None
 
-        # Resolve and validate image path cleanly
-        snapshot_raw = event_data.get("snapshot_path")
-        snapshot_file = Path(snapshot_raw) if snapshot_raw else None
-        has_attachment = snapshot_file is not None and snapshot_file.is_file()
-
-        # Build message bodies from the template
         plain_text, html_content = render_fall_alert_email(
             patient_name=patient_name,
-            timestamp=timestamp,
-            probability=probability,
-            medical_info=medical_info,
-            has_attachment=has_attachment,
+            timestamp=event_data.get("timestamp", "Recent"),
+            probability=float(event_data.get("prediction_probability", 0.0)),
+            medical_info=event_data.get("medical_history", "No medical records available."),
+            has_attachment=bool(snapshot),
         )
 
-        # Build payload parameters
-        params: resend.Emails.SendParams = {
-            "from": self.from_email,
-            "to": [self.email],
-            "subject": f"{BRAND_NAME}: Fall Alert - {patient_name}",
-            "html": html_content,
-            "text": plain_text,
-        }
+        msg = EmailMessage()
+        msg["From"] = f"{BRAND_NAME} Alerts <{self.gmail_user}>"   # Gmail only allows the account itself
+        msg["To"] = self.email
+        msg["Subject"] = f"{BRAND_NAME}: Fall Alert - {patient_name}"
+        msg.set_content(plain_text)
+        msg.add_alternative(html_content, subtype="html")
+        if snapshot:
+            msg.add_attachment(snapshot, maintype="image", subtype="jpeg", filename="fall.jpg")
 
-        # Attach image if valid
-        if has_attachment and snapshot_file:
-            try:
-                with open(snapshot_file, "rb") as img:
-                    params["attachments"] = [
-                        {
-                            "filename": snapshot_file.name,
-                            "content": list(img.read()),
-                        }
-                    ]
-            except OSError as err:
-                logger.warning("Failed to read snapshot file for attachment: %s", err)
-
-        # Dispatch via Resend API
         try:
-            response = resend.Emails.send(params)
-            logger.info("Alert email sent to %s (ID: %s)", self.email, response.get("id"))
+            with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT, timeout=SMTP_TIMEOUT) as smtp:
+                smtp.login(self.gmail_user, self.gmail_app_password)
+                smtp.send_message(msg)
+            logger.info("Alert email sent to %s", self.email)
             return True
-        except Exception as err:  # noqa: BLE001
-            logger.error("Failed to send email to %s via Resend: %s", self.email, err)
-            return False
+        except (smtplib.SMTPException, OSError) as err:
+            logger.error("Failed to send email to %s via Gmail: %s", self.email, err)
+            return False

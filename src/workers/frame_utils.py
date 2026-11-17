@@ -5,8 +5,6 @@ frame they receive instead of returning a copy.
 """
 
 import logging
-from datetime import datetime
-from pathlib import Path
 from typing import Any
 
 import cv2
@@ -99,19 +97,10 @@ def draw_skeleton(image, landmarks, color, size: int) -> None:
     )
 
 
-def save_snapshot(frame, folder: Path) -> str | None:
-    """Writes the frame as a JPEG in `folder`. Returns its path, or None if it failed."""
+def encode_snapshot(frame) -> bytes | None:
+    """JPEG of the frame, in memory. Nothing is written to disk."""
     ok, encoded = cv2.imencode(".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, 85])
-    if not ok:
-        return None
-    try:
-        folder.mkdir(exist_ok=True)
-        path = folder / f"fall_{datetime.now().astimezone():%Y%m%d_%H%M%S_%f}.jpg"
-        path.write_bytes(encoded.tobytes())
-        return str(path)
-    except OSError as err:
-        logger.warning("Could not store the fall snapshot: %s", err)
-        return None
+    return encoded.tobytes() if ok else None
 
 
 def to_qimage(bgr) -> QImage:

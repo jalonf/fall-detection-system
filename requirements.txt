@@ -12,7 +12,6 @@ tensorflow==2.18.0
 peewee==4.3.0
 bcrypt==5.0.0
 python-dotenv==1.0.1
-resend==2.50.0
 
 # Training scripts (training/)
 scikit-learn==1.6.1

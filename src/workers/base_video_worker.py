@@ -5,7 +5,6 @@ import logging
 import threading
 import time
 from datetime import datetime
-from pathlib import Path
 
 import cv2
 import numpy as np
@@ -22,16 +21,14 @@ from src.workers.frame_utils import (
     censor_face,
     draw_person_box,
     draw_skeleton,
+    encode_snapshot,
     person_bounds,
-    save_snapshot,
     to_qimage,
 )
 from src.workers.inference_worker import InferenceWorker
 from src.workers.strategies import MonitoringStrategy
 
 logger = logging.getLogger(__name__)
-
-SNAPSHOT_DIR = Path(__file__).resolve().parents[2] / "snapshots"
 
 _STAGE_RGB = bytes.fromhex(Colors.STAGE.lstrip("#"))
 SKELETON_BACKGROUND = tuple(reversed(_STAGE_RGB))   # BGR of the panel's stage, so the image blends in
@@ -46,16 +43,16 @@ class BaseVideoWorker(QThread):
     model to load. Everything else lives here, so the fall logic exists
     once and runs in a single thread (the one executing `run`).
 
-    When a fall starts, the worker itself stores the capture, creates the `FallEvent`
-    and e-mails the alert to `user` (the e-mail goes out in a short-lived thread so the
-    video does not stall). `patient` and `user` are optional: without them nothing is
+    When a fall starts, the worker itself creates the `FallEvent` and e-mails the alert,
+    with the capture attached, to `user` (the e-mail goes out in a short-lived thread so the
+    video does not stall). The capture only lives in memory: it is never written to disk. `patient` and `user` are optional: without them nothing is
     stored or sent, and the fall is only reported through the signals.
     """
 
     frame_ready = Signal(QImage)
     skeleton_frame_ready = Signal(QImage)
     telemetry_data_ready = Signal(dict)
-    fall_detected = Signal(float, str)   # probability (0-1) and the capture path ('' if none)
+    fall_detected = Signal(float)        # probability (0-1)
     notification_sent = Signal(bool)     # result of the alert e-mail
 
     def __init__(self, cap: cv2.VideoCapture, strategy: MonitoringStrategy,
@@ -158,22 +155,20 @@ class BaseVideoWorker(QThread):
         return probability if started else None
 
     def _handle_fall(self, frame, probability: float) -> None:
-        """A fall has just started: store the capture and the event, tell the UI, e-mail the alert."""
-        snapshot_path = save_snapshot(frame, SNAPSHOT_DIR)
+        """A fall has just started: store the event, tell the UI, e-mail the alert with the capture."""
+        snapshot = encode_snapshot(frame)   # JPEG bytes, memory only
 
         fall_event = None
         if self.patient:
-            fall_event = FallRepository().create_fall_event(
-                self.patient, probability, snapshot_path=snapshot_path
-            )
+            fall_event = FallRepository().create_fall_event(self.patient, probability)
 
-        self.fall_detected.emit(probability, snapshot_path or "")
+        self.fall_detected.emit(probability)
 
         if self.user is not None:
             timestamp = datetime.now().astimezone().strftime("%d/%m/%Y %H:%M:%S")
-            event_data = fall_event_data(self.patient, self.user, probability, timestamp, snapshot_path)
+            event_data = fall_event_data(self.patient, self.user, probability, timestamp, snapshot)
 
-            # Send the e-mail in a separate thread so the video does not freeze while waiting for Resend.
+            # Send the e-mail in a separate thread so the video does not freeze while waiting for the SMTP server.
             threading.Thread(
                 target=self._send_alert,
                 args=(self.user.email, event_data, fall_event),
@@ -181,7 +176,7 @@ class BaseVideoWorker(QThread):
             ).start()
 
     def _send_alert(self, recipient: str, event_data: dict, fall_event) -> None:
-        """Runs in its own thread: the Resend call can take a second or more."""
+        """Runs in its own thread: the SMTP call can take a second or more."""
         ok = False
         try:
             ok = EmailNotifier(recipient).update(event_data)
