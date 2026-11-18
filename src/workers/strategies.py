@@ -3,7 +3,6 @@ import cv2
 from src.paths import FALL_MODELS_DIR
 
 
-
 class MonitoringStrategy:
     """
     How to monitor a patient: camera resolution and FPS, and the model trained
@@ -30,17 +29,18 @@ class LowRiskStrategy(MonitoringStrategy):
     width, height, fps = 640, 480, 15
     model_path = str(FALL_MODELS_DIR / "fall_gru_low_risk_15fps.keras")
 
+
 class MediumRiskStrategy(MonitoringStrategy):
     name = "MEDIUM"
     width, height, fps = 1280, 720, 15
     model_path = str(FALL_MODELS_DIR / "fall_gru_low_risk_15fps.keras")
 
 
-
 class HighRiskStrategy(MonitoringStrategy):
     name = "HIGH"
     width, height, fps = 1280, 720, 30
     model_path = str(FALL_MODELS_DIR / "fall_gru_high_risk_30fps.keras")
+
 
 _STRATEGIES: dict[str, type[MonitoringStrategy]] = {
     "LOW": LowRiskStrategy,
