@@ -13,6 +13,7 @@ ROOT = Path(__file__).resolve().parent.parent
 MODELS_DIR = ROOT / "models"
 FALL_MODELS_DIR = MODELS_DIR / "fall_detection"
 RISK_MODEL_DIR = MODELS_DIR / "risk_model"
+RISK_MODEL = RISK_MODEL_DIR / "risk_random_forest.joblib"
 POSE_MODEL = MODELS_DIR / "pose" / "pose_landmarker_full.task"
 
 # Datasets (ignored by Git, see data/README.md)

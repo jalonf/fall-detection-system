@@ -1,9 +1,12 @@
 import re
 
 from PySide6.QtCore import QSize, Qt, Signal
+from PySide6.QtGui import QIntValidator
 from PySide6.QtWidgets import (
+    QCheckBox,
     QComboBox,
     QFrame,
+    QGridLayout,
     QHBoxLayout,
     QLabel,
     QLineEdit,
@@ -15,6 +18,15 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from src.dtos.questionnaire import (
+    CHECK,
+    CHOICE,
+    DAILY_LIFE,
+    HEALTH,
+    NUMBER,
+    PROFILE,
+    QUESTIONS,
+)
 from src.dtos.registration_data import USER_ROLES, RegistrationData
 from src.views.components.auth_header import AuthHeader
 from src.views.icons import attach_leading_icon, attach_password_toggle, icon
@@ -26,13 +38,20 @@ _STEPS = (
     ("Caregiver information", "Who will be monitoring?"),
     ("Account access", "How you'll sign in and receive alerts."),
     ("Patient information", "Who is being monitored?"),
+    ("Daily life", "How the patient manages every day."),
+    ("Health", "Conditions and medication. They set the patient's risk level."),
 )
+
+# Step of the wizard (index in _STEPS) where each group of questionnaire questions is shown.
+_QUESTION_STEPS = {PROFILE: 2, DAILY_LIFE: 3, HEALTH: 4}
 
 
 class RegisterForm(QWidget):
     """
     Component responsible for rendering the registration form interface.
-    Presented as a three-step wizard so users only face a few fields at a time.
+    Presented as a five-step wizard so users only face a few fields at a time.
+    The last steps are the health questionnaire (see `src/dtos/questionnaire.py`): its answers
+    are sent with the registration and the patient's risk level is calculated from them.
     Handles user input validation and emits signals for account creation.
     """
 
@@ -42,6 +61,8 @@ class RegisterForm(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self._err_inputs = {}
+        self._answer_inputs = {}     # questionnaire widgets, by question key
+        self._number_errors = {}     # error label of each numeric question, by question key
         self._current_step = 0
         self._build_ui()
 
@@ -170,12 +191,8 @@ class RegisterForm(QWidget):
         patient_layout, self.reg_patient_name, self.reg_patient_name_err = self._field(
             "Patient full name", "Jane Doe", icon_name="user"
         )
-        self.reg_risk_level = QComboBox()
-        self.reg_risk_level.addItems(["LOW", "HIGH"])
-        self.reg_risk_level.setFixedHeight(Size.FIELD)
-        style_combo(self.reg_risk_level)
-        risk_layout = self._combo_field("Baseline risk level", self.reg_risk_level)
-        page_layout.addLayout(self._row(patient_layout, risk_layout))
+        page_layout.addLayout(patient_layout)
+        self._add_questions(page_layout, PROFILE)
 
         medical_layout, self.reg_medical_info, self.reg_medical_info_err = self._field(
             "Medical notes (optional)",
@@ -186,12 +203,20 @@ class RegisterForm(QWidget):
         page_layout.addStretch(1)
         self.pages.addWidget(page)
 
+        for step in (DAILY_LIFE, HEALTH):
+            page, page_layout = self._new_page()
+            self._add_questions(page_layout, step)
+            page_layout.addStretch(1)
+            self.pages.addWidget(page)
+
         layout.addWidget(self.pages)
 
         self._step_errors = (
             (self.reg_name_err, self.reg_phone_err),
             (self.reg_email_err, self.reg_password_err, self.reg_confirm_err),
-            (self.reg_patient_name_err, self.reg_medical_info_err),
+            (self.reg_patient_name_err, self.reg_medical_info_err, *self._number_error_labels(PROFILE)),
+            self._number_error_labels(DAILY_LIFE),
+            self._number_error_labels(HEALTH),
         )
 
         layout.addSpacing(26)
@@ -303,6 +328,92 @@ class RegisterForm(QWidget):
         self._err_inputs[message] = edit
         return col, edit, message
 
+    def _add_questions(self, page_layout, step):
+        """
+        Adds the questionnaire questions of a step to the page: selects and numbers two per row,
+        check boxes in two columns, and a heading where a new group of questions starts.
+        """
+        fields = []   # selects and numbers waiting to fill a row
+        boxes = []    # check boxes waiting to fill the grid
+
+        def flush():
+            for i in range(0, len(fields), 2):
+                pair = fields[i:i + 2]
+                if len(pair) == 1:
+                    pair.append(QVBoxLayout())   # empty column, so a lone field keeps the width of the others
+                page_layout.addLayout(self._row(*pair))
+            if boxes:
+                grid = QGridLayout()
+                grid.setHorizontalSpacing(16)
+                grid.setVerticalSpacing(10)
+                grid.setColumnStretch(0, 1)
+                grid.setColumnStretch(1, 1)
+                for i, box in enumerate(boxes):
+                    grid.addWidget(box, i // 2, i % 2)
+                page_layout.addLayout(grid)
+            fields.clear()
+            boxes.clear()
+
+        for question in QUESTIONS:
+            if question.step != step:
+                continue
+
+            if question.section:
+                flush()
+                heading = QLabel(question.section)
+                heading.setObjectName("sectionLabel")
+                heading.setIndent(0)
+                page_layout.addWidget(heading)
+
+            if question.kind == CHECK:
+                widget = QCheckBox(question.text)
+                widget.setCursor(Qt.CursorShape.PointingHandCursor)
+                boxes.append(widget)
+            elif question.kind == CHOICE:
+                widget = QComboBox()
+                for label, value in question.options:
+                    widget.addItem(label, value)
+                widget.setFixedHeight(Size.FIELD)
+                style_combo(widget)
+                fields.append(self._combo_field(question.text, widget))
+            else:
+                column, widget, error = self._field(question.text, f"{question.minimum} - {question.maximum}")
+                widget.setValidator(QIntValidator(0, 999, widget))
+                widget.setMaxLength(3)
+                widget.setText("0" if question.minimum == 0 else "")
+                self._number_errors[question.key] = error
+                fields.append(column)
+
+            self._answer_inputs[question.key] = widget
+        flush()
+
+    def _number_error_labels(self, step):
+        return tuple(self._number_errors[q.key] for q in QUESTIONS if q.step == step and q.key in self._number_errors)
+
+    def _reset_answers(self):
+        """Back to the first option, unchecked, and 0 where 0 is a valid number (the other numbers stay empty)."""
+        for question in QUESTIONS:
+            widget = self._answer_inputs[question.key]
+            if question.kind == CHOICE:
+                widget.setCurrentIndex(0)
+            elif question.kind == CHECK:
+                widget.setChecked(False)
+            else:
+                widget.setText("0" if question.minimum == 0 else "")
+
+    def _read_answers(self) -> dict[str, float]:
+        """The questionnaire answers as the numbers the risk model uses."""
+        answers = {}
+        for question in QUESTIONS:
+            widget = self._answer_inputs[question.key]
+            if question.kind == CHOICE:
+                answers[question.key] = float(widget.currentData())
+            elif question.kind == CHECK:
+                answers[question.key] = float(widget.isChecked())
+            else:
+                answers[question.key] = float(widget.text())
+        return answers
+
     def _go_to_step(self, index):
         last = len(_STEPS) - 1
         index = max(0, min(index, last))
@@ -364,6 +475,7 @@ class RegisterForm(QWidget):
             self.reg_confirm_err,
             self.reg_patient_name_err,
             self.reg_medical_info_err,
+            *self._number_errors.values(),
         ]
         for label in error_labels:
             label.setVisible(False)
@@ -378,7 +490,7 @@ class RegisterForm(QWidget):
         self.reg_patient_name.clear()
         self.reg_medical_info.clear()
         self.reg_role.setCurrentIndex(0)
-        self.reg_risk_level.setCurrentIndex(0)
+        self._reset_answers()
 
         self._restore_email_help()
         self._hide_error_labels()
@@ -466,6 +578,17 @@ class RegisterForm(QWidget):
             )
             is_valid = False
 
+        for question in QUESTIONS:
+            if question.kind != NUMBER or not wants(_QUESTION_STEPS[question.step]):
+                continue
+            text = self._answer_inputs[question.key].text().strip()
+            if not text.isdigit() or not question.minimum <= int(text) <= question.maximum:
+                self._show_field_error(
+                    self._number_errors[question.key],
+                    f"Enter a number between {question.minimum} and {question.maximum}."
+                )
+                is_valid = False
+
         return is_valid
 
     def _emit_register(self):
@@ -478,7 +601,7 @@ class RegisterForm(QWidget):
                 role=self.reg_role.currentText(),
                 patient_name=self.reg_patient_name.text().strip(),
                 medical_info=self.reg_medical_info.text().strip(),
-                risk_level=self.reg_risk_level.currentText()
+                risk_answers=self._read_answers()
             )
             self.register_requested.emit(reg_data)
         else:

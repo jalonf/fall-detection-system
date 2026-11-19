@@ -13,7 +13,8 @@ Developed as a **Bachelor's Thesis (Trabajo de Fin de Grado, TFG)**.
 ## Features
 
 * **Live monitoring** from a webcam, with the person's skeleton and bounding box drawn on the video.
-* **Two detection modes** chosen from the patient's risk level (see [Risk levels](#risk-levels)).
+* **Three detection modes** chosen from the patient's risk level, which is calculated at sign-up from a
+  short health questionnaire (see [Risk levels](#risk-levels)).
 * **Privacy:** the face is blurred before anything is displayed, stored or sent.
 * **Fall alerts:** the event is stored in the database and an e-mail with a capture of the fall
   is sent through Gmail (SMTP). The capture only lives in memory: it is never written to disk.
@@ -41,13 +42,17 @@ For every frame, `BaseVideoWorker` runs this pipeline in its own thread:
 
 ### Risk levels
 
-Each patient has a risk level, chosen at sign-up. It decides how the camera is configured and
-which model is used (`src/workers/strategies.py`):
+Each patient has a risk level, calculated at sign-up. The caregiver answers a health questionnaire
+about the patient (`src/dtos/questionnaire.py`: age, mobility, pain, conditions, medication...) and a
+Random Forest (`src/ai/risk_assessor.py`) turns the answers into LOW, MEDIUM or HIGH. If the model cannot
+be used, the patient is registered as HIGH, the strictest level. The level decides how the camera is
+configured and which model is used (`src/workers/strategies.py`):
 
-| Risk | Camera | Model window | Model file |
-|------|--------|--------------|------------|
-| LOW  | 640 × 480, 15 FPS  | 15 frames (1 s) | `models/fall_detection/fall_gru_low_risk_15fps.keras` |
-| HIGH | 1280 × 720, 30 FPS | 30 frames (1 s) | `models/fall_detection/fall_gru_high_risk_30fps.keras` |
+| Risk   | Camera | Model window | Model file |
+|--------|--------|--------------|------------|
+| LOW    | 640 × 480, 15 FPS  | 15 frames (1 s) | `models/fall_detection/fall_gru_low_risk_15fps.keras` |
+| MEDIUM | 1280 × 720, 15 FPS | 15 frames (1 s) | `models/fall_detection/fall_gru_low_risk_15fps.keras` |
+| HIGH   | 1280 × 720, 30 FPS | 30 frames (1 s) | `models/fall_detection/fall_gru_high_risk_30fps.keras` |
 
 For an uploaded video the model is chosen from the file's own frame rate instead
 (20 FPS or less → 15-frame model, otherwise the 30-frame model), because the model has to
@@ -55,7 +60,7 @@ match the speed of the frames it receives.
 
 ### Model
 
-Both models share the same architecture, trained with Keras (`training/train_fall_model.py`):
+Both models share the same architecture, trained with Keras (`training/fall_detection/train_fall_model.py`):
 
 ```text
 Input (window, 99) → GRU(64) → Dropout(0.3) → Dense(32, ReLU) → Dense(1, sigmoid)
@@ -97,24 +102,27 @@ fall-detection-system/
 ├── models/                 # Trained and downloaded models, one folder per model
 │   ├── fall_detection/     # GRU fall detectors (.keras)
 │   ├── pose/               # MediaPipe pose landmarker models (.task)
-│   └── risk_assessment/    # Patient risk-level model
+│   └── risk_model/         # Patient risk-level model (Random Forest, .joblib)
 ├── docs/                   # Evaluation plots of both models and the UML diagram
 ├── src/
 │   ├── main.py             # Entry point: main window, login and role-based navigation
 │   ├── paths.py            # Locations of the models, datasets and database (built from the project root)
-│   ├── ai/                 # MediaPipe pose extractor
+│   ├── ai/                 # MediaPipe pose extractor and risk-level assessor
 │   ├── controllers/        # Auth and monitoring controllers
 │   ├── database/           # SQLite connection and Peewee models
-│   ├── dtos/               # Data passed from the views to the controllers
+│   ├── dtos/               # Data passed from the views to the controllers (and the health questionnaire)
 │   ├── notifications/      # Alert e-mail (sender and template)
 │   ├── repositories/       # Database access for users, patients and fall events
 │   ├── router/             # Animated navigation between screens
 │   ├── views/              # Screens, components, theme and stylesheet
 │   └── workers/            # Video, inference and monitoring-strategy classes
 ├── training/
-│   ├── build_fall_dataset.py       # Videos → pose sequences (.npy)
-│   ├── build_risk_dataset_esde.py  # ESdE 2025 microdata → risk-assessment dataset (.csv)
-│   └── train_fall_model.py         # Trains and evaluates both GRU models
+│   ├── fall_detection/
+│   │   ├── build_fall_dataset.py       # Videos → pose sequences (.npy)
+│   │   └── train_fall_model.py         # Trains and evaluates both GRU models
+│   └── risk_assessment/
+│       ├── build_risk_dataset_esde.py  # ESdE 2025 microdata → risk-assessment dataset (.csv)
+│       └── train_risk_model.py         # Trains and evaluates the Random Forest risk model
 └── requirements.txt        # Dependencies of the application and the training scripts
 ```
 
@@ -175,8 +183,8 @@ From the project root:
 python -m src.main
 ```
 
-The database is created on the first run. Sign up, fill in the patient's data and risk level,
-and press **Start detection**. The role chosen at sign-up decides the screen:
+The database is created on the first run. Sign up, fill in the patient's data and answer the health
+questionnaire (it sets the patient's risk level), and press **Start detection**. The role chosen at sign-up decides the screen:
 
 | Role | Screen |
 |------|--------|
@@ -194,28 +202,39 @@ The trained models are already in `models/fall_detection/`. To train them again:
    `data/fall_detection/raw/VideoDataset/Fall/` (falls). Subfolders are allowed.
 2. Extract the pose sequences for both modes (written to `data/fall_detection/processed/`):
    ```bash
-   python -m training.build_fall_dataset
+   python -m training.fall_detection.build_fall_dataset
    ```
 3. Train and evaluate both models (written to `models/fall_detection/`, plots to `docs/`):
    ```bash
-   python -m training.train_fall_model
+   python -m training.fall_detection.train_fall_model
    ```
 
 `data/` is ignored by Git, except `data/README.md`, which describes its layout.
 
 ### Risk-assessment dataset
 
-The patient's risk level will come from a Random Forest trained on the ESdE 2025 health survey (INE).
+The patient's risk level comes from a Random Forest trained on the ESdE 2025 health survey (INE).
 The microdata zip goes in `data/risk_assessment/raw/ESdEadulto_2025.zip`; then, from the project root:
 
 ```bash
-python -m training.build_risk_dataset_esde
+python -m training.risk_assessment.build_risk_dataset_esde
 ```
 
 This writes `data/risk_assessment/processed/risk_dataset_esde2025.csv` (people aged 65+, the 28
 predictors that the application asks the patient, the targets and the survey weight) and a
 `..._dictionary.csv` that explains every column. The survey has no question about falls, so the
 targets are a proxy: accidents at home or during leisure time in the last 12 months.
+
+Then train the Random Forest. It reports its cross-validated AUC and the observed event rate per risk
+level, saves the confusion matrices in `docs/risk_assessment/` and stores the model, the questions it
+expects and the limits of each level in `models/risk_model/risk_random_forest.joblib`:
+
+```bash
+python -m training.risk_assessment.train_risk_model
+```
+
+The application only needs that `.joblib` file. Questions are defined once in
+`src/dtos/questionnaire.py`; each one is a feature of the model.
 
 ---
 

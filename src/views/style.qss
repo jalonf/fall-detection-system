@@ -52,6 +52,7 @@ QLabel#cardTitle    { font-family: @FONT_DISPLAY@; font-size: 16px; font-weight:
 QLabel#cardSubtitle { font-size: 12px; color: @TEXT_MUTED@; }
 QLabel#sectionTitle { font-family: @FONT_DISPLAY@; font-size: 14px; font-weight: 600; color: @TEXT_MAIN@; }
 QLabel#fieldLabel   { font-size: 12px; font-weight: 600; color: @TEXT_LABEL@; }
+QLabel#sectionLabel { font-size: 12px; font-weight: 600; color: @TEXT_MUTED@; padding-top: 6px; }
 
 QLabel#metricCaption { font-size: 11px; color: @TEXT_SUBTLE@; }
 QLabel#metricValue {
@@ -439,6 +440,27 @@ QComboBox QAbstractItemView::item {
 }
 QComboBox QAbstractItemView::item:hover    { background-color: @TRACK@; }
 QComboBox QAbstractItemView::item:selected { background-color: @PRIMARY_SOFT_STRONG@; color: @TEXT_MAIN@; }
+
+/* ---- Check boxes (questionnaire) ---- */
+QCheckBox {
+    spacing: 10px;
+    font-size: 13px;
+    color: @TEXT_MAIN@;
+}
+QCheckBox::indicator {
+    width: 18px;
+    height: 18px;
+    background-color: @SURFACE_ALT@;
+    border: 1px solid @BORDER_INPUT@;
+    border-radius: 4px;
+}
+QCheckBox::indicator:hover   { border-color: @BORDER_HOVER@; }
+QCheckBox::indicator:checked {
+    background-color: @PRIMARY@;
+    border-color: @PRIMARY@;
+    image: url("@GLYPH_CHECK@");
+}
+QCheckBox:focus { outline: none; }
 
 /* ============================================================
    EVENT LOG  (rows are painted by a custom delegate)

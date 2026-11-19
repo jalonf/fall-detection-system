@@ -19,7 +19,7 @@ data/
 
 ## Fall detection
 
-Videos in `raw/` are converted to pose sequences by `python -m training.build_fall_dataset`.
+Videos in `raw/` are converted to pose sequences by `python -m training.fall_detection.build_fall_dataset`.
 
 ## Risk assessment
 
@@ -27,7 +27,7 @@ Videos in `raw/` are converted to pose sequences by `python -m training.build_fa
 2025* (ESdE), published by the Spanish National Statistics Institute (INE, www.ine.es) together
 with the Ministry of Health. It contains 21,641 respondents, 6,456 of them aged 65 or more.
 
-`python -m training.build_risk_dataset_esde` turns it into `processed/risk_dataset_esde2025.csv`
+`python -m training.risk_assessment.build_risk_dataset_esde` turns it into `processed/risk_dataset_esde2025.csv`
 (6,396 people, 28 predictors that the application asks the patient, 7 targets and the survey weight).
 
 The ESdE has **no question about falls**: the targets are a proxy based on accidents at home or
