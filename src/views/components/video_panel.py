@@ -291,7 +291,7 @@ class VideoPanel(QFrame):
         for column in range(4):
             grid.setColumnStretch(column, 0)
 
-        if compact:
+        if compact and self._tools_group is not None:   # compact is only set when there is a tools group
             grid.addWidget(self._source_group, 0, 0)
             grid.addWidget(self._run_group, 0, 2, Qt.AlignmentFlag.AlignRight)
             grid.addWidget(self._tools_group, 1, 0, 1, 3)

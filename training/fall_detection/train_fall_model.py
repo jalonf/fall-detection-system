@@ -99,7 +99,7 @@ def train_fall_detector(processed_dir: str, model_save_path: str, seq_len: int, 
     
     # Confusion Matrix Plot
     _, ax = plt.subplots(figsize=(6, 4))
-    ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=["ADL", "Fall"]).plot(cmap=plt.cm.Blues, ax=ax, colorbar=False)
+    ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=["ADL", "Fall"]).plot(cmap="Blues", ax=ax, colorbar=False)
     plt.title(f"Confusion Matrix - {mode_name}")
     plt.savefig(os.path.join(docs_sub_dir, "confusion_matrix.png"), dpi=300, bbox_inches='tight')
     plt.close()

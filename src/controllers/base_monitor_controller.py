@@ -17,7 +17,7 @@ class BaseMonitorController:
     Subclasses extend `_connect_worker` to wire extra signals to their view.
     """
 
-    def __init__(self, view, current_user, patient:Patient, on_logout_callback):
+    def __init__(self, view, current_user, patient: Patient | None, on_logout_callback):
         self.view = view
         self.user = current_user
         self.patient = patient
