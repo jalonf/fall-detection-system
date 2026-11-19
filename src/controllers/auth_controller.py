@@ -2,6 +2,7 @@ import logging
 
 from PySide6.QtCore import QTimer
 
+from src.ai.risk_assessor import RiskAssessor
 from src.database.database_manager import db_connection
 from src.dtos.registration_data import USER_ROLES, RegistrationData
 from src.repositories.patient_repository import PatientRepository
@@ -24,6 +25,7 @@ class AuthController:
 
         self.user_repo = UserRepository()
         self.patient_repo = PatientRepository()
+        self.risk_assessor = RiskAssessor()
 
     def handle_login(self, email, password):
         """Handles user login."""
@@ -43,6 +45,14 @@ class AuthController:
             logger.warning("Authentication failed: invalid credentials provided")
             self.view.show_error("Invalid email or password. Please try again.")
 
+    def _assess_risk(self, answers: dict[str, float]) -> str:
+        """Risk level of the patient. If it cannot be calculated, the strictest monitoring is used."""
+        try:
+            return self.risk_assessor.assess(answers).level
+        except Exception:   # whatever the cause (missing model, bad answers), registration goes on
+            logger.exception("The risk level could not be calculated; using HIGH to be safe")
+            return "HIGH"
+
     def handle_register(self, data: RegistrationData):
         """Handles new user registration and creates the associated patient."""
         logger.info("The controller is about to handle the registration process for: %s", data.email)
@@ -57,6 +67,8 @@ class AuthController:
             self.view.show_error("Registration failed. This email is already in use.")
             return
 
+        risk_level = self._assess_risk(data.risk_answers)
+
         # The user and its patient are saved together: if the patient fails, the user is undone too.
         with db_connection.atomic() as transaction:
             new_user = self.user_repo.create_user(
@@ -70,14 +82,14 @@ class AuthController:
                 user=new_user,
                 name=data.patient_name,
                 medical_notes=data.medical_info,
-                risk_level=data.risk_level
+                risk_level=risk_level
             )
             if not patient:
                 transaction.rollback()
 
         if patient:
             logger.info("User account and associated patient successfully created")
-            self.view.show_success("Account created successfully! Welcome.")
+            self.view.show_success(f"Account created! The patient's risk level is {risk_level}.")
             QTimer.singleShot(1500, lambda: self.on_auth_success(new_user))
         else:
             logger.error("Registration failed: the account could not be saved")

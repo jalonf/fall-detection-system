@@ -297,6 +297,7 @@ class ThemeManager:
         glyphs = {
             "GLYPH_CHEVRON": ("chevron_down", Colors.TEXT_MUTED),
             "GLYPH_CHEVRON_HOVER": ("chevron_down", Colors.TEXT_MAIN),
+            "GLYPH_CHECK": ("check", Colors.ON_PRIMARY),
         }
         tokens: dict[str, str] = {}
         try:

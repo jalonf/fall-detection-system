@@ -10,7 +10,7 @@ from sklearn.metrics import ConfusionMatrixDisplay, roc_auc_score
 from sklearn.model_selection import StratifiedKFold, cross_val_predict
 
 from src.paths import DOCS_DIR, RISK_MODEL, RISK_PROCESSED_DIR
-from training.build_risk_dataset_esde import PREDICTOR_COLUMNS
+from training.risk_assessment.build_risk_dataset_esde import PREDICTOR_COLUMNS
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger(__name__)
@@ -50,7 +50,7 @@ def save_confusion_matrices(y: pd.Series, levels: pd.Series, docs_dir: Path) -> 
     _, axes = plt.subplots(1, len(rules), figsize=(11, 4))
     for ax, (rule, flagged) in zip(axes, rules.items()):
         display = ConfusionMatrixDisplay.from_predictions(
-            y, flagged.astype(int), display_labels=["No", "Yes"], cmap=plt.cm.Blues, ax=ax, colorbar=False
+            y, flagged.astype(int), display_labels=["No", "Yes"], cmap="Blues", ax=ax, colorbar=False
         )
         ax.set_title(f"Flagged when the level is {rule}")
         ax.set_xlabel("Flagged by the model")
@@ -80,7 +80,7 @@ def train_risk_model(dataset_path: str, model_path: str, docs_dir: Path) -> None
     #    so the probabilities are honest (the final model would be too optimistic on its own data).
     model = build_model()
     folds = StratifiedKFold(n_splits=5, shuffle=True, random_state=RANDOM_STATE)
-    probabilities = cross_val_predict(model, X, y, cv=folds, method="predict_proba")[:, 1]
+    probabilities = np.asarray(cross_val_predict(model, X, y, cv=folds, method="predict_proba"))[:, 1]
     logger.info("Cross-validated AUC: %.3f (0.5 is chance, 1 is perfect)", roc_auc_score(y, probabilities))
 
     # 3. Risk levels: the limits are percentiles of the probabilities.
