@@ -9,9 +9,9 @@ from datetime import datetime
 import cv2
 import numpy as np
 from PySide6.QtCore import QThread, Signal
-from PySide6.QtGui import QImage
 
 from src.ai.extractor import MediaPipeExtractor
+from src.dtos.frame_packet import FramePacket
 from src.notifications.email_notifier import EmailNotifier, fall_event_data
 from src.repositories.fall_repository import FallRepository
 from src.views.theme import Colors
@@ -39,42 +39,110 @@ class BaseVideoWorker(QThread):
     """
     Processes frames: pose extraction, face blur, fall inference and drawing.
 
-    Subclasses only decide where the frames come from (`run`) and which strategy's
-    model to load. Everything else lives here, so the fall logic exists
-    once and runs in a single thread (the one executing `run`).
+    Subclasses only decide where the frames come from (`_open_source`). Everything else
+    lives here, so the fall logic exists once and runs in a single thread (the one
+    executing `run`).
+
+    The constructor does no heavy work, because it runs in the GUI thread: opening the
+    source, starting MediaPipe and loading the model all happen at the start of `run`,
+    so the window never freezes while they load. To stop, call `requestInterruption()`
+    and wait for `finished` instead of blocking the GUI thread.
+
+    Frames reach the interface through a single slot that only holds the newest one
+    (see `take_frame`): if the interface falls behind, old frames are dropped instead of
+    piling up as queued signals, so the picture never lags behind the camera.
 
     When a fall starts, the worker itself creates the `FallEvent` and e-mails the alert,
     with the capture attached, to `user` (the e-mail goes out in a short-lived thread so the
-    video does not stall). The capture only lives in memory: it is never written to disk. `patient` and `user` are optional: without them nothing is
-    stored or sent, and the fall is only reported through the signals.
+    video does not stall). The capture only lives in memory: it is never written to disk.
+    `patient` and `user` are optional: without them nothing is stored or sent, and the fall
+    is only reported through the signals.
     """
 
-    frame_ready = Signal(QImage)
-    skeleton_frame_ready = Signal(QImage)
-    telemetry_data_ready = Signal(dict)
+    frame_available = Signal()           # a new FramePacket is waiting in `take_frame`
+    source_failed = Signal(str)          # the source could not be opened or the pipeline failed
     fall_detected = Signal(float)        # probability (0-1)
     notification_sent = Signal(bool)     # result of the alert e-mail
 
-    def __init__(self, cap: cv2.VideoCapture, strategy: MonitoringStrategy,
-                 user=None, patient=None, parent=None):
+    source_label = "video source"        # for log and error messages, e.g. "camera 0"
+
+    def __init__(self, user=None, patient=None, parent=None):
         super().__init__(parent)
-        self.cap = cap                # already opened by the subclass
-        self.strategy = strategy
         self.user = user
         self.patient = patient
-        self._is_running = True
-        self.extractor = MediaPipeExtractor()
-        self.inference_worker = InferenceWorker()
+        self.strategy: MonitoringStrategy | None = None
+        self.extractor: MediaPipeExtractor | None = None
+        self.inference_worker: InferenceWorker | None = None
         self.last_known_landmarks = None
         self.last_pose = None   # last model input seen, repeated while nobody is detected
 
-        self.seq_len = strategy.fps   # the model sees one second of frames
-        self.sequence_buffer = collections.deque(maxlen=self.seq_len)
+        self.seq_len = 0
+        self.sequence_buffer: collections.deque = collections.deque()
         self.current_is_fall = False
 
-        if cap.isOpened():
-            self.inference_worker.load_model(strategy.model_path)
-            self.inference_worker.start()
+        self._frame_lock = threading.Lock()
+        self._latest_frame: FramePacket | None = None
+
+    # ------------------------------------------------------------------ source
+    def _open_source(self) -> tuple[cv2.VideoCapture, MonitoringStrategy]:
+        """Opens the frame source and picks the strategy. Runs in the worker thread."""
+        raise NotImplementedError
+
+    def _on_source_opened(self, cap: cv2.VideoCapture) -> None:
+        """Hook called once everything is ready, just before the first frame."""
+
+    # ------------------------------------------------------------------ thread
+    def run(self):
+        cap, strategy = self._open_source()
+        if not cap.isOpened():
+            logger.error("Could not open %s", self.source_label)
+            cap.release()
+            self.source_failed.emit(f"Could not open {self.source_label}")
+            return
+
+        logger.info("Starting %s with %s strategy", self.source_label, strategy.name)
+        try:
+            self._setup(strategy)
+            self._on_source_opened(cap)
+
+            while not self.isInterruptionRequested():
+                ret, frame = cap.read()
+                if not ret or frame is None:
+                    break
+                self._process_frame(frame)
+        except Exception:
+            logger.exception("The video pipeline stopped because of an unexpected error")
+            self.source_failed.emit("Detection stopped because of an unexpected error")
+        finally:
+            self._release(cap)
+
+    def _setup(self, strategy: MonitoringStrategy) -> None:
+        """Starts MediaPipe and the fall model for this strategy (the slow part of starting)."""
+        self.strategy = strategy
+        self.seq_len = strategy.fps   # the model sees one second of frames
+        self.sequence_buffer = collections.deque(maxlen=self.seq_len)
+        self.extractor = MediaPipeExtractor()
+        self.inference_worker = InferenceWorker()
+        self.inference_worker.load_model(strategy.model_path)
+        self.inference_worker.start()
+
+    # ------------------------------------------------------------------ frames
+    def take_frame(self) -> FramePacket | None:
+        """Called from the GUI thread: returns the newest frame and empties the slot."""
+        with self._frame_lock:
+            packet, self._latest_frame = self._latest_frame, None
+        return packet
+
+    def _publish(self, packet: FramePacket) -> None:
+        """
+        Leaves `packet` in the slot, replacing a frame the interface has not taken yet.
+        The signal is only emitted when the slot was empty, so at most one is ever queued.
+        """
+        with self._frame_lock:
+            notify = self._latest_frame is None
+            self._latest_frame = packet
+        if notify:
+            self.frame_available.emit()
 
     def _process_frame(self, frame) -> None:
         """Runs the whole pipeline for one BGR frame and emits the results."""
@@ -138,10 +206,8 @@ class BaseVideoWorker(QThread):
         if fall_probability is not None:
             self._handle_fall(frame, fall_probability)
 
-        # 6. Send everything to the interface.
-        self.telemetry_data_ready.emit(telemetry)
-        self.frame_ready.emit(to_qimage(frame))
-        self.skeleton_frame_ready.emit(to_qimage(skeleton_view))
+        # 6. Hand everything to the interface (only the newest frame is kept).
+        self._publish(FramePacket(to_qimage(frame), to_qimage(skeleton_view), telemetry))
 
     def _poll_fall(self) -> float | None:
         """Returns the probability when a fall has just started, otherwise None."""
@@ -189,9 +255,7 @@ class BaseVideoWorker(QThread):
     def _release(self, cap) -> None:
         logger.info("Releasing resources...")
         cap.release()
-        self.extractor.release()
-        self.inference_worker.stop()
-
-    def stop(self):
-        self._is_running = False
-        self.wait()
+        if self.extractor is not None:
+            self.extractor.release()
+        if self.inference_worker is not None:
+            self.inference_worker.stop()

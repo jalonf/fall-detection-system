@@ -197,14 +197,14 @@ QFrame#stage {
 QFrame#stage[alert="on"]  { border: 2px solid @DANGER_PULSE@; }
 QFrame#stage[alert="dim"] { border: 2px solid @DANGER_DIM@; }
 
-QLabel#videoFrame { background: transparent; }
+QWidget#videoFrame { background: transparent; }
 
 /* "Stream offline" empty state, drawn on the charcoal stage */
 QWidget#streamPlaceholder { background: transparent; }
 QLabel#placeholderTitle   { font-family: @FONT_DISPLAY@; font-size: 15px; font-weight: 600; color: @STAGE_TEXT@; }
 QLabel#placeholderHint    { font-size: 13px; color: @STAGE_TEXT_MUTED@; }
 
-QLabel#poseView {
+QWidget#poseView {
     background-color: @STAGE@;
     color: @STAGE_TEXT_MUTED@;
     font-size: 12px;

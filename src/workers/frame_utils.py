@@ -8,6 +8,7 @@ import logging
 from typing import Any
 
 import cv2
+import numpy as np
 from mediapipe.framework.formats import landmark_pb2
 from mediapipe.python.solutions import drawing_utils, pose
 from PySide6.QtGui import QImage
@@ -104,9 +105,13 @@ def encode_snapshot(frame) -> bytes | None:
 
 
 def to_qimage(bgr) -> QImage:
-    """BGR array to QImage. `.copy()` detaches it from the temporary NumPy buffer."""
-    rgb = cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
-    height, width, _ = rgb.shape
-    return QImage(rgb.data, width, height, 3 * width, QImage.Format.Format_RGB888).copy()
+    """
+    BGR array to QImage. Qt reads BGR directly (`Format_BGR888`), so there is no colour
+    conversion. `.copy()` detaches the image from the NumPy buffer, which is freed as soon
+    as the worker moves on to the next frame.
+    """
+    bgr = np.ascontiguousarray(bgr)   # a crop is a view with gaps between rows
+    height, width, _ = bgr.shape
+    return QImage(bgr.data, width, height, bgr.strides[0], QImage.Format.Format_BGR888).copy()
 
 

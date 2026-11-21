@@ -79,8 +79,8 @@ class MainWindow(QMainWindow):
 
     def handle_logout(self):
         logger.info("Logout requested. Stopping camera worker and cleaning up monitor/admin view...")
-        if self.monitor_controller and hasattr(self.monitor_controller, "stop_camera"):
-            self.monitor_controller.stop_camera()
+        if self.monitor_controller:
+            self.monitor_controller.shutdown()
         
         def cleanup_monitor():
             if self.monitor_view:
@@ -91,6 +91,12 @@ class MainWindow(QMainWindow):
             logger.info("Dashboard module successfully cleaned up and unloaded.")
 
         self.router.navigate_to(self.auth_view, on_finish_callback=cleanup_monitor)
+
+    def closeEvent(self, event):
+        """Lets a running worker release the camera before the window (and its thread objects) go away."""
+        if self.monitor_controller:
+            self.monitor_controller.shutdown()
+        super().closeEvent(event)
 
 
 if __name__ == "__main__":
