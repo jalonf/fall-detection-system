@@ -14,7 +14,6 @@ from src.database.models.user import User
 from src.router.router import ViewRouter
 from src.views.admin_view import AdminView
 from src.views.auth_view import AuthView
-from src.views.components.brand_mark import brand_icon
 from src.views.monitor_view import MonitorView
 from src.views.theme import APP_NAME, ThemeManager
 
@@ -108,7 +107,6 @@ if __name__ == "__main__":
     app = QApplication(sys.argv)
     
     ThemeManager.setup_theme(app)
-    app.setWindowIcon(brand_icon())
 
     databaseManager.init_tables([User, Patient, FallEvent])
     

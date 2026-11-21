@@ -31,8 +31,8 @@ _PRIMARY_ACTION_WIDTH = 160
 
 class _StagePlaceholder(QWidget):
     """
-    Empty state of the video stage. Four corner brackets (the same detection
-    reticle as the brand mark) frame the message so the stage reads as a camera
+    Empty state of the video stage. Four corner brackets (a detection reticle)
+    frame the message so the stage reads as a camera
     that is simply waiting, not as a broken panel.
     """
 
