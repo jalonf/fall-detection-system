@@ -1,5 +1,5 @@
 from PySide6.QtCore import QEvent, QPointF, QSize, Qt, Signal
-from PySide6.QtGui import QPainter, QPainterPath, QPen, QPixmap
+from PySide6.QtGui import QPainter, QPainterPath, QPen
 from PySide6.QtWidgets import (
     QComboBox,
     QFileDialog,
@@ -8,13 +8,13 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QPushButton,
-    QSizePolicy,
     QStackedLayout,
     QVBoxLayout,
     QWidget,
 )
 
 from src.views.components.status_chip import StatusChip
+from src.views.components.video_widget import VideoWidget
 from src.views.icons import icon
 from src.views.theme import (
     Colors,
@@ -27,6 +27,13 @@ from src.views.theme import (
 )
 
 _PRIMARY_ACTION_WIDTH = 160
+
+# (title, hint) of the stage while there is no picture
+_OFFLINE_TEXT = (
+    "Stream offline",
+    "Select a video source and press \u201cStart detection\u201d to begin the analysis",
+)
+_STARTING_TEXT = ("Starting detection\u2026", "Opening the video source and loading the models")
 
 
 class _StagePlaceholder(QWidget):
@@ -51,17 +58,21 @@ class _StagePlaceholder(QWidget):
         glyph = QLabel()
         glyph.setAlignment(Qt.AlignmentFlag.AlignCenter)
         glyph.setPixmap(icon("camera", Colors.STAGE_TEXT_MUTED, 40).pixmap(QSize(40, 40)))
-        title = QLabel("Stream offline")
-        title.setObjectName("placeholderTitle")
-        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        hint = QLabel("Select a video source and press \u201cStart detection\u201d to begin the analysis")
-        hint.setObjectName("placeholderHint")
-        hint.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.title = QLabel(_OFFLINE_TEXT[0])
+        self.title.setObjectName("placeholderTitle")
+        self.title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.hint = QLabel(_OFFLINE_TEXT[1])
+        self.hint.setObjectName("placeholderHint")
+        self.hint.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         column.addWidget(glyph)
         column.addSpacing(6)
-        column.addWidget(title)
-        column.addWidget(hint)
+        column.addWidget(self.title)
+        column.addWidget(self.hint)
+
+    def set_text(self, text: tuple[str, str]) -> None:
+        self.title.setText(text[0])
+        self.hint.setText(text[1])
 
     def paintEvent(self, event):
         painter = QPainter(self)
@@ -100,7 +111,6 @@ class VideoPanel(QFrame):
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         self.setObjectName("panel")
         self.user_role = user_role
-        self._current_pixmap = None
         self._monitoring = False
         self._controls_compact: bool | None = None
         self._build_ui()
@@ -153,14 +163,13 @@ class VideoPanel(QFrame):
         self.stage_stack = QStackedLayout(self.video_stage)
         self.stage_stack.setContentsMargins(6, 6, 6, 6)
 
-        self.video_label = QLabel()
-        self.video_label.setObjectName("videoFrame")
-        self.video_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.video_label.setMinimumSize(1, 1)
-        self.video_label.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        self.video_frame = VideoWidget()
+        self.video_frame.setObjectName("videoFrame")
+        self.video_frame.setMinimumSize(1, 1)
 
-        self.stage_stack.addWidget(_StagePlaceholder())
-        self.stage_stack.addWidget(self.video_label)
+        self.placeholder = _StagePlaceholder()
+        self.stage_stack.addWidget(self.placeholder)
+        self.stage_stack.addWidget(self.video_frame)
         self.stage_stack.setCurrentIndex(0)
         return self.video_stage
 
@@ -319,29 +328,17 @@ class VideoPanel(QFrame):
         # has ended they must not bring the last picture (and its stream readout) back.
         if not self._monitoring:
             return
-        self._current_pixmap = QPixmap.fromImage(qimage)
-        if self.stage_stack.currentWidget() is not self.video_label:
-            self.stage_stack.setCurrentWidget(self.video_label)
-        self._render_pixmap()
-
-    def _render_pixmap(self):
-        if self._current_pixmap is None or self._current_pixmap.isNull():
-            return
-        scaled = self._current_pixmap.scaled(
-            self.video_label.size(),
-            Qt.AspectRatioMode.KeepAspectRatio,
-            Qt.TransformationMode.SmoothTransformation,
-        )
-        self.video_label.setPixmap(scaled)
+        self.video_frame.set_image(qimage)
+        if self.stage_stack.currentWidget() is not self.video_frame:
+            self.stage_stack.setCurrentWidget(self.video_frame)
 
     def clear_video(self):
-        self._current_pixmap = None
-        self.video_label.clear()
-        self.stage_stack.setCurrentIndex(0)
+        self.video_frame.clear()
+        self.placeholder.set_text(_OFFLINE_TEXT)
+        self.stage_stack.setCurrentWidget(self.placeholder)
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
-        self._render_pixmap()
         self._update_controls_layout()
 
     # ---------------------------------------------------------------- alert banner
@@ -372,10 +369,18 @@ class VideoPanel(QFrame):
     def set_monitoring_state(self, active: bool):
         self._monitoring = active
         self._apply_toggle(active)
+        self.btn_toggle.setEnabled(True)
+        if active and self.stage_stack.currentWidget() is self.placeholder:
+            self.placeholder.set_text(_STARTING_TEXT)   # until the first frame arrives
         if hasattr(self, "btn_upload"):
             self.btn_upload.setEnabled(not active)
         self.camera_select.setEnabled(not active)
         self._sync_chip()
+
+    def set_stopping(self):
+        """The worker is finishing its last frame and releasing the source."""
+        self.btn_toggle.setEnabled(False)
+        self.btn_toggle.setText("Stopping\u2026")
 
     def _apply_toggle(self, running: bool):
         """Start/stop button: light grey "Start detection" when idle, red "Stop monitoring" when running."""

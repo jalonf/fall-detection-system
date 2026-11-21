@@ -1,5 +1,4 @@
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import (
     QFrame,
     QHBoxLayout,
@@ -9,6 +8,7 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
 )
 
+from src.views.components.video_widget import VideoWidget
 from src.views.theme import Space, set_prop
 
 _PLACEHOLDER = "Awaiting pose stream"
@@ -46,13 +46,11 @@ class SkeletonPanel(QFrame):
         stage_layout = QVBoxLayout(stage)
         stage_layout.setContentsMargins(4, 4, 4, 4)
 
-        self.view = QLabel()
+        self.view = VideoWidget(_PLACEHOLDER)
         self.view.setObjectName("poseView")
-        self.view.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.view.setMinimumSize(1, _POSE_VIEW_HEIGHT)
         self.view.setMaximumHeight(_POSE_VIEW_HEIGHT)
         self.view.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-        self.view.setText(_PLACEHOLDER)
         stage_layout.addWidget(self.view)
         layout.addWidget(stage)
 
@@ -99,12 +97,7 @@ class SkeletonPanel(QFrame):
     def update_frame(self, qimage):
         if not self._streaming:
             return
-        pixmap = QPixmap.fromImage(qimage)
-        self.view.setPixmap(pixmap.scaled(
-            self.view.size(),
-            Qt.AspectRatioMode.KeepAspectRatio,
-            Qt.TransformationMode.SmoothTransformation
-        ))
+        self.view.set_image(qimage)
 
     @staticmethod
     def _show(label: QLabel, text: str | None, empty_text: str):
@@ -133,5 +126,4 @@ class SkeletonPanel(QFrame):
 
     def clear_video(self):
         self.view.clear()
-        self.view.setText(_PLACEHOLDER)
         self.update_telemetry({})

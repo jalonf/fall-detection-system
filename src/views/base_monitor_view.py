@@ -106,6 +106,9 @@ class BaseMonitorView(QWidget):
         self.system_status.set_monitoring_state(active)
         self.topbar.set_monitoring_state(active)
 
+    def set_stopping(self):
+        self.video_panel.set_stopping()
+
     def trigger_fall_alert(self, message="Possible fall detected"):
         """A detected fall is reported only as an ALERT line in the event log."""
         self.event_log.add_event("ALERT", message)

@@ -1,4 +1,5 @@
 from src.controllers.base_monitor_controller import BaseMonitorController
+from src.dtos.frame_packet import FramePacket
 
 
 class AdminController(BaseMonitorController):
@@ -7,7 +8,7 @@ class AdminController(BaseMonitorController):
     one, plus the skeleton view and telemetry panel.
     """
 
-    def _connect_worker(self, worker):
-        super()._connect_worker(worker)
-        worker.skeleton_frame_ready.connect(self.view.skeleton_panel.update_frame)
-        worker.telemetry_data_ready.connect(self.view.skeleton_panel.update_telemetry)
+    def _show_frame(self, packet: FramePacket):
+        super()._show_frame(packet)
+        self.view.skeleton_panel.update_frame(packet.skeleton)
+        self.view.skeleton_panel.update_telemetry(packet.telemetry)
