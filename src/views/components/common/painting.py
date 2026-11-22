@@ -11,7 +11,6 @@ from PySide6.QtGui import (
     QFontMetricsF,
     QImage,
     QPainter,
-    QPainterPath,
     QPixmap,
     QTextLayout,
 )
@@ -111,12 +110,6 @@ def draw_lines(painter: QPainter, lines: tuple[str, ...], x: float, y: float, wi
         painter.drawText(QRectF(x, y, width, line_height), int(align | Qt.AlignmentFlag.AlignVCenter), line)
         y += line_height
     return y
-
-
-def rounded_path(rect: QRectF, radius: float) -> QPainterPath:
-    path = QPainterPath()
-    path.addRoundedRect(rect, radius, radius)
-    return path
 
 
 def crisp(rect: QRectF, pen_width: float = 1.0) -> QRectF:

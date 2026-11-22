@@ -22,6 +22,13 @@ from src.views.theme import Colors, Size, Type
 
 _HEIGHT = {"sm": Size.H_SM, "md": Size.H_MD, "lg": Size.H_LG}
 
+# bcrypt hashes at most 72 bytes of a password, and bcrypt 5 rejects longer ones with an error.
+PASSWORD_MAX_BYTES = 72
+
+
+def password_too_long(password: str) -> bool:
+    return len(password.encode("utf-8")) > PASSWORD_MAX_BYTES
+
 
 def _restyle_clear_button(edit: QLineEdit) -> None:
     action = edit.findChild(QAction, "_q_qlineeditclearaction")
@@ -46,12 +53,14 @@ def make_line_edit(placeholder: str = "", icon: str | None = None, *, clearable:
 
 
 class PasswordEdit(QLineEdit):
-    """Password field with a lock icon and a show / hide action."""
+    """Password field with a lock icon and a show / hide action. It takes at most 72 characters
+    (a non-ASCII password can still pass 72 bytes: see `password_too_long`)."""
 
     def __init__(self, placeholder: str = "", *, size: str = "lg", parent: QWidget | None = None):
         super().__init__(parent)
         self.setPlaceholderText(placeholder)
         self.setFixedHeight(_HEIGHT[size])
+        self.setMaxLength(PASSWORD_MAX_BYTES)
         self.setEchoMode(QLineEdit.EchoMode.Password)
         self.addAction(icons.icon("lock", Colors.N500, 16), QLineEdit.ActionPosition.LeadingPosition)
         self.setProperty("leading", True)

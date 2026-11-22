@@ -15,11 +15,9 @@ class ViewRouter:
         self.parent_window = parent_window
         self.stacked_widget = QStackedWidget()
         self.parent_window.setCentralWidget(self.stacked_widget)
-        
-        # References to prevent the garbage collector from deleting the animations
-        self.effect_out = None
-        self.anim_out = None
-        self.overlay = None
+
+        # The running cross-fade, if any: (overlay, animation, callback to run when it ends).
+        self._transition: tuple[QLabel, QPropertyAnimation, object] | None = None
         logger.info("ViewRouter initialized successfully.")
 
     def add_view(self, view: QWidget):
@@ -39,14 +37,18 @@ class ViewRouter:
         Performs an animated transition to the new view using
         a cross-fade effect.
         """
+        # A transition still running (e.g. signing out while the dashboard is fading in) ends now,
+        # so its overlay is removed and its callback runs instead of being lost under the new one.
+        self._finish_transition()
+
         current_widget = self.stacked_widget.currentWidget()
         next_name = next_widget.__class__.__name__
         current_name = current_widget.__class__.__name__ if current_widget else "None"
-        
+
         logger.info("Navigation requested from [%s] to [%s]", current_name, next_name)
-        
+
         # If it is the first view or the same view, switch without animation
-        if current_widget is None or current_widget == next_widget:
+        if current_widget is None or current_widget is next_widget:
             logger.debug("Performing direct view switch without animation.")
             self.stacked_widget.setCurrentWidget(next_widget)
             if on_finish_callback:
@@ -54,37 +56,40 @@ class ViewRouter:
             return
 
         # Capture the current state for a smooth transition
-        pixmap = current_widget.grab()
-        
-        self.overlay = QLabel(self.parent_window)
-        self.overlay.setPixmap(pixmap)
-        self.overlay.resize(self.parent_window.size())
-        self.overlay.move(0, 0)
-        self.overlay.show()
-        self.overlay.raise_()
+        overlay = QLabel(self.parent_window)
+        overlay.setPixmap(current_widget.grab())
+        overlay.resize(self.parent_window.size())
+        overlay.move(0, 0)
+        overlay.show()
+        overlay.raise_()
 
         # Change the actual view underneath the overlay
         self.stacked_widget.setCurrentWidget(next_widget)
 
-        # Animate the disappearance of the overlay
-        self.effect_out = QGraphicsOpacityEffect(self.overlay)
-        self.overlay.setGraphicsEffect(self.effect_out)
+        # Animate the disappearance of the overlay. The effect and the animation are children of
+        # the overlay, so they live exactly as long as it does.
+        effect = QGraphicsOpacityEffect(overlay)
+        overlay.setGraphicsEffect(effect)
+        animation = QPropertyAnimation(effect, b"opacity", overlay)
+        animation.setDuration(400)
+        animation.setStartValue(1.0)
+        animation.setEndValue(0.0)
+        animation.setEasingCurve(QEasingCurve.Type.InOutQuad)
 
-        self.anim_out = QPropertyAnimation(self.effect_out, b"opacity")
-        self.anim_out.setDuration(400)
-        self.anim_out.setStartValue(1.0)
-        self.anim_out.setEndValue(0.0)
-        self.anim_out.setEasingCurve(QEasingCurve.Type.InOutQuad)
+        self._transition = (overlay, animation, on_finish_callback)
+        animation.finished.connect(self._finish_transition)
+        animation.start()
 
-        def on_transition_finished():
-            assert self.overlay is not None
-            self.overlay.hide()
-            self.overlay.deleteLater()
-            self.overlay = None
-            
-            logger.debug("Transition animation finished for view: %s", next_name)
-            if on_finish_callback:
-                on_finish_callback()
+    def _finish_transition(self):
+        """Removes the overlay of the running transition and runs its callback (no-op when idle)."""
+        if self._transition is None:
+            return
+        overlay, animation, on_finish_callback = self._transition
+        self._transition = None
+        animation.stop()
+        overlay.hide()
+        overlay.deleteLater()
 
-        self.anim_out.finished.connect(on_transition_finished)
-        self.anim_out.start()
+        logger.debug("Transition finished for view: %s", self.stacked_widget.currentWidget().__class__.__name__)
+        if on_finish_callback:
+            on_finish_callback()

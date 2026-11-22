@@ -264,14 +264,12 @@ class Toast(QWidget):
 
 
 class ToastHost(QObject):
-    """One per top-level window. Stacks up to three toasts in the top-right corner, or in the
-    bottom-right one when a screen asks for it (`set_bottom_inset`)."""
+    """One per top-level window. Stacks up to three toasts in the top-right corner."""
 
     def __init__(self, window: QWidget):
         super().__init__(window)
         self._window = window
         self._toasts: list[Toast] = []          # newest first
-        self._anchor = "top"
         self._inset = 16
         self._right = 16
         self._raise_timer = QTimer(self)
@@ -311,34 +309,14 @@ class ToastHost(QObject):
     def success(self, message: str, *, title: str | None = None, duration_ms: int | None = None) -> Toast:
         return self.notify("success", message, title=title, duration_ms=duration_ms)
 
-    def error(self, message: str, *, title: str | None = None, duration_ms: int | None = None) -> Toast:
-        return self.notify("error", message, title=title, duration_ms=duration_ms)
-
-    def warning(self, message: str, *, title: str | None = None, duration_ms: int | None = None) -> Toast:
-        return self.notify("warning", message, title=title, duration_ms=duration_ms)
-
-    def info(self, message: str, *, title: str | None = None, duration_ms: int | None = None) -> Toast:
-        return self.notify("info", message, title=title, duration_ms=duration_ms)
-
-    def dismiss(self, toast: Toast | None) -> None:
-        if toast is not None and toast in self._toasts:
-            toast.dismiss()
-
     def dismiss_all(self) -> None:
         for toast in list(self._toasts):
             toast.dismiss()
 
     def set_top_inset(self, pixels: int) -> None:
         """Stacks the toasts downwards from `pixels` below the top edge, newest first."""
-        if (self._anchor, self._inset, self._right) != ("top", pixels, 16):
-            self._anchor, self._inset, self._right = "top", pixels, 16
-            self._reposition()
-
-    def set_bottom_inset(self, pixels: int, right: int = 24) -> None:
-        """Stacks the toasts upwards from `pixels` above the bottom edge (and `right` from the right
-        edge), newest nearest the edge."""
-        if (self._anchor, self._inset, self._right) != ("bottom", pixels, right):
-            self._anchor, self._inset, self._right = "bottom", pixels, right
+        if pixels != self._inset:
+            self._inset = pixels
             self._reposition()
 
     def toasts(self) -> list[Toast]:
@@ -354,19 +332,11 @@ class ToastHost(QObject):
 
     def _reposition(self) -> None:
         right = self._window.width() - self._right
-        if self._anchor == "top":
-            y = self._inset
-            for toast in self._toasts:
-                card_x, card_y = toast.card_offset()
-                toast.move(right - WIDTH - card_x, y - card_y)
-                y += toast.card_height() + _GAP
-            return
-        bottom = self._window.height() - self._inset
+        y = self._inset
         for toast in self._toasts:
             card_x, card_y = toast.card_offset()
-            top = bottom - toast.card_height()
-            toast.move(right - WIDTH - card_x, top - card_y)
-            bottom = top - _GAP
+            toast.move(right - WIDTH - card_x, y - card_y)
+            y += toast.card_height() + _GAP
 
     @Slot()
     def _raise_all(self) -> None:

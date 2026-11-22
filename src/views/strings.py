@@ -19,7 +19,7 @@ class Common:
     SHOW_PASSWORD = "Show password"
     HIDE_PASSWORD = "Hide password"
     CLEAR_TEXT = "Clear text"
-    DISMISS = "Dismiss notification"
+    UNEXPECTED_ERROR = "Something went wrong. Please try again."
 
 
 class Brand:
@@ -87,6 +87,7 @@ class Register:
     EMAIL_INVALID = "Enter a valid email address."
     EMAIL_IN_USE = "This email is already in use."
     PASSWORD_WEAK = "Password doesn't meet all the requirements."
+    PASSWORD_TOO_LONG = "Password is too long: use at most 72 characters (fewer with accents or emoji)."
     PASSWORD_MISMATCH = "Passwords don't match."
     PATIENT_REQUIRED = "Enter the patient's full name."
     CHOICE_REQUIRED = "Choose an answer."
@@ -102,11 +103,7 @@ class Monitor:
     CLOCK_FORMAT = "ddd d MMM · HH:mm"
 
     PATIENT = "Patient"
-    RISK = "Risk"
-    SOURCE = "Source"
     CAMERA = "Camera"
-    STATUS = "Status"
-    DURATION = "Duration"
     STRIP_PATIENT = "PATIENT"
     STRIP_CAMERA = "CAMERA"
     STRIP_FILE = "VIDEO FILE"
@@ -157,6 +154,7 @@ class Monitor:
         "finished": ("Analysis finished", "{label} · {duration}"),
     }
     TRY_AGAIN = "Try again"
+    CAMERA_LOST = "The camera stopped sending images. Check that it is connected and not used by another app."
 
     STATUS_ALERT_COUNT = "Fall alert ×{n}"
     ACKNOWLEDGE = "Acknowledge"
@@ -239,7 +237,6 @@ class ToastRule:
     kind: str
     title: str
     message: str
-    persistent: bool = False
 
 
 TOAST_RULES: tuple[ToastRule, ...] = (

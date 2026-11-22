@@ -36,7 +36,11 @@ from src.views.components.auth.stepper import Stepper
 from src.views.components.common.button import make_button
 from src.views.components.common.callout import Callout
 from src.views.components.common.form_field import FormField
-from src.views.components.common.inputs import PasswordEdit, make_line_edit
+from src.views.components.common.inputs import (
+    PasswordEdit,
+    make_line_edit,
+    password_too_long,
+)
 from src.views.components.common.painting import (
     transparent_scroll_area,
 )
@@ -290,7 +294,6 @@ class RegisterPage(QWidget):
         last = index == STEPS - 1
         if not self._busy:
             self.next.setText(Register.CREATE if last else Register.CONTINUE)
-        self.next.set_icon_name(None)
         self.step_label.setText(Register.STEP_OF.format(current=index + 1, total=STEPS))
 
     @Slot()
@@ -334,10 +337,9 @@ class RegisterPage(QWidget):
         all_errors = [(step, self._validate(step)) for step in range(STEPS)]
         failing = [(step, errors) for step, errors in all_errors if errors]
         if failing:
-            total = sum(len(errors) for _, errors in failing)
             step, errors = failing[0]
             self._go(step)
-            self._report(errors, total)
+            self._report(errors)
             return
         self._completed = STEPS
         self.stepper.set_completed(STEPS)
@@ -364,6 +366,8 @@ class RegisterPage(QWidget):
                 fail(self.email_field, Register.EMAIL_INVALID)
             if not all(PasswordChecklist.requirements(self.password.text()).values()):
                 fail(self.password_field, Register.PASSWORD_WEAK)
+            elif password_too_long(self.password.text()):
+                fail(self.password_field, Register.PASSWORD_TOO_LONG)
             if self.confirm.text() != self.password.text() or not self.confirm.text():
                 fail(self.confirm_field, Register.PASSWORD_MISMATCH)
         elif step == 2:
@@ -376,7 +380,7 @@ class RegisterPage(QWidget):
             errors += self.health.validate()
         return errors
 
-    def _report(self, errors: list[Error], total: int | None = None) -> None:
+    def _report(self, errors: list[Error]) -> None:
         """Errors are shown inline under each field; scroll to the first one and focus it."""
         self._pending_scroll = errors[0]
         self._scroll_timer.start()   # after the page has been laid out

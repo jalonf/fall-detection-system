@@ -29,8 +29,6 @@ from src.views.theme import (
 )
 
 RISK_VARIANTS = {"LOW": "success", "MEDIUM": "warning", "HIGH": "danger"}
-STATUS_KIND = {"idle": "idle", "starting": "starting", "live": "live", "stopping": "stopping",
-               "error": "error", "finished": "finished"}
 _PATIENT_WIDTH = 260
 _SOURCE_WIDTH = 200
 
@@ -120,9 +118,10 @@ class ContextBar(QWidget):
 
     # ------------------------------------------------------------------ API
     def set_state(self, state: str) -> None:
-        self._state = state
+        """`state` is a monitoring state; the status indicator uses the same names for its kinds."""
+        self._state = str(state)
         if not self._alert:
-            self.status.set_status(STATUS_KIND[state], Monitor.STATUS_TEXT[state])
+            self.status.set_status(self._state, Monitor.STATUS_TEXT[self._state])
 
     def set_source(self, label: str | None, detail: str = "", tooltip: str = "", *, camera: bool = True) -> None:
         """Shows the camera (or video file) and a short detail such as "1280 × 720 · 15 fps"."""
@@ -151,7 +150,7 @@ class ContextBar(QWidget):
             text = Monitor.STATUS_TEXT["alert"] if count <= 1 else Monitor.STATUS_ALERT_COUNT.format(n=count)
             self.status.set_status("alert", text)
         else:
-            self.status.set_status(STATUS_KIND[self._state], Monitor.STATUS_TEXT[self._state])
+            self.status.set_status(self._state, Monitor.STATUS_TEXT[self._state])
         self.acknowledge.setVisible(active)
         if changed:
             self.update()

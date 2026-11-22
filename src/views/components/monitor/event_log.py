@@ -325,12 +325,10 @@ class EventLogPanel(Panel):
         if path:
             self._write_csv(path)
 
-    @Slot(str)
     def _write_csv(self, path: str) -> None:
-        if not path:
-            return
         try:
-            with open(path, "w", newline="", encoding="utf-8") as handle:
+            # UTF-8 with a BOM: without it Excel on Windows reads accented file names as mojibake.
+            with open(path, "w", newline="", encoding="utf-8-sig") as handle:
                 writer = csv.writer(handle)
                 writer.writerow(Log.CSV_HEADER)
                 for row in range(self.proxy.rowCount()):

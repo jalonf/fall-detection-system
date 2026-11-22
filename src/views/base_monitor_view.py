@@ -116,7 +116,9 @@ class BaseMonitorView(QWidget):
         self._build(user_name, user_role, patient_name, risk_level)
 
         self._duration_timer = QTimer(self)
-        self._duration_timer.setInterval(1000)
+        # 4 Hz, not 1 Hz: the clock starts with the timer, and a tick that fires a few ms early would
+        # round down and keep the duration a whole second behind. The labels only change once a second.
+        self._duration_timer.setInterval(250)
         self._duration_timer.timeout.connect(self._refresh_duration)
         self.pulse = AlertPulse(self)
         self.pulse.phase_changed.connect(self._on_pulse)
@@ -188,6 +190,7 @@ class BaseMonitorView(QWidget):
         if self._state in STOPPED:
             return       # frames that arrive after the run ended
         if self._state == MonitorState.STARTING:
+            self._elapsed.start()      # the duration counts from the first frame, not from loading the models
             self._set_state(MonitorState.LIVE)
         self.video_panel.show_frame(qimage)
 
@@ -203,7 +206,7 @@ class BaseMonitorView(QWidget):
             self._stopped_by_user = False
             self._run_started = True
             self._frozen_ms = None
-            self._elapsed.start()
+            self._elapsed.invalidate()      # started by the first frame
             self.video_panel.set_run_error(None)
             self.video_panel.set_source(self._source)
             self._set_state(MonitorState.STARTING)
@@ -211,6 +214,14 @@ class BaseMonitorView(QWidget):
         if self._state not in RUNNING:
             return
         self._freeze_duration()
+        camera = self._source is not None and self._source.kind == "camera"
+        if self._run_error is None and camera and not self._stopped_by_user:
+            # A camera never ends on its own: if nobody pressed Stop, it was unplugged or stopped
+            # delivering frames. Say so instead of looking like a normal stop.
+            self._run_error = Monitor.CAMERA_LOST
+            self.video_panel.set_run_error(self._run_error)
+            self._add_event("ERROR", self._run_error)
+            QApplication.alert(self.window(), 0)
         if self._run_error is not None:
             state = MonitorState.ERROR
         elif self._source is not None and self._source.kind == "file" and not self._stopped_by_user:
@@ -278,8 +289,9 @@ class BaseMonitorView(QWidget):
             self.context_bar.set_source(source.label, self._camera_spec, self._camera_tip)
 
     def _freeze_duration(self) -> None:
-        if self._frozen_ms is None and self._elapsed.isValid():
-            self._frozen_ms = self._elapsed.elapsed()
+        if self._frozen_ms is None:
+            live = self._state != MonitorState.STARTING and self._elapsed.isValid()
+            self._frozen_ms = self._elapsed.elapsed() if live else 0      # stopped before the first frame: 0
         self._refresh_duration()
 
     @Slot()

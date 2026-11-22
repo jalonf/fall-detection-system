@@ -181,13 +181,6 @@ class Type:
         return "\n".join(rules) + "\n"
 
 
-def tabular(font: QFont) -> QFont:
-    """Same font with tabular figures, for clocks, durations and metrics."""
-    result = QFont(font)
-    result.setFeature(QFont.Tag("tnum"), 1)
-    return result
-
-
 # ---------------------------------------------------------------------- spacing, sizes, shape, motion
 class Space:
     """Spacing scale, base 4. Every margin, padding and gap comes from here."""
