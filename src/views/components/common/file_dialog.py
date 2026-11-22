@@ -1,8 +1,8 @@
 """File dialogs that never block the main window.
 
-A modal dialog (native or not) makes Qt disable the main window at the OS level, and Windows then
-plays its "ding" whenever the user clicks it. These dialogs are non-modal: the caller connects
-`fileSelected` and shows them.
+They are Windows' own (native) file dialogs, opened non-modally: a modal dialog makes Qt disable
+the main window at the OS level, and Windows then plays its "ding" whenever the user clicks it.
+The caller connects `fileSelected` and shows them.
 """
 
 from __future__ import annotations
@@ -17,7 +17,6 @@ def make_file_dialog(parent: QWidget, title: str, name_filter: str, *, save: boo
                      default_name: str = "", default_suffix: str = "") -> QFileDialog:
     """Configured, non-modal file dialog owned by `parent`'s window; deleted when closed."""
     dialog = QFileDialog(parent.window(), title, str(Path.home()), name_filter)
-    dialog.setOption(QFileDialog.Option.DontUseNativeDialog, True)
     dialog.setWindowModality(Qt.WindowModality.NonModal)
     dialog.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
     if save:
