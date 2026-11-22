@@ -3,13 +3,13 @@
 from __future__ import annotations
 
 from itertools import pairwise
+from pathlib import Path
 
 from PySide6.QtCore import QSize, Signal, Slot
 from PySide6.QtGui import QImage
-from PySide6.QtWidgets import QSizePolicy, QStackedLayout, QWidget
+from PySide6.QtWidgets import QFileDialog, QSizePolicy, QStackedLayout, QWidget
 
 from src.views.components.common.button import make_button
-from src.views.components.common.file_dialog import make_file_dialog
 from src.views.components.common.inputs import Combo
 from src.views.components.common.panel import Panel
 from src.views.components.monitor.stage_overlay import BAR, StageOverlay
@@ -69,7 +69,6 @@ class VideoPanel(Panel):
         self._source = None
         self._error: str | None = None
         self._duration = ""
-        self._file_dialog = None
 
         self.stage = Stage()
         self.body_layout().addWidget(self.stage)
@@ -163,26 +162,13 @@ class VideoPanel(Panel):
 
     @Slot()
     def choose_file(self) -> None:
-        """Opens the (non-blocking) video file chooser; `file_chosen` is emitted on accept."""
+        """Opens Windows' file dialog (native, so it is modal) and emits `file_chosen` on accept."""
         if self._state in RUNNING:
             return
-        if self._file_dialog is not None:
-            self._file_dialog.raise_()
-            self._file_dialog.activateWindow()
-            return
-        self._file_dialog = make_file_dialog(self, Monitor.FILE_DIALOG_TITLE, Monitor.FILE_DIALOG_FILTER)
-        self._file_dialog.fileSelected.connect(self._on_file_selected)
-        self._file_dialog.destroyed.connect(self._on_file_dialog_closed)
-        self._file_dialog.show()
-
-    @Slot(str)
-    def _on_file_selected(self, path: str) -> None:
+        path, _ = QFileDialog.getOpenFileName(self, Monitor.FILE_DIALOG_TITLE, str(Path.home()),
+                                              Monitor.FILE_DIALOG_FILTER)
         if path and self._state not in RUNNING:
             self.file_chosen.emit(path)
-
-    @Slot()
-    def _on_file_dialog_closed(self) -> None:
-        self._file_dialog = None
 
     # ------------------------------------------------------------------ internals
     @Slot()

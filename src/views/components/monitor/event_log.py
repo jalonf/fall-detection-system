@@ -34,6 +34,7 @@ from PySide6.QtGui import (
 )
 from PySide6.QtWidgets import (
     QAbstractItemView,
+    QFileDialog,
     QListView,
     QMenu,
     QStyle,
@@ -46,7 +47,6 @@ from PySide6.QtWidgets import (
 from src.views.components.common.badge import Badge
 from src.views.components.common.button import make_button
 from src.views.components.common.confirm_dialog import ConfirmDialog
-from src.views.components.common.file_dialog import make_file_dialog
 from src.views.components.common.inputs import Combo
 from src.views.components.common.panel import Panel
 from src.views.strings import Log, event_count
@@ -318,12 +318,12 @@ class EventLogPanel(Panel):
 
     @Slot()
     def export_csv(self) -> None:
-        """Opens the (non-blocking) save dialog; the visible rows are written when it is accepted."""
+        """Opens Windows' save dialog (native, so it is modal) and writes the visible rows."""
         stamp = QDateTime.currentDateTime().toString("yyyyMMdd-HHmmss")
-        dialog = make_file_dialog(self, Log.EXPORT_DIALOG_TITLE, Log.EXPORT_FILTER, save=True,
-                                  default_name=Log.EXPORT_FILE_NAME.format(stamp=stamp), default_suffix="csv")
-        dialog.fileSelected.connect(self._write_csv)
-        dialog.show()
+        default = str(Path.home() / Log.EXPORT_FILE_NAME.format(stamp=stamp))
+        path, _ = QFileDialog.getSaveFileName(self, Log.EXPORT_DIALOG_TITLE, default, Log.EXPORT_FILTER)
+        if path:
+            self._write_csv(path)
 
     @Slot(str)
     def _write_csv(self, path: str) -> None:
