@@ -1,0 +1,225 @@
+/*
+ * FallSense Clinical stylesheet.
+ * ThemeManager replaces every TOKEN marker (written between two at-signs) with its value from
+ * theme.py and prepends the type rules generated from Type. No font-family is declared here:
+ * the family comes from the application font.
+ * Variants are dynamic properties: [variant], [size], [tone], [state], [invalid], [position].
+ */
+
+/* ------------------------------------------------------------------ tooltips */
+QToolTip {
+    background-color: @N900@;
+    color: @N0@;
+    border: none;
+    border-radius: @R_SM@;
+    padding: 6px 8px;
+    font-size: 12px;
+}
+
+/* ------------------------------------------------------------------ labels */
+QLabel { background: transparent; color: @N900@; }
+QLabel[tone="body"] { color: @N700@; }
+QLabel[tone="secondary"] { color: @N600@; }
+QLabel[tone="tertiary"] { color: @N500@; }
+QLabel[tone="danger"] { color: @R700@; }
+QLabel[tone="link"] { color: @P600@; }
+QLabel[tone="on-dark"] { color: @S100@; }
+QLabel[tone="on-dark-secondary"] { color: @S300@; }
+QLabel[tone="on-brand"] { color: @N0@; }
+QLabel[tone="on-brand-soft"] { color: @P100@; }
+QLabel[tone="on-brand-muted"] { color: @P200@; }
+
+/* ------------------------------------------------------------------ buttons
+ * Only the bevel comes from here; Button paints its own icon and text. */
+QPushButton {
+    background-color: @N0@;
+    border: 1px solid @N300@;
+    border-radius: @R_MD@;
+    padding: 0px;
+    color: @N900@;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+QPushButton[variant="primary"] { background-color: @P600@; border-color: @P600@; color: @N0@; }
+QPushButton[variant="primary"]:hover { background-color: @P700@; border-color: @P700@; }
+QPushButton[variant="primary"]:pressed { background-color: @P800@; border-color: @P800@; }
+QPushButton[variant="primary"]:disabled { background-color: @N150@; border-color: @N150@; color: @N400@; }
+QPushButton[variant="primary"]:focus { border: 2px solid @P200@; }
+
+QPushButton[variant="secondary"] { background-color: @N0@; border: 1px solid @N300@; }
+QPushButton[variant="secondary"]:hover { background-color: @N50@; border-color: @N400@; }
+QPushButton[variant="secondary"]:pressed { background-color: @N100@; border-color: @N400@; }
+QPushButton[variant="secondary"]:disabled { background-color: @N0@; border-color: @N200@; }
+QPushButton[variant="secondary"]:focus { border: 2px solid @P600@; }
+
+QPushButton[variant="ghost"] { background-color: transparent; border: 1px solid transparent; }
+QPushButton[variant="ghost"]:hover { background-color: @N100@; }
+QPushButton[variant="ghost"]:pressed { background-color: @N150@; }
+QPushButton[variant="ghost"]:disabled { background-color: transparent; }
+QPushButton[variant="ghost"]:focus { border: 2px solid @P600@; }
+
+QPushButton[variant="link"] { background-color: transparent; border: 2px solid transparent; border-radius: @R_SM@; }
+QPushButton[variant="link"]:focus { border-color: @P600@; }
+
+QPushButton[variant="danger"] { background-color: @N0@; border: 1px solid @R200@; }
+QPushButton[variant="danger"]:hover { background-color: @R50@; }
+QPushButton[variant="danger"]:pressed { background-color: @R50@; border-color: @R600@; }
+QPushButton[variant="danger"]:disabled { background-color: @N0@; border-color: @N200@; }
+QPushButton[variant="danger"]:focus { border: 2px solid @P600@; }
+
+QPushButton[variant="on-danger"] { background-color: @N0@; border: 1px solid @N0@; }
+QPushButton[variant="on-danger"]:hover { background-color: @R50@; border-color: @R50@; }
+QPushButton[variant="on-danger"]:pressed { background-color: @R200@; border-color: @R200@; }
+QPushButton[variant="on-danger"]:focus { border: 2px solid @P200@; }
+
+QPushButton[variant="on-dark"] { background-color: transparent; border: 1px solid @S700@; }
+QPushButton[variant="on-dark"]:hover { background-color: @S800@; }
+QPushButton[variant="on-dark"]:pressed { background-color: @S700@; }
+QPushButton[variant="on-dark"]:focus { border: 2px solid @P200@; }
+
+QPushButton[variant="segment"] { background-color: transparent; border: none; border-radius: 0px; }
+QPushButton[variant="segment"]:hover { background-color: @N100@; }
+QPushButton[variant="segment"]:pressed { background-color: @N150@; }
+QPushButton[variant="segment"]:checked { background-color: @P600@; }
+QPushButton[variant="segment"]:checked:hover { background-color: @P700@; }
+QPushButton[variant="segment"]:disabled { background-color: transparent; }
+QPushButton[variant="segment"]:checked:disabled { background-color: @N150@; }
+QPushButton[variant="segment"]:focus { border: 2px solid @P600@; }
+QPushButton[variant="segment"]:checked:focus { border: 2px solid @P200@; }
+QPushButton[variant="segment"][position="first"] { border-top-left-radius: 5px; border-bottom-left-radius: 5px; }
+QPushButton[variant="segment"][position="last"] { border-top-right-radius: 5px; border-bottom-right-radius: 5px; }
+QPushButton[variant="segment"][position="only"] { border-radius: 5px; }
+
+/* ------------------------------------------------------------------ text inputs */
+QLineEdit, QPlainTextEdit {
+    background-color: @N0@;
+    border: 1px solid @N300@;
+    border-radius: @R_MD@;
+    color: @N900@;
+    selection-background-color: @P600@;
+    selection-color: @N0@;
+}
+QLineEdit { padding: 0px 12px; }
+QLineEdit[leading="true"] { padding-left: 4px; }
+QPlainTextEdit { padding: 6px 7px; }
+
+QLineEdit:hover, QPlainTextEdit:hover { border-color: @N400@; }
+QLineEdit[invalid="true"], QPlainTextEdit[invalid="true"] { border-color: @R600@; }
+
+QLineEdit:focus { border: 2px solid @P600@; padding: 0px 11px; }
+QLineEdit[leading="true"]:focus { padding-left: 3px; }
+QPlainTextEdit:focus { border: 2px solid @P600@; padding: 5px 6px; }
+QLineEdit[invalid="true"]:focus, QPlainTextEdit[invalid="true"]:focus { border-color: @R600@; }
+
+QLineEdit:disabled, QPlainTextEdit:disabled {
+    background-color: @N100@;
+    color: @N500@;
+    border-color: @N200@;
+}
+
+/* ------------------------------------------------------------------ combo boxes */
+QComboBox {
+    background-color: @N0@;
+    border: 1px solid @N300@;
+    border-radius: @R_MD@;
+    padding: 0px 8px 0px 12px;
+    color: @N900@;
+    combobox-popup: 0;
+}
+QComboBox:hover { border-color: @N400@; }
+QComboBox:focus { border: 2px solid @P600@; padding: 0px 7px 0px 11px; }
+QComboBox:disabled { background-color: @N100@; color: @N500@; border-color: @N200@; }
+QComboBox::drop-down {
+    subcontrol-origin: padding;
+    subcontrol-position: center right;
+    width: 20px;
+    border: none;
+}
+QComboBox::down-arrow { image: @GLYPH_CHEVRON@; width: 16px; height: 16px; }
+QComboBox::down-arrow:disabled { image: @GLYPH_CHEVRON_DISABLED@; }
+QComboBox QAbstractItemView {
+    background-color: @N0@;
+    border: 1px solid @N200@;
+    border-radius: 0px;
+    padding: 4px 0px;
+    outline: 0px;
+}
+QComboBoxPrivateContainer { background-color: @N0@; border: none; border-radius: 0px; }
+
+/* ------------------------------------------------------------------ check boxes and radios */
+QCheckBox, QRadioButton { spacing: 8px; color: @N900@; background: transparent; }
+QCheckBox:disabled, QRadioButton:disabled { color: @N500@; }
+QCheckBox::indicator, QRadioButton::indicator {
+    width: 14px;
+    height: 14px;
+    border: 1px solid @N400@;
+    background-color: @N0@;
+}
+QCheckBox::indicator { border-radius: @R_SM@; }
+QRadioButton::indicator { border-radius: 8px; }
+QCheckBox::indicator:hover, QRadioButton::indicator:hover { border-color: @N600@; }
+QRadioButton[invalid="true"]::indicator { border-color: @R600@; }
+QCheckBox:focus::indicator, QRadioButton:focus::indicator { border: 2px solid @P600@; width: 12px; height: 12px; }
+QCheckBox::indicator:checked { background-color: @P600@; border-color: @P600@; image: @GLYPH_CHECK@; }
+QRadioButton::indicator:checked { background-color: @P600@; border-color: @P600@; image: @GLYPH_DOT@; }
+QCheckBox:focus::indicator:checked, QRadioButton:focus::indicator:checked { border-color: @P800@; }
+QCheckBox::indicator:disabled, QRadioButton::indicator:disabled { background-color: @N100@; border-color: @N200@; }
+QCheckBox::indicator:checked:disabled { background-color: @N150@; border-color: @N200@; image: @GLYPH_CHECK_DISABLED@; }
+QRadioButton::indicator:checked:disabled { background-color: @N150@; border-color: @N200@; image: @GLYPH_DOT_DISABLED@; }
+
+/* ------------------------------------------------------------------ menus (no radius: popups are rectangular windows) */
+QMenu {
+    background-color: @N0@;
+    border: 1px solid @N200@;
+    border-radius: 0px;
+    padding: 4px 0px;
+}
+QMenu::item { padding: 8px 24px 8px 12px; color: @N900@; background-color: transparent; }
+QMenu::item:selected { background-color: @N100@; }
+QMenu::item:disabled { color: @N400@; }
+QMenu::icon { padding-left: 12px; }
+QMenu::separator { height: 1px; background-color: @N150@; margin: 4px 0px; }
+
+/* ------------------------------------------------------------------ scroll areas and bars */
+QScrollArea { background: transparent; border: none; }
+
+QScrollBar:vertical { background: transparent; width: 10px; margin: 0px; }
+QScrollBar:horizontal { background: transparent; height: 10px; margin: 0px; }
+QScrollBar::handle:vertical { background-color: @N300@; border-radius: 5px; min-height: 32px; }
+QScrollBar::handle:horizontal { background-color: @N300@; border-radius: 5px; min-width: 32px; }
+QScrollBar::handle:hover { background-color: @N400@; }
+QScrollBar::add-line, QScrollBar::sub-line { width: 0px; height: 0px; border: none; background: none; }
+QScrollBar::add-page, QScrollBar::sub-page { background: none; }
+
+/* ------------------------------------------------------------------ splitter */
+QSplitter::handle { background: transparent; }
+QSplitter::handle:vertical:hover {
+    background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
+        stop: 0 transparent, stop: 0.374 transparent, stop: 0.375 @N300@,
+        stop: 0.625 @N300@, stop: 0.626 transparent, stop: 1 transparent);
+}
+QSplitter::handle:horizontal:hover {
+    background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 0,
+        stop: 0 transparent, stop: 0.374 transparent, stop: 0.375 @N300@,
+        stop: 0.625 @N300@, stop: 0.626 transparent, stop: 1 transparent);
+}
+
+/* ------------------------------------------------------------------ event table (rows are painted by its delegate) */
+QTableView {
+    background: transparent;
+    border: none;
+    gridline-color: transparent;
+    outline: 0px;
+}
+QHeaderView { background-color: @N50@; border: none; }
+QHeaderView::section {
+    background-color: @N50@;
+    color: @N600@;
+    border: none;
+    border-bottom: 1px solid @N200@;
+    padding: 0px 12px;
+    font-size: 12px;
+    font-weight: 600;
+}
+QTableCornerButton::section { background-color: @N50@; border: none; }
