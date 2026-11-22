@@ -11,6 +11,7 @@ import re
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
+from typing import ClassVar
 
 from PySide6.QtCore import QEasingCurve
 from PySide6.QtGui import QColor, QFont, QPalette
@@ -127,7 +128,7 @@ _WEIGHTS = {400: QFont.Weight.Normal, 600: QFont.Weight.DemiBold}
 class Type:
     """Type scale (section 3.3). Labels take a role with `label.setProperty("type", role)`."""
 
-    ROLES: dict[str, TypeSpec] = {
+    ROLES: ClassVar[dict[str, TypeSpec]] = {
         "display": TypeSpec(28, 600, 36, -0.2),
         "title-lg": TypeSpec(22, 600, 28, -0.1),
         "title-md": TypeSpec(16, 600, 22),
@@ -141,7 +142,7 @@ class Type:
         "metric": TypeSpec(20, 600, 26),
     }
 
-    _cache: dict[tuple[str, bool], QFont] = {}
+    _cache: ClassVar[dict[tuple[str, bool], QFont]] = {}
 
     @classmethod
     def font(cls, role: str, *, tabular: bool = False) -> QFont:

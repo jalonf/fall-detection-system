@@ -160,10 +160,10 @@ QCheckBox::indicator { border-radius: @R_SM@; }
 QRadioButton::indicator { border-radius: 8px; }
 QCheckBox::indicator:hover, QRadioButton::indicator:hover { border-color: @N600@; }
 QRadioButton[invalid="true"]::indicator { border-color: @R600@; }
-QCheckBox:focus::indicator, QRadioButton:focus::indicator { border: 2px solid @P600@; width: 12px; height: 12px; }
+QCheckBox::indicator:focus, QRadioButton::indicator:focus { border: 2px solid @P600@; width: 12px; height: 12px; }
 QCheckBox::indicator:checked { background-color: @P600@; border-color: @P600@; image: @GLYPH_CHECK@; }
 QRadioButton::indicator:checked { background-color: @P600@; border-color: @P600@; image: @GLYPH_DOT@; }
-QCheckBox:focus::indicator:checked, QRadioButton:focus::indicator:checked { border-color: @P800@; }
+QCheckBox::indicator:checked:focus, QRadioButton::indicator:checked:focus { border-color: @P800@; }
 QCheckBox::indicator:disabled, QRadioButton::indicator:disabled { background-color: @N100@; border-color: @N200@; }
 QCheckBox::indicator:checked:disabled { background-color: @N150@; border-color: @N200@; image: @GLYPH_CHECK_DISABLED@; }
 QRadioButton::indicator:checked:disabled { background-color: @N150@; border-color: @N200@; image: @GLYPH_DOT_DISABLED@; }

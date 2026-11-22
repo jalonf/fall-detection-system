@@ -8,6 +8,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 from pathlib import Path
+from typing import ClassVar
 
 from src.views.theme import APP_NAME
 
@@ -109,7 +110,7 @@ class Monitor:
     STATUS = "Status"
     DURATION = "Duration"
 
-    STATUS_TEXT = {
+    STATUS_TEXT: ClassVar[dict[str, str]] = {
         "idle": "Stopped",
         "starting": "Starting…",
         "live": "Live",
@@ -141,7 +142,7 @@ class Monitor:
     OVERLAY_LIVE = "LIVE"
     OVERLAY_STANDBY = "STANDBY"
 
-    PLACEHOLDER = {
+    PLACEHOLDER: ClassVar[dict[str, tuple[str, str]]] = {
         "idle": ("Monitoring stopped", "Choose a source and press Start monitoring."),
         "starting": ("Starting…", "Opening the source and loading the models."),
         "error": ("Source unavailable", ""),
@@ -221,7 +222,7 @@ class Toasts:
     EXPORTED_TITLE = "Event log exported"
     EXPORT_FAILED_TITLE = "Couldn't export the event log"
     EXPORT_FAILED = "The file could not be written. Choose another location and try again."
-    KIND_TITLES = {"success": "Done", "error": "Something went wrong", "warning": "Warning", "info": "Information"}
+    KIND_TITLES: ClassVar[dict[str, str]] = {"success": "Done", "error": "Something went wrong", "warning": "Warning", "info": "Information"}
 
 
 def fields_need_attention(count: int) -> str:
