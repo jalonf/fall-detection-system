@@ -10,8 +10,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import ClassVar
 
-from src.views.theme import APP_NAME
-
 EM_DASH = "—"
 
 
@@ -25,7 +23,6 @@ class Common:
 
 
 class Brand:
-    NAME = APP_NAME
     OVERLINE = "FALL RISK ASSESSMENT AND DETECTION"
     HEADLINE = "Continuous, private fall monitoring"
     PARAGRAPH = "For older adults, at home or in a care home."

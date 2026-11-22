@@ -1,7 +1,7 @@
 """Brand panel of the sign-in screens.
 
-Composition: the app's name at the top; a message block in the app's own type scale (overline,
-headline, lead); the three things the app does; and the project credit at the bottom. Behind it, cropped
+Composition: a message block in the app's own type scale (overline, headline, lead), the three
+things the app does, and the project credit at the bottom. Behind it, cropped
 by the right and bottom edges, a large and faint MediaPipe Pose figure (33 landmarks and their
 connections) gives the screen its character. Everything is painted on the panel's own background.
 """
@@ -104,7 +104,6 @@ class BrandPanel(QWidget):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(_PADDING_X, _PADDING_Y, _PADDING_X, _PADDING_Y)
         layout.setSpacing(0)
-        layout.addWidget(make_label(Brand.NAME, "title-md", "on-brand"))
         layout.addStretch(2)
 
         content = QWidget()
