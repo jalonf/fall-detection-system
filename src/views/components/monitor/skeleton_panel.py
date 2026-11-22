@@ -24,7 +24,6 @@ from PySide6.QtGui import (
     QPainter,
     QPainterPath,
     QPen,
-    QPixmap,
 )
 from PySide6.QtWidgets import QSizePolicy, QToolTip, QWidget
 
@@ -36,45 +35,22 @@ from src.views.theme import Colors, Radius, Space, Type, make_label, qcolor
 VIEW_HEIGHT = 140
 ROW_HEIGHT = 38
 HISTORY = 120                 # samples kept: 30 s at 4 Hz
-_GRID = 24
 _LABEL_WIDTH = 92
 _VALUE_WIDTH = 80
 STOPPED = ("idle", "error", "finished")
 
 
 class SkeletonView(VideoWidget):
-    """Skeleton image on the exact stage colour, so the worker's background blends in. The
-    grid is only drawn while empty ("No signal"); with an image the background stays plain."""
+    """Skeleton image on the exact stage colour, so the worker's background blends in. Like the
+    video stage, the background is plain; while empty it only says "No signal"."""
 
     def __init__(self, parent: QWidget | None = None):
         super().__init__(Colors.STAGE, radius=Radius.R_MD, corner_color=Colors.N0, parent=parent)
         self.setFixedHeight(VIEW_HEIGHT)
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-        self._grid: QPixmap | None = None
         self.setAccessibleName(Pose.SKELETON)
 
-    def resizeEvent(self, event) -> None:
-        super().resizeEvent(event)
-        self._grid = None
-
-    def _grid_pixmap(self) -> QPixmap:
-        dpr = self.devicePixelRatioF()
-        if self._grid is None or self._grid.devicePixelRatio() != dpr:
-            pixmap = QPixmap(max(1, round(self.width() * dpr)), max(1, round(self.height() * dpr)))
-            pixmap.setDevicePixelRatio(dpr)
-            pixmap.fill(QColor(Colors.STAGE))
-            painter = QPainter(pixmap)
-            line = QColor(Colors.S800)
-            for x in range(_GRID, self.width(), _GRID):
-                painter.fillRect(x, 0, 1, self.height(), line)
-            for y in range(_GRID, self.height(), _GRID):
-                painter.fillRect(0, y, self.width(), 1, line)
-            painter.end()
-            self._grid = pixmap
-        return self._grid
-
     def paint_empty(self, painter: QPainter) -> None:
-        painter.drawPixmap(0, 0, self._grid_pixmap())
         painter.setFont(Type.font("body"))
         painter.setPen(QColor(Colors.S300))
         painter.drawText(self.rect(), int(Qt.AlignmentFlag.AlignCenter), Pose.NO_SIGNAL)
