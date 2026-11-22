@@ -17,7 +17,7 @@ class AdminView(BaseMonitorView):
     SECTION = Monitor.SECTION_ADMIN
     CAN_ANALYSE_FILES = True
 
-    def _build_below_video(self, layout: QVBoxLayout) -> None:
+    def _build_side_panels(self, layout: QVBoxLayout) -> None:
         self.skeleton_panel = SkeletonPanel()
         layout.addWidget(self.skeleton_panel)
         self._stateful.append(self.skeleton_panel)

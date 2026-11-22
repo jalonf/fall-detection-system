@@ -36,7 +36,9 @@ from src.views.components.monitor.video_panel import VideoPanel
 from src.views.strings import Monitor, Toasts, toast_rule_for
 from src.views.theme import Space
 
-TOAST_BOTTOM_INSET = 40          # bottom-right, over the oldest rows of the event log
+# Toasts sit in the bottom-right corner of the video stage, clear of the log and the telemetry:
+# above the panel footer (56) and the body margin (24), right of the side column and the gutter.
+TOAST_BOTTOM_INSET = 24 + 56 + 16
 
 
 class MonitorState(StrEnum):
@@ -64,11 +66,15 @@ def format_duration(milliseconds: int) -> str:
     return f"{seconds // 3600:02d}:{seconds // 60 % 60:02d}:{seconds % 60:02d}"
 
 
-class _RightColumn(QWidget):
-    """Holder of the event log: 380-440 px wide, 400 preferred."""
+SIDE_MIN, SIDE_MAX, SIDE_SHARE = 380, 480, 0.27
+
+
+class _SideColumn(QWidget):
+    """Right column (pose analysis for admins, then the event log). Its width follows the window:
+    27 % of it, between 380 and 480 px."""
 
     def sizeHint(self) -> QSize:
-        return QSize(400, 600)
+        return QSize(SIDE_MIN, 600)
 
 
 class BaseMonitorView(QWidget):
@@ -133,33 +139,28 @@ class BaseMonitorView(QWidget):
         body_layout.setSpacing(Space.S4)
         layout.addWidget(body, 1)
 
-        # Left: the video, which takes all the spare room (plus pose analysis below it for admins).
-        left = QVBoxLayout()
-        left.setContentsMargins(0, 0, 0, 0)
-        left.setSpacing(Space.S4)
+        # Left: the video, the full height of the body, so its stage stays close to the image's shape.
         self.video_panel = VideoPanel(can_analyse_files=self.CAN_ANALYSE_FILES)
-        left.addWidget(self.video_panel, 1)
-        self._build_below_video(left)
-        body_layout.addLayout(left, 1)
+        body_layout.addWidget(self.video_panel, 1)
 
-        # Right: the event log, the full height of the body.
-        right = _RightColumn()
-        right.setMinimumWidth(380)
-        right.setMaximumWidth(440)
-        right_layout = QVBoxLayout(right)
-        right_layout.setContentsMargins(0, 0, 0, 0)
-        right_layout.setSpacing(0)
+        # Right: pose analysis for administrators, then the event log, which takes the rest.
+        self.side = _SideColumn()
+        self.side.setFixedWidth(SIDE_MIN)
+        side_layout = QVBoxLayout(self.side)
+        side_layout.setContentsMargins(0, 0, 0, 0)
+        side_layout.setSpacing(Space.S4)
+        self._build_side_panels(side_layout)
         self.event_log = EventLogPanel(self._settings)
-        right_layout.addWidget(self.event_log, 1)
-        body_layout.addWidget(right, 0)
+        side_layout.addWidget(self.event_log, 1)
+        body_layout.addWidget(self.side, 0)
 
         self.video_panel.start_clicked.connect(self._start_camera)
         self.video_panel.stop_clicked.connect(self._request_stop)
         self.video_panel.retry_clicked.connect(self._retry)
         self.context_bar.acknowledge_clicked.connect(self._acknowledge_alert)
 
-    def _build_below_video(self, layout: QVBoxLayout) -> None:
-        """Hook: AdminView adds the pose analysis panel under the video."""
+    def _build_side_panels(self, layout: QVBoxLayout) -> None:
+        """Hook: AdminView adds the pose analysis panel above the event log."""
 
     def _connect_extras(self) -> None:
         """Hook for AdminView's extra actions."""
@@ -229,8 +230,7 @@ class BaseMonitorView(QWidget):
             self._alert_active = True
             self.pulse.start()
             self._ack_action.setEnabled(True)
-        QApplication.alert(self.window(), 0)
-        QApplication.beep()
+        QApplication.alert(self.window(), 0)      # flashes the taskbar button; no sound
 
     @Slot(str, str)
     def log_event(self, event_type: str, message: str) -> None:
@@ -358,10 +358,22 @@ class BaseMonitorView(QWidget):
             self._error_toast = None
 
     # ------------------------------------------------------------------ events
+    def resizeEvent(self, event) -> None:
+        super().resizeEvent(event)
+        width = max(SIDE_MIN, min(SIDE_MAX, round(self.width() * SIDE_SHARE)))
+        if width != self.side.width():
+            self.side.setFixedWidth(width)
+        if self.isVisible():
+            self._place_toasts()
+
+    def _place_toasts(self) -> None:
+        right = Space.S6 + self.side.width() + Space.S4 + Space.S4
+        ToastHost.for_widget(self).set_bottom_inset(TOAST_BOTTOM_INSET, right=right)
+
     def showEvent(self, event) -> None:
         super().showEvent(event)
         if not event.spontaneous():
-            ToastHost.for_widget(self).set_bottom_inset(TOAST_BOTTOM_INSET)
+            self._place_toasts()
             self.setFocus(Qt.FocusReason.OtherFocusReason)
 
     def hideEvent(self, event) -> None:

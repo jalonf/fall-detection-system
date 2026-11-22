@@ -1,6 +1,6 @@
-"""Pose analysis panel (administrators), under the video.
+"""Pose analysis panel (administrators), at the top of the side column.
 
-Left: the skeleton image the worker draws. Right: a telemetry table with one row per metric —
+Top: the skeleton image the worker draws. Below: a telemetry table with one row per metric —
 its name, the current value and a trend line of the last 30 seconds — so the model's behaviour
 reads at a glance. The hip-height trend is drawn upside down (0 = top of the frame), so a fall
 shows as the line dropping.
@@ -26,19 +26,19 @@ from PySide6.QtGui import (
     QPen,
     QPixmap,
 )
-from PySide6.QtWidgets import QHBoxLayout, QSizePolicy, QToolTip, QWidget
+from PySide6.QtWidgets import QSizePolicy, QToolTip, QWidget
 
 from src.views.components.common.panel import Panel
 from src.views.components.monitor.video_widget import VideoWidget
 from src.views.strings import EM_DASH, Pose
 from src.views.theme import Colors, Radius, Space, Type, make_label, qcolor
 
-VIEW_WIDTH = 176
-VIEW_HEIGHT = 136
+VIEW_HEIGHT = 140
+ROW_HEIGHT = 38
 HISTORY = 120                 # samples kept: 30 s at 4 Hz
 _GRID = 24
-_LABEL_WIDTH = 96
-_VALUE_WIDTH = 88
+_LABEL_WIDTH = 92
+_VALUE_WIDTH = 80
 STOPPED = ("idle", "error", "finished")
 
 
@@ -48,7 +48,8 @@ class SkeletonView(VideoWidget):
 
     def __init__(self, parent: QWidget | None = None):
         super().__init__(Colors.STAGE, radius=Radius.R_MD, corner_color=Colors.N0, parent=parent)
-        self.setFixedSize(VIEW_WIDTH, VIEW_HEIGHT)
+        self.setFixedHeight(VIEW_HEIGHT)
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         self._grid: QPixmap | None = None
         self.setAccessibleName(Pose.SKELETON)
 
@@ -117,13 +118,13 @@ class TelemetryTable(QWidget):
     def __init__(self, metrics: list[Metric], parent: QWidget | None = None):
         super().__init__(parent)
         self.metrics = metrics
-        self.setFixedHeight(VIEW_HEIGHT)
+        self.setFixedHeight(ROW_HEIGHT * len(metrics) + 2)
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         self.setMouseTracking(True)
         self._describe()
 
     def sizeHint(self) -> QSize:
-        return QSize(480, VIEW_HEIGHT)
+        return QSize(340, ROW_HEIGHT * len(self.metrics) + 2)
 
     def push(self, values: dict[str, float | None]) -> None:
         for metric in self.metrics:
@@ -203,8 +204,8 @@ class TelemetryTable(QWidget):
                 painter.setPen(QColor(Colors.N500))
                 painter.drawText(QPointF(value_x + metrics.horizontalAdvance(text) + 4, baseline), metric.unit)
 
-        trend = QRectF(value_x + _VALUE_WIDTH + 8, row.top() + 9, row.right() - 12 - (value_x + _VALUE_WIDTH + 8),
-                       row.height() - 18)
+        trend = QRectF(value_x + _VALUE_WIDTH, row.top() + 8, row.right() - 12 - (value_x + _VALUE_WIDTH),
+                       row.height() - 16)
         if trend.width() > 24:
             self._paint_trend(painter, trend, metric)
 
@@ -282,12 +283,10 @@ class SkeletonPanel(Panel):
                    tooltip=Pose.HIP_HEIGHT_TIP),
         ]
         self.table = TelemetryTable(self.metrics)
-        row = QHBoxLayout()
-        row.setContentsMargins(0, 0, 0, 0)
-        row.setSpacing(Space.S4)
-        row.addWidget(self.view)
-        row.addWidget(self.table, 1)
-        self.body_layout().addLayout(row)
+        body = self.body_layout()
+        body.addWidget(self.view)
+        body.addSpacing(Space.S3)
+        body.addWidget(self.table)
 
         self._timer = QTimer(self)
         self._timer.setInterval(250)

@@ -374,19 +374,13 @@ def shot_steps(out: Path, size: tuple[int, int], keep: list) -> list[tuple[int, 
     def open_dialog() -> None:
         dialog = ConfirmDialog(view_ref[0], Monitor.CONFIRM_SIGN_OUT_TITLE, Monitor.CONFIRM_SIGN_OUT_BODY,
                                Monitor.CONFIRM_SIGN_OUT_ACTION, destructive=True)
-        dialog.setAttribute(Qt.WidgetAttribute.WA_DontShowOnScreen)
-        dialog.show()
+        dialog.open()          # an overlay inside the window, so the window grab includes it
         keep.append(dialog)
 
     def save_dialog() -> None:
         dialog = keep[-1]
-        base = admin_ref[0].grab()
-        painter = QPainter(base)
-        card = dialog.grab()
-        painter.drawPixmap((base.width() - card.width()) // 2, (base.height() - card.height()) // 2, card)
-        painter.end()
-        base.save(str(out / f"06_dialog_sign_out_{suffix}.png"))
-        dialog.close()
+        admin_ref[0].grab().save(str(out / f"06_dialog_sign_out_{suffix}.png"))
+        dialog.reject()
 
     do(open_dialog, 50)
     do(save_dialog, 400)
