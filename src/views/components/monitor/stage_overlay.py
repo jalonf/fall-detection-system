@@ -1,19 +1,18 @@
-"""Overlay above the stage: the source bar (40 px, only with an image or while starting) and,
-during a fall alert, the 2 px pulsing border. It never takes mouse input."""
+"""Overlay at the top of the stage: the source bar (40 px, only with an image or while starting).
+It never takes mouse input."""
 
 from __future__ import annotations
 
 from PySide6.QtCore import QRect, QRectF, Qt
-from PySide6.QtGui import QColor, QLinearGradient, QPainter, QPixmap, QRegion
+from PySide6.QtGui import QColor, QLinearGradient, QPainter, QPixmap
 from PySide6.QtWidgets import QWidget
 
 from src.views import icons
 from src.views.strings import Monitor
-from src.views.theme import Colors, Radius, Type, mix, qcolor
+from src.views.theme import Colors, Radius, Type, qcolor
 
 BAR = 40
 _PILL_HEIGHT = 20
-_BORDER = 2
 
 
 class StageOverlay(QWidget):
@@ -24,8 +23,6 @@ class StageOverlay(QWidget):
         self._label = ""
         self._bar = False
         self._live = False
-        self._alert = False
-        self._phase = 0.0
         self._gradient: QPixmap | None = None
 
     # ------------------------------------------------------------------ API
@@ -39,26 +36,7 @@ class StageOverlay(QWidget):
             self._bar, self._live = visible, live
             self.update(0, 0, self.width(), BAR)
 
-    def set_alert(self, active: bool) -> None:
-        if active != self._alert:
-            self._alert = active
-            self._phase = 0.0
-            self.update(self._border_region())
-
-    def set_pulse_phase(self, phase: float) -> None:
-        if self._alert:
-            self._phase = phase
-            self.update(self._border_region())
-
     # ------------------------------------------------------------------ painting
-    def _border_region(self) -> QRegion:
-        w, h = self.width(), self.height()
-        region = QRegion(0, 0, w, _BORDER)
-        region += QRegion(0, h - _BORDER, w, _BORDER)
-        region += QRegion(0, 0, _BORDER, h)
-        region += QRegion(w - _BORDER, 0, _BORDER, h)
-        return region
-
     def resizeEvent(self, event) -> None:
         super().resizeEvent(event)
         self._gradient = None
@@ -80,15 +58,8 @@ class StageOverlay(QWidget):
 
     def paintEvent(self, event) -> None:
         painter = QPainter(self)
-        if self._bar and event.rect().top() < BAR:
+        if self._bar:
             self._paint_bar(painter)
-        if self._alert:
-            painter.setPen(Qt.PenStyle.NoPen)
-            color = mix(Colors.R600, Colors.R300, self._phase)
-            w, h = self.width(), self.height()
-            for rect in (QRect(0, 0, w, _BORDER), QRect(0, h - _BORDER, w, _BORDER),
-                         QRect(0, 0, _BORDER, h), QRect(w - _BORDER, 0, _BORDER, h)):
-                painter.fillRect(rect, color)
 
     def _paint_bar(self, painter: QPainter) -> None:
         painter.drawPixmap(0, 0, self._gradient_pixmap())

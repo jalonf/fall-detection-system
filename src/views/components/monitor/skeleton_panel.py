@@ -1,4 +1,5 @@
-"""Pose analysis panel (administrators): the skeleton image and the model's telemetry.
+"""Pose analysis panel (administrators), under the video: the skeleton image and, beside it,
+the model's telemetry.
 
 `AdminController` calls `update_frame` and `update_telemetry` directly for every frame. Frames
 are ignored while monitoring is stopped; telemetry is only stored and painted at 4 Hz.
@@ -17,8 +18,8 @@ from src.views.components.monitor.video_widget import VideoWidget
 from src.views.strings import Pose
 from src.views.theme import Colors, Radius, Space, Type
 
-VIEW_HEIGHT = 184
-STRIP_HEIGHT = 64
+VIEW_HEIGHT = 128
+VIEW_WIDTH = 200
 _GRID = 24
 STOPPED = ("idle", "error", "finished")
 
@@ -29,7 +30,7 @@ class SkeletonView(VideoWidget):
 
     def __init__(self, parent: QWidget | None = None):
         super().__init__(Colors.STAGE, radius=Radius.R_MD, corner_color=Colors.N0, parent=parent)
-        self.setFixedHeight(VIEW_HEIGHT)
+        self.setFixedSize(VIEW_WIDTH, VIEW_HEIGHT)
         self._grid: QPixmap | None = None
         self.setAccessibleName(Pose.SKELETON)
 
@@ -67,12 +68,12 @@ class SkeletonView(VideoWidget):
 
 
 class MetricStrip(QWidget):
-    """Three metric tiles in a 64 px bordered strip, separated by dividers."""
+    """Three metric tiles side by side in a bordered strip, separated by dividers."""
 
     def __init__(self, tiles: list[MetricTile], parent: QWidget | None = None):
         super().__init__(parent)
         self.tiles = tiles
-        self.setFixedHeight(STRIP_HEIGHT)
+        self.setFixedHeight(VIEW_HEIGHT)
         layout = QHBoxLayout(self)
         layout.setContentsMargins(1, 1, 1, 1)
         layout.setSpacing(1)
@@ -100,10 +101,12 @@ class SkeletonPanel(Panel):
         self.confidence = MetricTile(Pose.CONFIDENCE, "%", bar=True)
         self.hip_height = MetricTile(Pose.HIP_HEIGHT, tooltip=Pose.HIP_HEIGHT_TIP)
         self.strip = MetricStrip([self.inference, self.confidence, self.hip_height])
-        body = self.body_layout()
-        body.addWidget(self.view)
-        body.addSpacing(Space.S3)
-        body.addWidget(self.strip)
+        row = QHBoxLayout()
+        row.setContentsMargins(0, 0, 0, 0)
+        row.setSpacing(Space.S4)
+        row.addWidget(self.view)
+        row.addWidget(self.strip, 1)
+        self.body_layout().addLayout(row)
 
         self._timer = QTimer(self)
         self._timer.setInterval(250)

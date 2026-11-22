@@ -1,12 +1,16 @@
-"""Context bar: patient, risk, source, status and duration. The main place where the state shows."""
+"""Context bar: patient, risk, source, status and duration. The main place where the state shows.
+
+During a fall alert it turns R50, its status pulses and an Acknowledge button appears on the right.
+"""
 
 from __future__ import annotations
 
-from PySide6.QtCore import QRect, QSize, Qt
+from PySide6.QtCore import QRect, QSize, Qt, Signal
 from PySide6.QtGui import QColor, QFontMetrics, QPainter
 from PySide6.QtWidgets import QHBoxLayout, QLabel, QWidget
 
 from src.views.components.common.badge import Badge
+from src.views.components.common.button import make_button
 from src.views.components.common.painting import Divider
 from src.views.components.common.status_indicator import StatusIndicator
 from src.views.strings import EM_DASH, Monitor
@@ -41,6 +45,8 @@ def set_value(label: QLabel, text: str | None, width: int, mode=Qt.TextElideMode
 
 
 class ContextBar(QWidget):
+    acknowledge_clicked = Signal()
+
     def __init__(self, patient_name: str | None, risk_level: str | None, parent: QWidget | None = None):
         super().__init__(parent)
         self.setObjectName("ContextBar")
@@ -67,12 +73,21 @@ class ContextBar(QWidget):
         set_value(self.source, None, _SOURCE_WIDTH)
         self._add_item(layout, Monitor.SOURCE, self.source, divider=True)
 
-        self.status = StatusIndicator(reserve=tuple(Monitor.STATUS_TEXT.values()))
+        reserve = (*Monitor.STATUS_TEXT.values(), Monitor.STATUS_ALERT_COUNT.format(n=99))
+        self.status = StatusIndicator(reserve=reserve)
         self._add_item(layout, Monitor.STATUS, self.status, divider=True)
 
         self.duration = make_tabular_label(EM_DASH, "body-strong", "tertiary", sample="00:00:00")
         self._add_item(layout, Monitor.DURATION, self.duration, divider=True)
         layout.addStretch(1)
+
+        self.acknowledge = make_button(Monitor.ACKNOWLEDGE, "danger", "sm", "check", tooltip=Monitor.ACKNOWLEDGE_TIP)
+        policy = self.acknowledge.sizePolicy()
+        policy.setRetainSizeWhenHidden(True)      # showing it never shifts the other items
+        self.acknowledge.setSizePolicy(policy)
+        self.acknowledge.hide()
+        self.acknowledge.clicked.connect(self.acknowledge_clicked)
+        layout.addWidget(self.acknowledge, 0, Qt.AlignmentFlag.AlignVCenter)
         self.set_state("idle")
 
     def _add_item(self, layout: QHBoxLayout, label: str, value: QWidget, *, divider: bool = False) -> None:
@@ -99,15 +114,18 @@ class ContextBar(QWidget):
             self.duration.setText(text or EM_DASH)
             set_props(self.duration, tone="primary" if text else "tertiary")
 
-    def set_alert(self, active: bool) -> None:
-        if active == self._alert:
-            return
+    def set_alert(self, active: bool, count: int = 1) -> None:
+        """Shows the fall alert (with the number of falls since the last acknowledgement) or clears it."""
+        changed = active != self._alert
         self._alert = active
         if active:
-            self.status.set_status("alert", Monitor.STATUS_TEXT["alert"])
+            text = Monitor.STATUS_TEXT["alert"] if count <= 1 else Monitor.STATUS_ALERT_COUNT.format(n=count)
+            self.status.set_status("alert", text)
         else:
             self.status.set_status(STATUS_KIND[self._state], Monitor.STATUS_TEXT[self._state])
-        self.update()
+        self.acknowledge.setVisible(active)
+        if changed:
+            self.update()
 
     def set_pulse_phase(self, phase: float) -> None:
         self.status.set_pulse_phase(phase)

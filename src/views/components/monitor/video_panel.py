@@ -1,18 +1,17 @@
-"""Live video panel: the stage (video or placeholder, overlay, fall banner) and the source controls."""
+"""Live video panel: the stage (video or placeholder, with the source overlay) and the source controls."""
 
 from __future__ import annotations
 
 from itertools import pairwise
 
-from PySide6.QtCore import QSize, QTime, Signal, Slot
+from PySide6.QtCore import QSize, Signal, Slot
 from PySide6.QtGui import QImage
 from PySide6.QtWidgets import QFileDialog, QSizePolicy, QStackedLayout, QWidget
 
 from src.views.components.common.button import make_button
 from src.views.components.common.inputs import Combo
 from src.views.components.common.panel import Panel
-from src.views.components.monitor.fall_alert_banner import FallAlertBanner
-from src.views.components.monitor.stage_overlay import StageOverlay
+from src.views.components.monitor.stage_overlay import BAR, StageOverlay
 from src.views.components.monitor.stage_placeholder import StagePlaceholder
 from src.views.components.monitor.video_widget import VideoWidget
 from src.views.strings import Monitor
@@ -23,8 +22,8 @@ STOPPED = ("idle", "error", "finished")
 
 
 class Stage(QWidget):
-    """Full-bleed dark area. A stacked layout switches video / placeholder; the overlay and the
-    banner are free children on top. Its size hint never changes, so frames never relayout."""
+    """Full-bleed dark area. A stacked layout switches video / placeholder; the overlay is a free
+    child on top. Its size hint never changes, so frames never relayout."""
 
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
@@ -37,7 +36,6 @@ class Stage(QWidget):
         self._stack.addWidget(self.placeholder)
         self._stack.setCurrentWidget(self.placeholder)
         self.overlay = StageOverlay(self)
-        self.banner = FallAlertBanner(self)
 
     def sizeHint(self) -> QSize:
         return QSize(640, 360)
@@ -50,14 +48,11 @@ class Stage(QWidget):
         if self._stack.currentWidget() is not target:
             self._stack.setCurrentWidget(target)
             self.overlay.raise_()
-            self.banner.raise_()
 
     def resizeEvent(self, event) -> None:
         super().resizeEvent(event)
-        self.overlay.setGeometry(self.rect())
-        self.banner.place(self.width())
+        self.overlay.setGeometry(0, 0, self.width(), BAR)   # only the top bar repaints with each frame
         self.overlay.raise_()
-        self.banner.raise_()
 
 
 class VideoPanel(Panel):
@@ -68,7 +63,7 @@ class VideoPanel(Panel):
 
     def __init__(self, *, can_analyse_files: bool, parent: QWidget | None = None):
         super().__init__(Monitor.LIVE_VIDEO, subtitle=Monitor.SUBTITLE_IDLE, flush=True, footer=True, parent=parent)
-        self.setMinimumHeight(360)
+        self.setMinimumHeight(340)
         self._state = "idle"
         self._source = None
         self._error: str | None = None
@@ -160,17 +155,6 @@ class VideoPanel(Panel):
     def clear_frame(self) -> None:
         self.stage.video.clear()
         self._refresh_stage()
-
-    def show_alert(self, message: str, at: QTime) -> None:
-        self.stage.banner.show_fall(message, at)
-        self.stage.overlay.set_alert(True)
-
-    def clear_alert(self) -> None:
-        self.stage.banner.dismiss()
-        self.stage.overlay.set_alert(False)
-
-    def set_pulse_phase(self, phase: float) -> None:
-        self.stage.overlay.set_pulse_phase(phase)
 
     def camera_index(self) -> int:
         return self.source_combo.currentIndex()

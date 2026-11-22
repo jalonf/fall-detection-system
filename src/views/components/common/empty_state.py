@@ -10,9 +10,9 @@ from src.views import icons
 from src.views.components.common.button import Button
 from src.views.components.common.painting import draw_lines, wrap_text
 from src.views.components.common.spinner import make_rotation, paint_arc
-from src.views.theme import Colors, Radius, Type
+from src.views.theme import Colors, Type
 
-_TILE = 56
+_TILE = 40          # room for the 32 px icon (painted without a tile behind it)
 _ICON = 32
 _MAX_TEXT = 360
 
@@ -84,7 +84,7 @@ class EmptyState(QWidget):
         return wrap_text(self._text, Type.font("body"), self._text_width(), 3)
 
     def _content_height(self) -> int:
-        height = _TILE + 16 + Type.line_height("title-sm")
+        height = _TILE + 12 + Type.line_height("title-sm")
         lines = self._lines()
         if lines:
             height += 4 + len(lines) * Type.line_height("body")
@@ -111,10 +111,8 @@ class EmptyState(QWidget):
         if self._on_dark:
             painter.fillRect(self.rect(), QColor(Colors.S900))
 
+        # The icon sits straight on the background: no tile, no box around it.
         tile = self._tile_rect()
-        painter.setPen(Qt.PenStyle.NoPen)
-        painter.setBrush(QColor(Colors.S800 if self._on_dark else Colors.N100))
-        painter.drawRoundedRect(tile, Radius.R_LG, Radius.R_LG)
         icon_rect = QRectF(tile.center().x() - _ICON / 2, tile.center().y() - _ICON / 2, _ICON, _ICON)
         default_color = Colors.S300 if self._on_dark else Colors.N500
         if self._spinner:
@@ -124,7 +122,7 @@ class EmptyState(QWidget):
             pixmap = icons.icon_pixmap(self._icon, self._icon_color or default_color, _ICON, self.devicePixelRatioF())
             painter.drawPixmap(icon_rect.topLeft(), pixmap)
 
-        y = tile.bottom() + 16
+        y = tile.bottom() + 12
         painter.setFont(Type.font("title-sm"))
         painter.setPen(QColor(Colors.S100 if self._on_dark else Colors.N900))
         width = self._text_width()

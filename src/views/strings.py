@@ -26,7 +26,10 @@ class Common:
 
 class Brand:
     WORDMARK = APP_NAME
+    OVERLINE = "HOME CARE MONITORING"
     HEADLINE = "Fall detection and risk monitoring for home care"
+    CARD_SOURCE = "CAMERA 0"
+    CARD_LIVE = "LIVE"
     PARAGRAPH = (
         "FallSense watches the patient's posture through a camera and alerts the caregiver "
         "the moment a fall happens."
@@ -150,11 +153,9 @@ class Monitor:
     }
     TRY_AGAIN = "Try again"
 
-    FALL_TITLE = "Fall detected"
-    FALL_DETAIL = "{percent}% confidence · {time}"
+    STATUS_ALERT_COUNT = "Fall alert ×{n}"
     ACKNOWLEDGE = "Acknowledge"
-    ACKNOWLEDGE_HINT = "Esc"
-    ACKNOWLEDGE_TIP = "Acknowledge the alert (Esc)"
+    ACKNOWLEDGE_TIP = "Acknowledge the fall alert (Esc)"
     ALERT_ACKNOWLEDGED = "Alert acknowledged by the operator"
 
     CONFIRM_SIGN_OUT_TITLE = "Stop monitoring and sign out?"

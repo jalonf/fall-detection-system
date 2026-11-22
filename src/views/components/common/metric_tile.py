@@ -19,8 +19,8 @@ class MetricTile(QWidget):
         self._bar = bar
         self._value: str | None = None
         self._ratio: float | None = None
-        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-        self.setFixedHeight(62)
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        self.setMinimumHeight(62)
         if tooltip:
             self.setToolTip(tooltip)
             self.setAccessibleDescription(tooltip)
@@ -44,12 +44,14 @@ class MetricTile(QWidget):
         painter = QPainter(self)
         x = 12
         width = self.width() - 2 * x
+        block = 16 + 2 + Type.line_height("metric") + (7 if self._bar else 0)
+        top = (self.height() - block) // 2           # content centred vertically in the tile
         painter.setFont(Type.font("caption-strong"))
         painter.setPen(QColor(Colors.N600))
-        painter.drawText(QRect(x, 8, width, 16), int(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter),
+        painter.drawText(QRect(x, top, width, 16), int(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter),
                          self._label)
 
-        value_rect = QRect(x, 26, width, Type.line_height("metric"))
+        value_rect = QRect(x, top + 18, width, Type.line_height("metric"))
         value_font = Type.font("metric", tabular=True)
         painter.setFont(value_font)
         if self._value is None:
@@ -69,9 +71,10 @@ class MetricTile(QWidget):
                                  int(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop), self._unit)
 
         if self._bar:
-            track = QRect(x, 52, width, 3)
+            bar_top = value_rect.bottom() + 5
+            track = QRect(x, bar_top, width, 3)
             painter.fillRect(track, QColor(Colors.N150))
             if self._ratio is not None:
                 ratio = max(0.0, min(1.0, self._ratio))
                 fill = Colors.A600 if ratio < 0.5 else Colors.P600
-                painter.fillRect(QRect(x, 52, round(width * ratio), 3), QColor(fill))
+                painter.fillRect(QRect(x, bar_top, round(width * ratio), 3), QColor(fill))

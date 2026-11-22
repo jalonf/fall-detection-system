@@ -116,7 +116,7 @@ class AuthView(QWidget):
     # ------------------------------------------------------------------ events
     def resizeEvent(self, event) -> None:
         super().resizeEvent(event)
-        self._brand.set_target_width(max(400, min(640, round(self.width() * 0.38))))
+        self._brand.set_target_width(max(440, min(640, round(self.width() * 0.40))))
 
     def showEvent(self, event) -> None:
         super().showEvent(event)

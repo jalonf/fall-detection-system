@@ -15,7 +15,6 @@ from enum import StrEnum
 
 from PySide6.QtCore import (
     QElapsedTimer,
-    QEvent,
     QSettings,
     QSize,
     Qt,
@@ -25,10 +24,9 @@ from PySide6.QtCore import (
     Slot,
 )
 from PySide6.QtGui import QAction, QImage, QKeySequence
-from PySide6.QtWidgets import QApplication, QHBoxLayout, QSplitter, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QApplication, QHBoxLayout, QVBoxLayout, QWidget
 
 from src.views.components.common.confirm_dialog import ConfirmDialog
-from src.views.components.common.painting import transparent_scroll_area
 from src.views.components.common.toast import ToastHost
 from src.views.components.monitor.alert_pulse import AlertPulse
 from src.views.components.monitor.context_bar import ContextBar
@@ -40,8 +38,6 @@ from src.views.strings import Monitor, Toasts, toast_rule_for
 from src.views.theme import Space
 
 TOAST_TOP_INSET = 108            # below the top bar (56) and the context bar (40), plus 12
-SETTINGS_LOG_HEIGHT = "monitor/log_height"
-_HANDLE = 8
 
 
 class MonitorState(StrEnum):
@@ -69,11 +65,11 @@ def format_duration(milliseconds: int) -> str:
     return f"{seconds // 3600:02d}:{seconds // 60 % 60:02d}:{seconds % 60:02d}"
 
 
-class _SideColumn(QWidget):
-    """Holder of the side scroll area: 320-400 px wide, 352 preferred."""
+class _RightColumn(QWidget):
+    """Session and event log: 380-440 px wide, 400 preferred."""
 
     def sizeHint(self) -> QSize:
-        return QSize(352, 400)
+        return QSize(400, 600)
 
 
 class BaseMonitorView(QWidget):
@@ -95,6 +91,7 @@ class BaseMonitorView(QWidget):
         self._run_error: str | None = None
         self._stopped_by_user = False
         self._alert_active = False
+        self._alert_count = 0
         self._signing_out = False
         self._falls = 0
         self._events = 0
@@ -103,7 +100,6 @@ class BaseMonitorView(QWidget):
         self._run_started = False
         self._error_toast = None
         self._settings = QSettings("FallSense", "FallSense")
-        self._splitter_ready = False
         self._stateful: list = []
 
         self._build(user_name, user_role, patient_name, risk_level)
@@ -117,7 +113,7 @@ class BaseMonitorView(QWidget):
         self._toggle_action = self._shortcut(("Ctrl+Return", "Ctrl+Enter"), self._toggle_monitoring)
         self._ack_action = self._shortcut(("Esc",), self._acknowledge_alert)
         self._ack_action.setEnabled(False)
-        self._shortcut(("Ctrl+L",), self.event_log.focus_table)
+        self._shortcut(("Ctrl+L",), self.event_log.focus_events)
         self._shortcut(("Ctrl+Shift+Q",), self._request_sign_out)
         self._connect_extras()
         self._set_state(MonitorState.IDLE)
@@ -140,43 +136,35 @@ class BaseMonitorView(QWidget):
         body_layout.setSpacing(Space.S4)
         layout.addWidget(body, 1)
 
-        self.splitter = QSplitter(Qt.Orientation.Vertical)
-        self.splitter.setHandleWidth(_HANDLE)
-        self.splitter.setChildrenCollapsible(False)
+        # Left: the video, which takes all the spare room (plus pose analysis below it for admins).
+        left = QVBoxLayout()
+        left.setContentsMargins(0, 0, 0, 0)
+        left.setSpacing(Space.S4)
         self.video_panel = VideoPanel(can_analyse_files=self.CAN_ANALYSE_FILES)
-        self.event_log = EventLogPanel(self._settings)
-        self.splitter.addWidget(self.video_panel)
-        self.splitter.addWidget(self.event_log)
-        self.splitter.setStretchFactor(0, 1)
-        self.splitter.setStretchFactor(1, 0)
-        self.splitter.splitterMoved.connect(self._on_splitter_moved)
-        self.splitter.installEventFilter(self)
-        body_layout.addWidget(self.splitter, 1)
+        left.addWidget(self.video_panel, 1)
+        self._build_below_video(left)
+        body_layout.addLayout(left, 1)
 
-        side = QWidget()
-        side_layout = QVBoxLayout(side)
-        side_layout.setContentsMargins(0, 0, 0, 0)
-        side_layout.setSpacing(Space.S4)
-        self._build_side_panels(side_layout)
-        side_layout.addStretch(1)
-        self.side_area = transparent_scroll_area(side)
-        holder = _SideColumn()
-        holder.setMinimumWidth(320)
-        holder.setMaximumWidth(400)
-        holder_layout = QVBoxLayout(holder)
-        holder_layout.setContentsMargins(0, 0, 0, 0)
-        holder_layout.addWidget(self.side_area)
-        body_layout.addWidget(holder, 0)
+        # Right: the session summary and the event log, which gets the full remaining height.
+        right = _RightColumn()
+        right.setMinimumWidth(380)
+        right.setMaximumWidth(440)
+        right_layout = QVBoxLayout(right)
+        right_layout.setContentsMargins(0, 0, 0, 0)
+        right_layout.setSpacing(Space.S4)
+        self.session_panel = SessionPanel()
+        right_layout.addWidget(self.session_panel)
+        self.event_log = EventLogPanel(self._settings)
+        right_layout.addWidget(self.event_log, 1)
+        body_layout.addWidget(right, 0)
 
         self.video_panel.start_clicked.connect(self._start_camera)
         self.video_panel.stop_clicked.connect(self._request_stop)
         self.video_panel.retry_clicked.connect(self._retry)
-        self.video_panel.stage.banner.acknowledged.connect(self._acknowledge_alert)
+        self.context_bar.acknowledge_clicked.connect(self._acknowledge_alert)
 
-    def _build_side_panels(self, layout: QVBoxLayout) -> None:
-        """Hook: AdminView adds the pose analysis panel before the session panel."""
-        self.session_panel = SessionPanel()
-        layout.addWidget(self.session_panel)
+    def _build_below_video(self, layout: QVBoxLayout) -> None:
+        """Hook: AdminView adds the pose analysis panel under the video."""
 
     def _connect_extras(self) -> None:
         """Hook for AdminView's extra actions."""
@@ -244,10 +232,10 @@ class BaseMonitorView(QWidget):
         self._falls += 1
         self.session_panel.set_falls(self._falls)
         self._add_event("ALERT", message, now)
-        self.video_panel.show_alert(message, now)
+        self._alert_count = self._alert_count + 1 if self._alert_active else 1
+        self.context_bar.set_alert(True, self._alert_count)
         if not self._alert_active:
             self._alert_active = True
-            self.context_bar.set_alert(True)
             self.pulse.start()
             self._ack_action.setEnabled(True)
         QApplication.alert(self.window(), 0)
@@ -356,14 +344,13 @@ class BaseMonitorView(QWidget):
             return
         self._alert_active = False
         self._ack_action.setEnabled(False)
+        self._alert_count = 0
         self.pulse.stop()
-        self.video_panel.clear_alert()
         self.context_bar.set_alert(False)
         self._add_event("INFO", Monitor.ALERT_ACKNOWLEDGED)
 
     @Slot(float)
     def _on_pulse(self, phase: float) -> None:
-        self.video_panel.set_pulse_phase(phase)
         self.context_bar.set_pulse_phase(phase)
 
     @Slot()
@@ -381,27 +368,6 @@ class BaseMonitorView(QWidget):
         if self._error_toast is not None:
             ToastHost.for_widget(self).dismiss(self._error_toast)
             self._error_toast = None
-
-    # ------------------------------------------------------------------ splitter
-    def eventFilter(self, watched, event) -> bool:
-        if watched is self.splitter and event.type() == QEvent.Type.Resize and not self._splitter_ready:
-            height = self.splitter.height()
-            if height > 0:
-                self._splitter_ready = True
-                saved = self._settings.value(SETTINGS_LOG_HEIGHT)
-                try:
-                    log_height = int(saved) if saved is not None else 0
-                except (TypeError, ValueError):
-                    log_height = 0
-                if log_height <= 0:
-                    log_height = max(176, min(280, round(height * 0.28)))
-                log_height = min(log_height, max(176, height - _HANDLE - self.video_panel.minimumHeight()))
-                self.splitter.setSizes([height - _HANDLE - log_height, log_height])
-        return False
-
-    @Slot(int, int)
-    def _on_splitter_moved(self, _position: int, _index: int) -> None:
-        self._settings.setValue(SETTINGS_LOG_HEIGHT, self.splitter.sizes()[1])
 
     # ------------------------------------------------------------------ events
     def showEvent(self, event) -> None:

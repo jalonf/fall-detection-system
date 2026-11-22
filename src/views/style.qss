@@ -193,20 +193,7 @@ QScrollBar::handle:hover { background-color: @N400@; }
 QScrollBar::add-line, QScrollBar::sub-line { width: 0px; height: 0px; border: none; background: none; }
 QScrollBar::add-page, QScrollBar::sub-page { background: none; }
 
-/* ------------------------------------------------------------------ splitter */
-QSplitter::handle { background: transparent; }
-QSplitter::handle:vertical:hover {
-    background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
-        stop: 0 transparent, stop: 0.374 transparent, stop: 0.375 @N300@,
-        stop: 0.625 @N300@, stop: 0.626 transparent, stop: 1 transparent);
-}
-QSplitter::handle:horizontal:hover {
-    background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 0,
-        stop: 0 transparent, stop: 0.374 transparent, stop: 0.375 @N300@,
-        stop: 0.625 @N300@, stop: 0.626 transparent, stop: 1 transparent);
-}
-
-/* ------------------------------------------------------------------ event table (rows are painted by its delegate) */
+/* ------------------------------------------------------------------ item views (event rows are painted by their delegate) */
 QTableView {
     background: transparent;
     border: none;

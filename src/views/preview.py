@@ -532,7 +532,7 @@ def main() -> int:
     app.setQuitOnLastWindowClosed(not (ARGS.shots or ARGS.perf))
     ThemeManager.setup_theme(app)
     settings = QSettings("FallSense", "FallSense")
-    saved = {key: settings.value(key) for key in ("monitor/log_filter", "monitor/log_height")}
+    saved = {key: settings.value(key) for key in ("monitor/log_filter",)}
 
     problems = run_checks()
     for problem in problems:

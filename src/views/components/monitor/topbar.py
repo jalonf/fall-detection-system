@@ -18,6 +18,7 @@ from PySide6.QtGui import QColor, QFontMetrics, QPainter
 from PySide6.QtWidgets import QHBoxLayout, QSizePolicy, QVBoxLayout, QWidget
 
 from src.views.components.common.button import make_button
+from src.views.components.common.logo_mark import LogoMark
 from src.views.components.common.painting import Divider
 from src.views.strings import Monitor
 from src.views.theme import (
@@ -81,6 +82,8 @@ class Topbar(QWidget):
         layout.setContentsMargins(Space.S6, 0, Space.S6, 1)
         layout.setSpacing(0)
 
+        layout.addWidget(LogoMark(22, "on-light"))
+        layout.addSpacing(Space.S2)
         layout.addWidget(make_label(APP_NAME, "title-md"))
         layout.addSpacing(Space.S3)
         layout.addWidget(Divider(Colors.N200, vertical=True, length=20))

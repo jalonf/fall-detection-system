@@ -1,4 +1,8 @@
-"""Event log: model/view table of the session's events, newest first, with a type filter."""
+"""Event log: a feed of the session's events, newest first, with a type filter.
+
+Each event is a two-line row (type badge and time, then the description), so the log reads
+naturally in a narrow, tall column without cutting the descriptions.
+"""
 
 from __future__ import annotations
 
@@ -20,16 +24,22 @@ from PySide6.QtCore import (
     QTime,
     Slot,
 )
-from PySide6.QtGui import QAction, QColor, QGuiApplication, QKeySequence, QPainter
+from PySide6.QtGui import (
+    QAction,
+    QColor,
+    QFontMetrics,
+    QGuiApplication,
+    QKeySequence,
+    QPainter,
+)
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QFileDialog,
-    QHeaderView,
+    QListView,
     QMenu,
     QStyle,
     QStyledItemDelegate,
     QStyleOptionViewItem,
-    QTableView,
     QToolTip,
     QWidget,
 )
@@ -43,9 +53,8 @@ from src.views.components.common.toast import ToastHost
 from src.views.strings import Log, Toasts, event_count
 from src.views.theme import Colors, Type
 
-ROW_HEIGHT = 36
-HEADER_HEIGHT = 32
-_PADDING = 12
+ROW_HEIGHT = 56
+_PADDING = 16
 BADGE_VARIANTS = {"INFO": "neutral", "ERROR": "danger", "ALERT": "danger-solid"}
 SETTINGS_FILTER = "monitor/log_filter"
 _ROOT = QModelIndex()
@@ -61,6 +70,7 @@ class LogEntry:
 class EventLogModel(QAbstractTableModel):
     TypeRole = Qt.ItemDataRole.UserRole + 1
     TimeRole = Qt.ItemDataRole.UserRole + 2
+    MessageRole = Qt.ItemDataRole.UserRole + 3
     MAX_ROWS = 1000
 
     def __init__(self, parent=None):
@@ -83,6 +93,8 @@ class EventLogModel(QAbstractTableModel):
             return entry.kind
         if role == self.TimeRole:
             return entry.time
+        if role == self.MessageRole:
+            return entry.message
         if role == Qt.ItemDataRole.AccessibleTextRole:
             return f"{entry.time.toString('HH:mm:ss')}, {entry.kind}, {entry.message}"
         return None
@@ -136,83 +148,63 @@ class EventFilterProxy(QSortFilterProxyModel):
         return index.data(EventLogModel.TypeRole) in kinds
 
 
-class EventTypeDelegate(QStyledItemDelegate):
-    """Paints every cell: row background (ALERT R50, selection P50, hover N50), divider, time,
-    type badge, description and the 3 px bar on ALERT rows."""
-
-    def __init__(self, table: EventTable):
-        super().__init__(table)
-        self._table = table
+class EventFeedDelegate(QStyledItemDelegate):
+    """Two-line row: badge and time, then the description. ALERT rows get an R50 fill and a 3 px
+    R600 bar; selection P50; hover N50."""
 
     def sizeHint(self, option: QStyleOptionViewItem, index) -> QSize:
         return QSize(option.rect.width(), ROW_HEIGHT)
 
     def paint(self, painter: QPainter, option: QStyleOptionViewItem, index) -> None:
         rect = option.rect
-        kind = index.data(EventLogModel.TypeRole)
-        selected = bool(option.state & QStyle.StateFlag.State_Selected)
-        hovered = index.row() == self._table.hovered_row
+        kind = index.data(EventLogModel.TypeRole) or "INFO"
+        time = index.data(EventLogModel.TimeRole)
+        message = index.data(EventLogModel.MessageRole) or ""
         painter.save()
-        if selected:
+        if option.state & QStyle.StateFlag.State_Selected:
             painter.fillRect(rect, QColor(Colors.P50))
         elif kind == "ALERT":
             painter.fillRect(rect, QColor(Colors.R50))
-        elif hovered:
+        elif option.state & QStyle.StateFlag.State_MouseOver:
             painter.fillRect(rect, QColor(Colors.N50))
+        if kind == "ALERT":
+            painter.fillRect(QRect(rect.left(), rect.top(), 3, rect.height()), QColor(Colors.R600))
         painter.fillRect(QRect(rect.left(), rect.bottom(), rect.width(), 1), QColor(Colors.N150))
 
-        column = index.column()
-        if column == 0:
-            if kind == "ALERT":
-                painter.fillRect(QRect(rect.left(), rect.top(), 3, rect.height()), QColor(Colors.R600))
-            painter.setFont(Type.font("body", tabular=True))
-            painter.setPen(QColor(Colors.N600))
-            painter.drawText(rect.adjusted(_PADDING, 0, -4, 0),
-                             int(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter), index.data())
-        elif column == 1:
-            width = Badge.width_for(kind)
-            badge = QRect(rect.left() + _PADDING, rect.top() + (rect.height() - 20) // 2, width, 20)
-            Badge.paint(painter, QRectF(badge), kind, BADGE_VARIANTS.get(kind, "neutral"))
-        else:
-            painter.setFont(Type.font("body"))
-            painter.setPen(QColor(Colors.N900))
-            text_rect = rect.adjusted(_PADDING, 0, -_PADDING, 0)
-            text = painter.fontMetrics().elidedText(index.data() or "", Qt.TextElideMode.ElideRight, text_rect.width())
-            painter.drawText(text_rect, int(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter), text)
+        x = rect.left() + _PADDING
+        width = rect.width() - 2 * _PADDING
+        badge_width = Badge.width_for(kind)
+        Badge.paint(painter, QRectF(x, rect.top() + 8, badge_width, 20), kind, BADGE_VARIANTS.get(kind, "neutral"))
+        painter.setFont(Type.font("caption", tabular=True))
+        painter.setPen(QColor(Colors.N600))
+        painter.drawText(QRect(x + badge_width + 8, rect.top() + 8, width - badge_width - 8, 20),
+                         int(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter),
+                         time.toString("HH:mm:ss") if time is not None else "")
+
+        painter.setFont(Type.font("body"))
+        painter.setPen(QColor(Colors.N900))
+        text = painter.fontMetrics().elidedText(message, Qt.TextElideMode.ElideRight, width)
+        painter.drawText(QRect(x, rect.top() + 30, width, 20),
+                         int(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter), text)
         painter.restore()
 
 
-class EventTable(QTableView):
+class EventList(QListView):
     def __init__(self, model, parent: QWidget | None = None):
         super().__init__(parent)
-        self.hovered_row = -1
         self.setModel(model)
-        self.setItemDelegate(EventTypeDelegate(self))
-        vertical = self.verticalHeader()
-        vertical.hide()
-        vertical.setSectionResizeMode(QHeaderView.ResizeMode.Fixed)
-        vertical.setDefaultSectionSize(ROW_HEIGHT)
-        header = self.horizontalHeader()
-        header.setFixedHeight(HEADER_HEIGHT)
-        header.setDefaultAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
-        header.setHighlightSections(False)
-        header.setSectionsClickable(False)
-        header.setSectionResizeMode(0, QHeaderView.ResizeMode.Fixed)
-        header.setSectionResizeMode(1, QHeaderView.ResizeMode.Fixed)
-        header.setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
-        header.resizeSection(0, 88)
-        header.resizeSection(1, 96)
-        self.setWordWrap(False)
-        self.setTextElideMode(Qt.TextElideMode.ElideRight)
-        self.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+        self.setModelColumn(0)
+        self.setItemDelegate(EventFeedDelegate(self))
+        self.setUniformItemSizes(True)
         self.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
-        self.setShowGrid(False)
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.setVerticalScrollMode(QAbstractItemView.ScrollMode.ScrollPerPixel)
+        self.setFrameShape(QListView.Shape.NoFrame)
         self.setMouseTracking(True)
-        self.setAccessibleName(Log.TABLE_NAME)
+        self.viewport().setAttribute(Qt.WidgetAttribute.WA_Hover)
         self.viewport().setAutoFillBackground(False)
+        self.setAccessibleName(Log.TABLE_NAME)
 
         copy = QAction(self)
         copy.setShortcut(QKeySequence(QKeySequence.StandardKey.Copy))
@@ -222,35 +214,19 @@ class EventTable(QTableView):
 
     @Slot()
     def copy_selection(self) -> None:
-        rows = sorted({index.row() for index in self.selectionModel().selectedRows()})
+        """Copies the selected events as tab-separated lines (time, type, description)."""
+        rows = sorted({index.row() for index in self.selectionModel().selectedIndexes()})
         model = self.model()
         lines = ["\t".join(model.index(row, column).data() or "" for column in range(3)) for row in rows]
         if lines:
             QGuiApplication.clipboard().setText("\n".join(lines))
 
-    # ------------------------------------------------------------------ hover and tooltips
-    def _set_hovered(self, row: int) -> None:
-        if row == self.hovered_row:
-            return
-        for old in (self.hovered_row, row):
-            if old >= 0:
-                self.viewport().update(QRect(0, self.rowViewportPosition(old), self.viewport().width(), ROW_HEIGHT))
-        self.hovered_row = row
-
-    def mouseMoveEvent(self, event) -> None:
-        super().mouseMoveEvent(event)
-        self._set_hovered(self.rowAt(round(event.position().y())))
-
-    def leaveEvent(self, event) -> None:
-        super().leaveEvent(event)
-        self._set_hovered(-1)
-
     def viewportEvent(self, event) -> bool:
         if event.type() == event.Type.ToolTip:
             index = self.indexAt(event.pos())
-            text = index.data() if index.isValid() and index.column() == 2 else None
-            available = self.columnWidth(2) - 2 * _PADDING
-            if text and self.fontMetrics().horizontalAdvance(text) > available:
+            text = index.data(EventLogModel.MessageRole) if index.isValid() else None
+            available = self.viewport().width() - 2 * _PADDING
+            if text and QFontMetrics(Type.font("body")).horizontalAdvance(text) > available:
                 QToolTip.showText(event.globalPos(), text, self.viewport())
             else:
                 QToolTip.hideText()
@@ -258,7 +234,6 @@ class EventTable(QTableView):
             return True
         return super().viewportEvent(event)
 
-    # ------------------------------------------------------------------ empty state
     def paintEvent(self, event) -> None:
         super().paintEvent(event)
         model = self.model()
@@ -274,13 +249,13 @@ class EventTable(QTableView):
 class EventLogPanel(Panel):
     def __init__(self, settings: QSettings, parent: QWidget | None = None):
         super().__init__(Log.TITLE, flush=True, parent=parent)
-        self.setMinimumHeight(176)
+        self.setMinimumHeight(200)
         self._settings = settings
         self.model = EventLogModel(self)
         self.proxy = EventFilterProxy(self)
         self.proxy.setSourceModel(self.model)
-        self.table = EventTable(self.proxy)
-        self.body_layout().addWidget(self.table)
+        self.events = EventList(self.proxy)
+        self.body_layout().addWidget(self.events)
 
         self.filter_combo = Combo([label for _, label in Log.FILTERS], size="sm", width=132,
                                   accessible_name=Log.FILTER_NAME)
@@ -301,7 +276,7 @@ class EventLogPanel(Panel):
         self.more.clicked.connect(self._open_menu)
         self.add_action(self.more)
         self.setTabOrder(self.filter_combo, self.more)
-        self.setTabOrder(self.more, self.table)
+        self.setTabOrder(self.more, self.events)
 
         for signal in (self.proxy.rowsInserted, self.proxy.rowsRemoved, self.proxy.modelReset, self.proxy.layoutChanged):
             signal.connect(self._update_count)
@@ -314,16 +289,16 @@ class EventLogPanel(Panel):
     def total(self) -> int:
         return self.model.rowCount()
 
-    def focus_table(self) -> None:
-        self.table.setFocus(Qt.FocusReason.ShortcutFocusReason)
-        if not self.table.currentIndex().isValid() and self.proxy.rowCount():
-            self.table.selectRow(0)
+    def focus_events(self) -> None:
+        self.events.setFocus(Qt.FocusReason.ShortcutFocusReason)
+        if not self.events.currentIndex().isValid() and self.proxy.rowCount():
+            self.events.setCurrentIndex(self.proxy.index(0, 0))
 
     # ------------------------------------------------------------------ actions
     @Slot()
     def _update_count(self, *_args) -> None:
         self.set_subtitle(event_count(self.proxy.rowCount(), self.model.rowCount()))
-        self.table.viewport().update()
+        self.events.viewport().update()
 
     @Slot(int)
     def _on_filter_changed(self, index: int) -> None:
