@@ -1,26 +1,44 @@
-"""Pose analysis panel (administrators), under the video: the skeleton image and, beside it,
-the model's telemetry.
+"""Pose analysis panel (administrators), under the video.
+
+Left: the skeleton image the worker draws. Right: a telemetry table with one row per metric —
+its name, the current value and a trend line of the last 30 seconds — so the model's behaviour
+reads at a glance. The hip-height trend is drawn upside down (0 = top of the frame), so a fall
+shows as the line dropping.
 
 `AdminController` calls `update_frame` and `update_telemetry` directly for every frame. Frames
-are ignored while monitoring is stopped; telemetry is only stored and painted at 4 Hz.
+are ignored while monitoring is stopped; telemetry is only stored, then sampled and painted at
+4 Hz while live. Everything on the right is painted, so updates never relayout.
 """
 
 from __future__ import annotations
 
-from PySide6.QtCore import QRect, QRectF, Qt, QTimer, Slot
-from PySide6.QtGui import QColor, QImage, QPainter, QPixmap
-from PySide6.QtWidgets import QHBoxLayout, QWidget
+from collections import deque
+from collections.abc import Callable
+from dataclasses import dataclass, field
 
-from src.views.components.common.metric_tile import MetricTile
-from src.views.components.common.painting import crisp
+from PySide6.QtCore import QEvent, QPointF, QRect, QRectF, QSize, Qt, QTimer, Slot
+from PySide6.QtGui import (
+    QColor,
+    QFontMetrics,
+    QImage,
+    QPainter,
+    QPainterPath,
+    QPen,
+    QPixmap,
+)
+from PySide6.QtWidgets import QHBoxLayout, QSizePolicy, QToolTip, QWidget
+
 from src.views.components.common.panel import Panel
 from src.views.components.monitor.video_widget import VideoWidget
-from src.views.strings import Pose
-from src.views.theme import Colors, Radius, Space, Type
+from src.views.strings import EM_DASH, Pose
+from src.views.theme import Colors, Radius, Space, Type, make_label, qcolor
 
-VIEW_HEIGHT = 128
-VIEW_WIDTH = 200
+VIEW_WIDTH = 176
+VIEW_HEIGHT = 136
+HISTORY = 120                 # samples kept: 30 s at 4 Hz
 _GRID = 24
+_LABEL_WIDTH = 96
+_VALUE_WIDTH = 88
 STOPPED = ("idle", "error", "finished")
 
 
@@ -67,28 +85,186 @@ class SkeletonView(VideoWidget):
                          int(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter), Pose.SKELETON)
 
 
-class MetricStrip(QWidget):
-    """Three metric tiles side by side in a bordered strip, separated by dividers."""
+@dataclass
+class Metric:
+    """One telemetry series: how to show its value and how to scale its trend."""
 
-    def __init__(self, tiles: list[MetricTile], parent: QWidget | None = None):
+    key: str
+    label: str
+    unit: str
+    format: Callable[[float], str]
+    low: float = 0.0
+    high: float | None = 1.0          # None: scale to the largest recent sample
+    inverted: bool = False            # True: low values at the top of the trend
+    warn_below: float | None = None   # the trend turns amber below this value
+    tooltip: str = ""
+    samples: deque = field(default_factory=lambda: deque(maxlen=HISTORY))
+
+    @property
+    def current(self) -> float | None:
+        return self.samples[-1] if self.samples else None
+
+    def scale(self) -> tuple[float, float]:
+        if self.high is not None:
+            return self.low, self.high
+        values = [value for value in self.samples if value is not None]
+        return self.low, max(20.0, max(values, default=0.0) * 1.25)
+
+
+class TelemetryTable(QWidget):
+    """Bordered table: one row per metric with name, value (and unit) and its trend line."""
+
+    def __init__(self, metrics: list[Metric], parent: QWidget | None = None):
         super().__init__(parent)
-        self.tiles = tiles
+        self.metrics = metrics
         self.setFixedHeight(VIEW_HEIGHT)
-        layout = QHBoxLayout(self)
-        layout.setContentsMargins(1, 1, 1, 1)
-        layout.setSpacing(1)
-        for tile in tiles:
-            layout.addWidget(tile, 1)
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        self.setMouseTracking(True)
+        self._describe()
 
+    def sizeHint(self) -> QSize:
+        return QSize(480, VIEW_HEIGHT)
+
+    def push(self, values: dict[str, float | None]) -> None:
+        for metric in self.metrics:
+            metric.samples.append(values.get(metric.key))
+        self._describe()
+        self.update()
+
+    def clear(self) -> None:
+        for metric in self.metrics:
+            metric.samples.clear()
+        self._describe()
+        self.update()
+
+    def _describe(self) -> None:
+        parts = []
+        for metric in self.metrics:
+            value = metric.current
+            shown = f"{metric.format(value)} {metric.unit}".strip() if value is not None else EM_DASH
+            parts.append(f"{metric.label}: {shown}")
+        self.setAccessibleDescription("; ".join(parts))
+
+    # ------------------------------------------------------------------ geometry
+    def _row(self, index: int) -> QRect:
+        inner = self.rect().adjusted(1, 1, -1, -1)
+        height = inner.height() / len(self.metrics)
+        top = round(inner.top() + index * height)
+        bottom = round(inner.top() + (index + 1) * height)
+        return QRect(inner.left(), top, inner.width(), bottom - top)
+
+    def event(self, event) -> bool:
+        if event.type() == QEvent.Type.ToolTip:
+            for index, metric in enumerate(self.metrics):
+                if metric.tooltip and self._row(index).contains(event.pos()):
+                    QToolTip.showText(event.globalPos(), metric.tooltip, self)
+                    return True
+            QToolTip.hideText()
+            event.ignore()
+            return True
+        return super().event(event)
+
+    # ------------------------------------------------------------------ painting
     def paintEvent(self, event) -> None:
         painter = QPainter(self)
-        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        painter.fillRect(self.rect(), QColor(Colors.N0))
         painter.setPen(QColor(Colors.N150))
-        painter.setBrush(Qt.BrushStyle.NoBrush)
-        painter.drawRoundedRect(crisp(QRectF(self.rect())), Radius.R_MD, Radius.R_MD)
-        painter.setRenderHint(QPainter.RenderHint.Antialiasing, False)
-        for tile in self.tiles[1:]:
-            painter.fillRect(QRect(tile.geometry().left() - 1, 1, 1, self.height() - 2), QColor(Colors.N150))
+        painter.drawRect(self.rect().adjusted(0, 0, -1, -1))
+        for index, metric in enumerate(self.metrics):
+            row = self._row(index)
+            if index:
+                painter.fillRect(QRect(row.left(), row.top(), row.width(), 1), QColor(Colors.N150))
+            self._paint_row(painter, row, metric)
+
+    def _paint_row(self, painter: QPainter, row: QRect, metric: Metric) -> None:
+        x = row.left() + 12
+        painter.setFont(Type.font("caption-strong"))
+        painter.setPen(QColor(Colors.N600))
+        painter.drawText(QRect(x, row.top(), _LABEL_WIDTH - 12, row.height()),
+                         int(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter), metric.label)
+
+        value_x = row.left() + _LABEL_WIDTH
+        value = metric.current
+        value_font = Type.font("metric", tabular=True)
+        painter.setFont(value_font)
+        if value is None:
+            painter.setPen(QColor(Colors.N500))
+            painter.drawText(QRect(value_x, row.top(), _VALUE_WIDTH, row.height()),
+                             int(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter), EM_DASH)
+        else:
+            text = metric.format(value)
+            painter.setPen(QColor(Colors.N900))
+            painter.drawText(QRect(value_x, row.top(), _VALUE_WIDTH, row.height()),
+                             int(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter), text)
+            if metric.unit:
+                metrics = QFontMetrics(value_font)
+                baseline = row.top() + (row.height() + metrics.ascent() - metrics.descent()) / 2
+                painter.setFont(Type.font("caption"))
+                painter.setPen(QColor(Colors.N500))
+                painter.drawText(QPointF(value_x + metrics.horizontalAdvance(text) + 4, baseline), metric.unit)
+
+        trend = QRectF(value_x + _VALUE_WIDTH + 8, row.top() + 9, row.right() - 12 - (value_x + _VALUE_WIDTH + 8),
+                       row.height() - 18)
+        if trend.width() > 24:
+            self._paint_trend(painter, trend, metric)
+
+    def _paint_trend(self, painter: QPainter, area: QRectF, metric: Metric) -> None:
+        painter.save()
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        guide = QPen(QColor(Colors.N150), 1, Qt.PenStyle.DashLine)
+        painter.setPen(guide)
+        painter.drawLine(QPointF(area.left(), area.bottom() + 0.5), QPointF(area.right(), area.bottom() + 0.5))
+
+        samples = list(metric.samples)
+        if not any(value is not None for value in samples):
+            painter.restore()
+            return
+        low, high = metric.scale()
+        span = max(high - low, 1e-9)
+        step = area.width() / (HISTORY - 1)
+        start_x = area.right() - (len(samples) - 1) * step
+
+        def point(index: int, value: float) -> QPointF:
+            ratio = max(0.0, min(1.0, (value - low) / span))
+            if not metric.inverted:
+                ratio = 1.0 - ratio
+            return QPointF(start_x + index * step, area.top() + ratio * area.height())
+
+        current = metric.current
+        warn = metric.warn_below is not None and current is not None and current < metric.warn_below
+        color = Colors.A600 if warn else Colors.P600
+
+        # Runs of consecutive samples (a missing value breaks the line).
+        runs: list[list[QPointF]] = [[]]
+        for index, value in enumerate(samples):
+            if value is None:
+                if runs[-1]:
+                    runs.append([])
+                continue
+            runs[-1].append(point(index, value))
+        line = QPen(QColor(color), 1.5)
+        line.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
+        for run in runs:
+            if len(run) < 2:
+                continue
+            area_path = QPainterPath(QPointF(run[0].x(), area.bottom()))
+            for p in run:
+                area_path.lineTo(p)
+            area_path.lineTo(QPointF(run[-1].x(), area.bottom()))
+            area_path.closeSubpath()
+            painter.fillPath(area_path, qcolor(color, 0.10))
+            line_path = QPainterPath(run[0])
+            for p in run[1:]:
+                line_path.lineTo(p)
+            painter.setPen(line)
+            painter.setBrush(Qt.BrushStyle.NoBrush)
+            painter.drawPath(line_path)
+        last = runs[-1][-1] if runs[-1] else None
+        if last is not None:
+            painter.setPen(QPen(QColor(Colors.N0), 1.5))
+            painter.setBrush(QColor(color))
+            painter.drawEllipse(last, 3, 3)
+        painter.restore()
 
 
 class SkeletonPanel(Panel):
@@ -96,21 +272,26 @@ class SkeletonPanel(Panel):
         super().__init__(Pose.TITLE, subtitle=Pose.SUBTITLE, parent=parent)
         self._state = "idle"
         self._telemetry: dict = {}
+        self.add_action(make_label(Pose.TREND_WINDOW, "caption", "tertiary"))
+
         self.view = SkeletonView()
-        self.inference = MetricTile(Pose.INFERENCE, "ms")
-        self.confidence = MetricTile(Pose.CONFIDENCE, "%", bar=True)
-        self.hip_height = MetricTile(Pose.HIP_HEIGHT, tooltip=Pose.HIP_HEIGHT_TIP)
-        self.strip = MetricStrip([self.inference, self.confidence, self.hip_height])
+        self.metrics = [
+            Metric("inference_ms", Pose.INFERENCE, "ms", lambda v: f"{v:.1f}", high=None),
+            Metric("confidence", Pose.CONFIDENCE, "%", lambda v: f"{round(v * 100)}", warn_below=0.5),
+            Metric("centroid_y", Pose.HIP_HEIGHT, "", lambda v: f"{v:.3f}", inverted=True,
+                   tooltip=Pose.HIP_HEIGHT_TIP),
+        ]
+        self.table = TelemetryTable(self.metrics)
         row = QHBoxLayout()
         row.setContentsMargins(0, 0, 0, 0)
         row.setSpacing(Space.S4)
         row.addWidget(self.view)
-        row.addWidget(self.strip, 1)
+        row.addWidget(self.table, 1)
         self.body_layout().addLayout(row)
 
         self._timer = QTimer(self)
         self._timer.setInterval(250)
-        self._timer.timeout.connect(self._render_telemetry)
+        self._timer.timeout.connect(self._sample)
 
     # ------------------------------------------------------------------ contract (AdminController)
     @Slot(QImage)
@@ -127,26 +308,24 @@ class SkeletonPanel(Panel):
 
     # ------------------------------------------------------------------ state
     def set_state(self, state: str) -> None:
-        self._state = state
+        previous, self._state = self._state, state
         if state == "live":
             self._timer.start()
         else:
             self._timer.stop()
-        if state in STOPPED:
+        if state == "starting" or (state in STOPPED and previous not in STOPPED):
             self._telemetry = {}
             self.view.clear()
-            self._render_telemetry()
+            self.table.clear()
 
     @Slot()
-    def _render_telemetry(self) -> None:
+    def _sample(self) -> None:
+        """Takes the latest telemetry into the trends (4 Hz, only while live)."""
         data = self._telemetry
-        inference = data.get("inference_ms")
-        confidence = data.get("confidence")
-        hip = data.get("centroid_y")
-        self.inference.set_value(f"{inference:.1f}" if inference is not None else None)
-        if confidence is not None:
-            ratio = max(0.0, min(1.0, float(confidence)))
-            self.confidence.set_value(f"{round(ratio * 100)}", ratio)
-        else:
-            self.confidence.set_value(None)
-        self.hip_height.set_value(f"{float(hip):.3f}" if hip is not None else None)
+        values: dict[str, float | None] = {}
+        for metric in self.metrics:
+            raw = data.get(metric.key)
+            values[metric.key] = float(raw) if raw is not None else None
+        if values.get("confidence") is not None:
+            values["confidence"] = max(0.0, min(1.0, values["confidence"]))
+        self.table.push(values)

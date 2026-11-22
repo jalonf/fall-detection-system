@@ -194,6 +194,7 @@ class Pose:
     CONFIDENCE = "Confidence"
     HIP_HEIGHT = "Hip height"
     HIP_HEIGHT_TIP = "Normalised vertical position of the hip centre (0 = top of frame, 1 = bottom)"
+    TREND_WINDOW = "Last 30 s"
 
 
 class Toasts:
