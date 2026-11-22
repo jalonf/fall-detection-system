@@ -129,7 +129,6 @@ class Type:
     """Type scale (section 3.3). Labels take a role with `label.setProperty("type", role)`."""
 
     ROLES: ClassVar[dict[str, TypeSpec]] = {
-        "brand": TypeSpec(44, 600, 52, -0.8),   # the FallSense wordmark on the sign-in panel
         "display": TypeSpec(28, 600, 36, -0.2),
         "title-lg": TypeSpec(22, 600, 28, -0.1),
         "title-md": TypeSpec(16, 600, 22),
@@ -208,7 +207,7 @@ class Size:
     H_MD = 36           # panel buttons and combos
     H_LG = 40           # form inputs and buttons
     TOPBAR = 56
-    CONTEXT_BAR = 40
+    CONTEXT_BAR = 60
     PANEL_HEADER = 48
     PANEL_FOOTER = 56
     ICON_SM = 16

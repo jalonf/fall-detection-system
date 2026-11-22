@@ -33,8 +33,9 @@ from src.views.components.monitor.context_bar import ContextBar
 from src.views.components.monitor.event_log import EventLogPanel
 from src.views.components.monitor.topbar import Topbar
 from src.views.components.monitor.video_panel import VideoPanel
-from src.views.strings import Monitor, Toasts, toast_rule_for
+from src.views.strings import Monitor
 from src.views.theme import Space
+from src.workers.strategies import strategy_for
 
 # Toasts sit in the bottom-right corner of the video stage, clear of the log and the telemetry:
 # above the panel footer (56) and the body margin (24), right of the side column and the gutter.
@@ -59,6 +60,17 @@ class SourceInfo:
     kind: str           # "camera" | "file"
     label: str          # what the interface shows: "Camera 0", "clip.mp4"
     arg: int | str      # camera index or file path, re-sent by "Try again"
+
+
+def camera_profile(risk_level: str | None) -> tuple[str, str]:
+    """Resolution and frame rate the camera worker opens for this risk level, and why (tooltip).
+    Read from the workers' own strategies so the interface always matches what runs."""
+    level = (risk_level or "").strip().upper()
+    strategy = strategy_for(level or "LOW")
+    spec = Monitor.CAMERA_SPEC.format(width=strategy.width, height=strategy.height, fps=strategy.fps)
+    known = level in ("LOW", "MEDIUM", "HIGH")
+    tip = (Monitor.CAMERA_SPEC_TIP if known else Monitor.CAMERA_SPEC_DEFAULT_TIP).format(level=strategy.name)
+    return spec, tip
 
 
 def format_duration(milliseconds: int) -> str:
@@ -101,10 +113,10 @@ class BaseMonitorView(QWidget):
         self._elapsed = QElapsedTimer()
         self._frozen_ms: int | None = None
         self._run_started = False
-        self._error_toast = None
         self._settings = QSettings("FallSense", "FallSense")
         self._stateful: list = []
 
+        self._camera_spec, self._camera_tip = camera_profile(risk_level)
         self._build(user_name, user_role, patient_name, risk_level)
 
         self._duration_timer = QTimer(self)
@@ -157,6 +169,7 @@ class BaseMonitorView(QWidget):
         self.video_panel.start_clicked.connect(self._start_camera)
         self.video_panel.stop_clicked.connect(self._request_stop)
         self.video_panel.retry_clicked.connect(self._retry)
+        self.video_panel.source_combo.currentIndexChanged.connect(self._refresh_source)
         self.context_bar.acknowledge_clicked.connect(self._acknowledge_alert)
 
     def _build_side_panels(self, layout: QVBoxLayout) -> None:
@@ -195,10 +208,8 @@ class BaseMonitorView(QWidget):
             self._run_started = True
             self._frozen_ms = None
             self._elapsed.start()
-            self._dismiss_error_toast()
             self.video_panel.set_run_error(None)
             self.video_panel.set_source(self._source)
-            self.context_bar.set_source(self._source.label if self._source else None)
             self._set_state(MonitorState.STARTING)
             return
         if self._state not in RUNNING:
@@ -234,28 +245,12 @@ class BaseMonitorView(QWidget):
 
     @Slot(str, str)
     def log_event(self, event_type: str, message: str) -> None:
+        """Adds the event to the log. Source errors also switch the stage to its error state."""
         kind = (event_type or "INFO").upper()
         self._add_event(kind, message)
-        label = self._source.label if self._source is not None else ""
         if kind == "ERROR":
             self._run_error = message
             self.video_panel.set_run_error(message)
-            rule = toast_rule_for("ERROR", message)
-            self._dismiss_error_toast()
-            self._error_toast = ToastHost.for_widget(self).notify(
-                rule.kind, rule.message.format(text=message), title=rule.title, duration_ms=0)
-            return
-        rule = toast_rule_for(kind, message)
-        if rule is None:
-            return     # the rest only goes to the log
-        title = rule.title
-        if rule.key == "Stream disconnected":
-            if self._state == MonitorState.ERROR:
-                return
-            if self._state == MonitorState.FINISHED:
-                title = Toasts.FINISHED_TITLE
-        ToastHost.for_widget(self).notify(rule.kind, rule.message.format(source=label, text=message), title=title,
-                                          duration_ms=0 if rule.persistent else None)
 
     # ------------------------------------------------------------------ state
     def state(self) -> MonitorState:
@@ -265,6 +260,7 @@ class BaseMonitorView(QWidget):
         self._state = state
         self._refresh_duration()
         self.context_bar.set_state(state)
+        self._refresh_source()
         self.video_panel.set_state(state)
         for component in self._stateful:
             component.set_state(state)
@@ -272,6 +268,18 @@ class BaseMonitorView(QWidget):
             self._duration_timer.start()
         else:
             self._duration_timer.stop()
+
+    @Slot()
+    def _refresh_source(self, *_args) -> None:
+        """The strip shows the running (or last) source; while stopped, the camera picked below."""
+        source = self._source
+        if source is None or self._state == MonitorState.IDLE:
+            index = self.video_panel.camera_index()
+            source = SourceInfo("camera", Monitor.CAMERA_LABEL.format(index=index), index)
+        if source.kind == "file":
+            self.context_bar.set_source(source.label, Monitor.FILE_SPEC, camera=False)
+        else:
+            self.context_bar.set_source(source.label, self._camera_spec, self._camera_tip)
 
     def _freeze_duration(self) -> None:
         if self._frozen_ms is None and self._elapsed.isValid():
@@ -352,20 +360,6 @@ class BaseMonitorView(QWidget):
         self._signing_out = True
         self.logout_requested.emit()
 
-    def _dismiss_error_toast(self) -> None:
-        if self._error_toast is not None:
-            ToastHost.for_widget(self).dismiss(self._error_toast)
-            self._error_toast = None
-
-    # ------------------------------------------------------------------ events
-    def resizeEvent(self, event) -> None:
-        super().resizeEvent(event)
-        width = max(SIDE_MIN, min(SIDE_MAX, round(self.width() * SIDE_SHARE)))
-        if width != self.side.width():
-            self.side.setFixedWidth(width)
-        if self.isVisible():
-            self._place_toasts()
-
     def _place_toasts(self) -> None:
         right = Space.S6 + self.side.width() + Space.S4 + Space.S4
         ToastHost.for_widget(self).set_bottom_inset(TOAST_BOTTOM_INSET, right=right)
@@ -378,5 +372,3 @@ class BaseMonitorView(QWidget):
 
     def hideEvent(self, event) -> None:
         super().hideEvent(event)
-        if not event.spontaneous():
-            self._dismiss_error_toast()

@@ -1,7 +1,7 @@
 """Brand panel of the sign-in screens.
 
-Composition: a message block (overline, the two-tone FallSense wordmark, an accent rule and the
-lead), the three things the app does, and the project credit at the bottom. Behind it, cropped
+Composition: the app's name at the top; a message block in the app's own type scale (overline,
+headline, lead); the three things the app does; and the project credit at the bottom. Behind it, cropped
 by the right and bottom edges, a large and faint MediaPipe Pose figure (33 landmarks and their
 connections) gives the screen its character. Everything is painted on the panel's own background.
 """
@@ -9,8 +9,8 @@ connections) gives the screen its character. Everything is painted on the panel'
 from __future__ import annotations
 
 from PySide6.QtCore import QPointF, QRectF, QSize, Qt
-from PySide6.QtGui import QColor, QLinearGradient, QPainter, QPen, QPixmap
-from PySide6.QtWidgets import QHBoxLayout, QLabel, QSizePolicy, QVBoxLayout, QWidget
+from PySide6.QtGui import QLinearGradient, QPainter, QPen, QPixmap
+from PySide6.QtWidgets import QHBoxLayout, QSizePolicy, QVBoxLayout, QWidget
 
 from src.views.components.common.painting import IconView
 from src.views.strings import Brand
@@ -76,26 +76,6 @@ def paint_background_figure(painter: QPainter, width: float, height: float) -> N
     painter.restore()
 
 
-class _AccentRule(QWidget):
-    """Short horizontal rule under the wordmark."""
-
-    def __init__(self, parent: QWidget | None = None):
-        super().__init__(parent)
-        self.setFixedSize(28, 3)
-
-    def paintEvent(self, event) -> None:
-        QPainter(self).fillRect(self.rect(), QColor(Colors.P200))
-
-
-def _wordmark() -> QLabel:
-    first, second = Brand.WORDMARK
-    label = make_label("", "brand")
-    label.setTextFormat(Qt.TextFormat.RichText)
-    label.setText(f'<span style="color:{Colors.N0}">{first}</span><span style="color:{Colors.P200}">{second}</span>')
-    label.setAccessibleName(first + second)
-    return label
-
-
 def _feature(icon: str, title: str, detail: str) -> QHBoxLayout:
     row = QHBoxLayout()
     row.setContentsMargins(0, 0, 0, 0)
@@ -124,6 +104,7 @@ class BrandPanel(QWidget):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(_PADDING_X, _PADDING_Y, _PADDING_X, _PADDING_Y)
         layout.setSpacing(0)
+        layout.addWidget(make_label(Brand.NAME, "title-md", "on-brand"))
         layout.addStretch(2)
 
         content = QWidget()
@@ -132,12 +113,10 @@ class BrandPanel(QWidget):
         column = QVBoxLayout(content)
         column.setContentsMargins(0, 0, 0, 0)
         column.setSpacing(0)
-        column.addWidget(make_label(Brand.OVERLINE, "overline", "on-brand-soft"))
+        column.addWidget(make_label(Brand.OVERLINE, "overline", "on-brand-muted"))
         column.addSpacing(Space.S3)
-        column.addWidget(_wordmark())
-        column.addSpacing(Space.S4)
-        column.addWidget(_AccentRule())
-        column.addSpacing(Space.S6)
+        column.addWidget(make_label(Brand.HEADLINE, "display", "on-brand", wrap=True))
+        column.addSpacing(Space.S3)
         column.addWidget(make_label(Brand.PARAGRAPH, "lead", "on-brand-soft", wrap=True))
         column.addSpacing(Space.S10)
         for index, (icon, title, detail) in enumerate(Brand.FEATURES):

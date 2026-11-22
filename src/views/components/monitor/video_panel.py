@@ -6,9 +6,10 @@ from itertools import pairwise
 
 from PySide6.QtCore import QSize, Signal, Slot
 from PySide6.QtGui import QImage
-from PySide6.QtWidgets import QFileDialog, QSizePolicy, QStackedLayout, QWidget
+from PySide6.QtWidgets import QSizePolicy, QStackedLayout, QWidget
 
 from src.views.components.common.button import make_button
+from src.views.components.common.file_dialog import make_file_dialog
 from src.views.components.common.inputs import Combo
 from src.views.components.common.panel import Panel
 from src.views.components.monitor.stage_overlay import BAR, StageOverlay
@@ -68,13 +69,14 @@ class VideoPanel(Panel):
         self._source = None
         self._error: str | None = None
         self._duration = ""
+        self._file_dialog = None
 
         self.stage = Stage()
         self.body_layout().addWidget(self.stage)
         self.stage.placeholder.retry_clicked.connect(self.retry_clicked)
 
         footer = self.footer_layout()
-        footer.addWidget(make_label(Monitor.SOURCE, "body", "secondary"))
+        footer.addWidget(make_label(Monitor.CAMERA, "body", "secondary"))
         footer.addSpacing(Space.S2)
         self.source_combo = Combo(Monitor.CAMERAS, size="md", width=200, accessible_name=Monitor.SOURCE_COMBO)
         footer.addWidget(self.source_combo)
@@ -161,11 +163,26 @@ class VideoPanel(Panel):
 
     @Slot()
     def choose_file(self) -> None:
+        """Opens the (non-blocking) video file chooser; `file_chosen` is emitted on accept."""
         if self._state in RUNNING:
             return
-        path, _ = QFileDialog.getOpenFileName(self, Monitor.FILE_DIALOG_TITLE, "", Monitor.FILE_DIALOG_FILTER)
-        if path:
+        if self._file_dialog is not None:
+            self._file_dialog.raise_()
+            self._file_dialog.activateWindow()
+            return
+        self._file_dialog = make_file_dialog(self, Monitor.FILE_DIALOG_TITLE, Monitor.FILE_DIALOG_FILTER)
+        self._file_dialog.fileSelected.connect(self._on_file_selected)
+        self._file_dialog.destroyed.connect(self._on_file_dialog_closed)
+        self._file_dialog.show()
+
+    @Slot(str)
+    def _on_file_selected(self, path: str) -> None:
+        if path and self._state not in RUNNING:
             self.file_chosen.emit(path)
+
+    @Slot()
+    def _on_file_dialog_closed(self) -> None:
+        self._file_dialog = None
 
     # ------------------------------------------------------------------ internals
     @Slot()

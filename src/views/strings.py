@@ -10,6 +10,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import ClassVar
 
+from src.views.theme import APP_NAME
+
 EM_DASH = "—"
 
 
@@ -23,9 +25,10 @@ class Common:
 
 
 class Brand:
+    NAME = APP_NAME
     OVERLINE = "FALL RISK ASSESSMENT AND DETECTION"
-    WORDMARK = ("Fall", "Sense")          # shown as one word, the second part in the accent colour
-    PARAGRAPH = "Continuous, private fall monitoring for older adults, at home or in a care home."
+    HEADLINE = "Continuous, private fall monitoring"
+    PARAGRAPH = "For older adults, at home or in a care home."
     FEATURES = (
         ("activity", "Real-time fall detection",
          "Every second of movement is classified by a recurrent neural network."),
@@ -95,8 +98,8 @@ class Register:
 
 
 class Monitor:
-    SECTION_MONITORING = "Monitoring"
-    SECTION_ADMIN = "Administration"
+    SECTION_MONITORING = "Patient Monitoring"
+    SECTION_ADMIN = "Administration Monitoring"
     SIGN_OUT = "Sign out"
     SIGN_OUT_TIP = "Sign out (Ctrl+Shift+Q)"
     CLOCK_FORMAT = "ddd d MMM · HH:mm"
@@ -104,8 +107,19 @@ class Monitor:
     PATIENT = "Patient"
     RISK = "Risk"
     SOURCE = "Source"
+    CAMERA = "Camera"
     STATUS = "Status"
     DURATION = "Duration"
+    STRIP_PATIENT = "PATIENT"
+    STRIP_CAMERA = "CAMERA"
+    STRIP_FILE = "VIDEO FILE"
+    STRIP_STATUS = "STATUS"
+    STRIP_DURATION = "DURATION"
+    RISK_BADGE = "{level} RISK"
+    CAMERA_SPEC = "{width} × {height} · {fps} fps"
+    CAMERA_SPEC_TIP = "Resolution and frame rate set by the patient's {level} risk level"
+    CAMERA_SPEC_DEFAULT_TIP = "No patient linked: the camera uses the {level} risk profile"
+    FILE_SPEC = "Analysed at its own frame rate"
 
     STATUS_TEXT: ClassVar[dict[str, str]] = {
         "idle": "Stopped",
@@ -174,6 +188,7 @@ class Log:
     EXPORT_DIALOG_TITLE = "Export the event log"
     EXPORT_FILTER = "CSV files (*.csv)"
     EXPORT_FILE_NAME = "fallsense-events-{stamp}.csv"
+    EXPORT_FAILED = "The event log could not be exported to {name}"
     CONFIRM_CLEAR_TITLE = "Clear the event log?"
     CONFIRM_CLEAR_BODY = (
         "This removes {n} events from this view. Fall events already stored are not affected."
@@ -198,23 +213,11 @@ class Pose:
 
 
 class Toasts:
-    """Titles and messages of the toasts that do not come straight from TOAST_RULES."""
+    """The only toasts the app shows: signed in, account created (TOAST_RULES) and signed out."""
 
-    LOGIN_FAILED = "Sign-in failed"
-    REGISTER_FAILED = "Couldn't create the account"
-    VALIDATION_TITLE = "Check the highlighted fields"
-    VALIDATION_ONE = "{n} field needs attention."
-    VALIDATION_MANY = "{n} fields need attention."
-    FINISHED_TITLE = "Analysis finished"
-    EXPORTED_TITLE = "Event log exported"
-    EXPORT_FAILED_TITLE = "Couldn't export the event log"
-    EXPORT_FAILED = "The file could not be written. Choose another location and try again."
+    SIGNED_OUT_TITLE = "Signed out"
+    SIGNED_OUT = "Your session has ended."
     KIND_TITLES: ClassVar[dict[str, str]] = {"success": "Done", "error": "Something went wrong", "warning": "Warning", "info": "Information"}
-
-
-def fields_need_attention(count: int) -> str:
-    template = Toasts.VALIDATION_ONE if count == 1 else Toasts.VALIDATION_MANY
-    return template.format(n=count)
 
 
 def event_count(shown: int, total: int) -> str:
@@ -246,14 +249,6 @@ TOAST_RULES: tuple[ToastRule, ...] = (
     ToastRule("success", "Welcome back", "prefix", "success", "Signed in", "Opening your dashboard…"),
     ToastRule("success", "Account created", "prefix", "success", "Account created",
               "Patient risk level: {level}. Opening your dashboard…"),
-    ToastRule("ERROR", "", "any", "error", "Video source error", "{text}", persistent=True),
-    ToastRule("INFO", "Stream connected", "equals", "success", "Monitoring started", "Analysing {source}."),
-    # The view picks the title from the final state: "Monitoring stopped", "Analysis finished" or none.
-    ToastRule("INFO", "Stream disconnected", "equals", "info", "Monitoring stopped", "{source}"),
-    ToastRule("INFO", "Notification e-mail sent", "equals", "success", "Caregiver notified",
-              "The fall alert e-mail was sent."),
-    ToastRule("INFO", "The notification e-mail could not be sent", "equals", "error", "Alert e-mail failed",
-              "The fall was recorded, but the e-mail could not be sent."),
 )
 
 _RISK_LEVEL = re.compile(r"\b(LOW|MEDIUM|HIGH)\b")

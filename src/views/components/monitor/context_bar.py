@@ -1,13 +1,17 @@
-"""Context bar: patient, risk, source, status and duration. The main place where the state shows.
+"""Context strip under the top bar: patient, camera, status and duration — the main place where the
+monitoring state shows.
 
-During a fall alert it turns R50, its status pulses and an Acknowledge button appears on the right.
+Each item is a small overline label with its value underneath: the patient's name with a risk
+badge, the camera with the resolution and frame rate it runs at (set by the patient's risk level),
+the status and the duration. During a fall alert the strip turns R50, its status pulses and an
+Acknowledge button appears on the right.
 """
 
 from __future__ import annotations
 
 from PySide6.QtCore import QRect, QSize, Qt, Signal
 from PySide6.QtGui import QColor, QFontMetrics, QPainter
-from PySide6.QtWidgets import QHBoxLayout, QLabel, QWidget
+from PySide6.QtWidgets import QHBoxLayout, QLabel, QVBoxLayout, QWidget
 
 from src.views.components.common.badge import Badge
 from src.views.components.common.button import make_button
@@ -27,21 +31,14 @@ from src.views.theme import (
 RISK_VARIANTS = {"LOW": "success", "MEDIUM": "warning", "HIGH": "danger"}
 STATUS_KIND = {"idle": "idle", "starting": "starting", "live": "live", "stopping": "stopping",
                "error": "error", "finished": "finished"}
-_PATIENT_WIDTH = 240
+_PATIENT_WIDTH = 260
 _SOURCE_WIDTH = 200
 
 
-def set_value(label: QLabel, text: str | None, width: int, mode=Qt.TextElideMode.ElideRight) -> None:
-    """Shows `text` elided to `width` (with the full text as tooltip), or a muted dash."""
-    if not text:
-        label.setText(EM_DASH)
-        label.setToolTip("")
-        set_props(label, tone="tertiary")
-        return
-    metrics = QFontMetrics(Type.font("body-strong"))
+def _elide(label: QLabel, text: str, role: str, width: int, mode=Qt.TextElideMode.ElideRight) -> None:
+    metrics = QFontMetrics(Type.font(role))
     label.setText(metrics.elidedText(text, mode, width))
     label.setToolTip(text if metrics.horizontalAdvance(text) > width else "")
-    set_props(label, tone="primary")
 
 
 class ContextBar(QWidget):
@@ -58,47 +55,68 @@ class ContextBar(QWidget):
         layout.setContentsMargins(Space.S6, 0, Space.S6, 1)
         layout.setSpacing(0)
 
-        self.patient = make_label("", "body-strong")
-        set_value(self.patient, patient_name, _PATIENT_WIDTH)
-        self._add_item(layout, Monitor.PATIENT, self.patient)
-
-        level = (risk_level or "").strip().upper()
-        if level in RISK_VARIANTS:
-            self.risk: QWidget = Badge(level, RISK_VARIANTS[level])
+        # Patient: name and risk badge.
+        patient_row = QHBoxLayout()
+        patient_row.setContentsMargins(0, 0, 0, 0)
+        patient_row.setSpacing(Space.S2)
+        self.patient = make_label("", "title-sm")
+        if patient_name:
+            _elide(self.patient, patient_name, "title-sm", _PATIENT_WIDTH)
         else:
-            self.risk = make_label(EM_DASH, "body-strong", "tertiary")
-        self._add_item(layout, Monitor.RISK, self.risk, divider=True)
+            self.patient.setText(EM_DASH)
+            set_props(self.patient, tone="tertiary")
+        self.patient.setAccessibleName(Monitor.PATIENT)
+        patient_row.addWidget(self.patient)
+        level = (risk_level or "").strip().upper()
+        self.risk: Badge | None = None
+        if level in RISK_VARIANTS:
+            self.risk = Badge(Monitor.RISK_BADGE.format(level=level), RISK_VARIANTS[level])
+            patient_row.addWidget(self.risk, 0, Qt.AlignmentFlag.AlignVCenter)
+        self._add_item(layout, Monitor.STRIP_PATIENT, patient_row)
 
-        self.source = make_label("", "body-strong")
-        set_value(self.source, None, _SOURCE_WIDTH)
-        self._add_item(layout, Monitor.SOURCE, self.source, divider=True)
+        # Camera / source: name and its capture settings.
+        source_row = QHBoxLayout()
+        source_row.setContentsMargins(0, 0, 0, 0)
+        source_row.setSpacing(Space.S2)
+        self.source = make_label(EM_DASH, "body-strong")
+        self.source_detail = make_label("", "caption", "secondary")
+        source_row.addWidget(self.source)
+        source_row.addWidget(self.source_detail, 0, Qt.AlignmentFlag.AlignVCenter)
+        self.source_label = self._add_item(layout, Monitor.STRIP_CAMERA, source_row, divider=True)
 
         reserve = (*Monitor.STATUS_TEXT.values(), Monitor.STATUS_ALERT_COUNT.format(n=99))
         self.status = StatusIndicator(reserve=reserve)
-        self._add_item(layout, Monitor.STATUS, self.status, divider=True)
+        self._add_item(layout, Monitor.STRIP_STATUS, self.status, divider=True)
 
         self.duration = make_tabular_label(EM_DASH, "body-strong", "tertiary", sample="00:00:00")
-        self._add_item(layout, Monitor.DURATION, self.duration, divider=True)
+        self._add_item(layout, Monitor.STRIP_DURATION, self.duration, divider=True)
         layout.addStretch(1)
 
-        self.acknowledge = make_button(Monitor.ACKNOWLEDGE, "danger", "sm", "check", tooltip=Monitor.ACKNOWLEDGE_TIP)
-        policy = self.acknowledge.sizePolicy()
-        policy.setRetainSizeWhenHidden(True)      # showing it never shifts the other items
-        self.acknowledge.setSizePolicy(policy)
+        self.acknowledge = make_button(Monitor.ACKNOWLEDGE, "danger", "md", "check", tooltip=Monitor.ACKNOWLEDGE_TIP)
         self.acknowledge.hide()
         self.acknowledge.clicked.connect(self.acknowledge_clicked)
         layout.addWidget(self.acknowledge, 0, Qt.AlignmentFlag.AlignVCenter)
         self.set_state("idle")
 
-    def _add_item(self, layout: QHBoxLayout, label: str, value: QWidget, *, divider: bool = False) -> None:
+    def _add_item(self, layout: QHBoxLayout, label: str, value, *, divider: bool = False) -> QLabel:
         if divider:
-            layout.addSpacing(Space.S5)
-            layout.addWidget(Divider(Colors.N200, vertical=True, length=16))
-            layout.addSpacing(Space.S5)
-        layout.addWidget(make_label(label, "caption", "secondary"))
-        layout.addSpacing(Space.S2)
-        layout.addWidget(value, 0, Qt.AlignmentFlag.AlignVCenter)
-        value.setAccessibleName(label)
+            layout.addSpacing(Space.S6)
+            layout.addWidget(Divider(Colors.N150, vertical=True, length=32))
+            layout.addSpacing(Space.S6)
+        column = QVBoxLayout()
+        column.setContentsMargins(0, 0, 0, 0)
+        column.setSpacing(Space.S1)
+        column.addStretch(1)
+        caption = make_label(label, "overline", "tertiary")
+        column.addWidget(caption)
+        if isinstance(value, QWidget):
+            column.addWidget(value, 0, Qt.AlignmentFlag.AlignLeft)
+            value.setAccessibleName(label.title())
+        else:
+            column.addLayout(value)
+        column.addStretch(1)
+        layout.addLayout(column)
+        return caption
 
     # ------------------------------------------------------------------ API
     def set_state(self, state: str) -> None:
@@ -106,8 +124,19 @@ class ContextBar(QWidget):
         if not self._alert:
             self.status.set_status(STATUS_KIND[state], Monitor.STATUS_TEXT[state])
 
-    def set_source(self, label: str | None) -> None:
-        set_value(self.source, label, _SOURCE_WIDTH, Qt.TextElideMode.ElideMiddle)
+    def set_source(self, label: str | None, detail: str = "", tooltip: str = "", *, camera: bool = True) -> None:
+        """Shows the camera (or video file) and a short detail such as "1280 × 720 · 15 fps"."""
+        self.source_label.setText(Monitor.STRIP_CAMERA if camera else Monitor.STRIP_FILE)
+        if label:
+            _elide(self.source, label, "body-strong", _SOURCE_WIDTH, Qt.TextElideMode.ElideMiddle)
+            set_props(self.source, tone="primary")
+        else:
+            self.source.setText(EM_DASH)
+            set_props(self.source, tone="tertiary")
+        self.source_detail.setText(detail)
+        self.source_detail.setVisible(bool(detail))
+        self.source_detail.setToolTip(tooltip)
+        self.source.setToolTip(self.source.toolTip() or tooltip)
 
     def set_duration(self, text: str | None) -> None:
         if text != self.duration.text():

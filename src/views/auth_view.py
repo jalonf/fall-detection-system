@@ -63,13 +63,11 @@ class AuthView(QWidget):
     # ------------------------------------------------------------------ contract
     @Slot(str)
     def show_error(self, message: str) -> None:
-        toasts = ToastHost.for_widget(self)
+        """Errors are shown inline on the page that caused them (no toast)."""
         if self._pages.currentWidget() is self.register_page:
-            toasts.error(message, title=Toasts.REGISTER_FAILED)
             self.register_page.show_server_error(message)
         else:
-            toasts.error(message, title=Toasts.LOGIN_FAILED)
-            self.login_page.show_server_error()
+            self.login_page.show_server_error(message)
 
     @Slot(str)
     def show_success(self, message: str) -> None:
@@ -123,9 +121,10 @@ class AuthView(QWidget):
         if event.spontaneous():
             return
         ToastHost.for_widget(self).set_top_inset(TOAST_TOP_INSET)
-        if self._hidden_by_app:
+        if self._hidden_by_app:      # back after signing out
             self._hidden_by_app = False
             self._reset()
+            ToastHost.for_widget(self).success(Toasts.SIGNED_OUT, title=Toasts.SIGNED_OUT_TITLE)
         self._pages.currentWidget().focus_first()
 
     def hideEvent(self, event) -> None:

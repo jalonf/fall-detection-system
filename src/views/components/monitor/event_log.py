@@ -34,7 +34,6 @@ from PySide6.QtGui import (
 )
 from PySide6.QtWidgets import (
     QAbstractItemView,
-    QFileDialog,
     QListView,
     QMenu,
     QStyle,
@@ -47,10 +46,10 @@ from PySide6.QtWidgets import (
 from src.views.components.common.badge import Badge
 from src.views.components.common.button import make_button
 from src.views.components.common.confirm_dialog import ConfirmDialog
+from src.views.components.common.file_dialog import make_file_dialog
 from src.views.components.common.inputs import Combo
 from src.views.components.common.panel import Panel
-from src.views.components.common.toast import ToastHost
-from src.views.strings import Log, Toasts, event_count
+from src.views.strings import Log, event_count
 from src.views.theme import Colors, Type
 
 ROW_HEIGHT = 56
@@ -319,12 +318,17 @@ class EventLogPanel(Panel):
 
     @Slot()
     def export_csv(self) -> None:
+        """Opens the (non-blocking) save dialog; the visible rows are written when it is accepted."""
         stamp = QDateTime.currentDateTime().toString("yyyyMMdd-HHmmss")
-        default = str(Path.home() / Log.EXPORT_FILE_NAME.format(stamp=stamp))
-        path, _ = QFileDialog.getSaveFileName(self, Log.EXPORT_DIALOG_TITLE, default, Log.EXPORT_FILTER)
+        dialog = make_file_dialog(self, Log.EXPORT_DIALOG_TITLE, Log.EXPORT_FILTER, save=True,
+                                  default_name=Log.EXPORT_FILE_NAME.format(stamp=stamp), default_suffix="csv")
+        dialog.fileSelected.connect(self._write_csv)
+        dialog.show()
+
+    @Slot(str)
+    def _write_csv(self, path: str) -> None:
         if not path:
             return
-        toasts = ToastHost.for_widget(self)
         try:
             with open(path, "w", newline="", encoding="utf-8") as handle:
                 writer = csv.writer(handle)
@@ -332,9 +336,7 @@ class EventLogPanel(Panel):
                 for row in range(self.proxy.rowCount()):
                     writer.writerow([self.proxy.index(row, column).data() for column in range(3)])
         except OSError:
-            toasts.error(Toasts.EXPORT_FAILED, title=Toasts.EXPORT_FAILED_TITLE)
-            return
-        toasts.success(Path(path).name, title=Toasts.EXPORTED_TITLE)
+            self.add_event("ERROR", Log.EXPORT_FAILED.format(name=Path(path).name))
 
     @Slot()
     def confirm_clear(self) -> None:

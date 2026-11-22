@@ -1,4 +1,4 @@
-"""Top bar: wordmark and section on the left; clock, user and sign out on the right."""
+"""Top bar: the screen's title and today's date on the left; the user and sign out on the right."""
 
 from __future__ import annotations
 
@@ -18,10 +18,8 @@ from PySide6.QtGui import QColor, QFontMetrics, QPainter
 from PySide6.QtWidgets import QHBoxLayout, QSizePolicy, QVBoxLayout, QWidget
 
 from src.views.components.common.button import make_button
-from src.views.components.common.painting import Divider
 from src.views.strings import Monitor
 from src.views.theme import (
-    APP_NAME,
     Colors,
     Size,
     Space,
@@ -43,7 +41,7 @@ def initials(name: str) -> str:
 
 
 def _widest_clock_sample() -> str:
-    metrics = QFontMetrics(Type.font("body", tabular=True))
+    metrics = QFontMetrics(Type.font("caption", tabular=True))
     samples = []
     for month in range(1, 13):
         for day in (1, 7):     # every weekday name
@@ -81,17 +79,18 @@ class Topbar(QWidget):
         layout.setContentsMargins(Space.S6, 0, Space.S6, 1)
         layout.setSpacing(0)
 
-        layout.addWidget(make_label(APP_NAME, "title-md"))
-        layout.addSpacing(Space.S3)
-        layout.addWidget(Divider(Colors.N200, vertical=True, length=20))
-        layout.addSpacing(Space.S3)
-        layout.addWidget(make_label(section, "body", "secondary"))
+        # Left: what this screen is (e.g. "Administration Monitoring") and, under it, today's date.
+        heading = QVBoxLayout()
+        heading.setContentsMargins(0, 0, 0, 0)
+        heading.setSpacing(0)
+        heading.addStretch(1)
+        self.title = make_label(section, "title-md")
+        heading.addWidget(self.title)
+        self.clock = make_tabular_label("", "caption", "secondary", sample=_widest_clock_sample())
+        heading.addWidget(self.clock)
+        heading.addStretch(1)
+        layout.addLayout(heading)
         layout.addStretch(1)
-
-        self.clock = make_tabular_label("", "body", "secondary", sample=_widest_clock_sample())
-        self.clock.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
-        layout.addWidget(self.clock)
-        layout.addSpacing(Space.S6)
 
         layout.addWidget(Avatar(user_name or "?"))
         layout.addSpacing(Space.S2)

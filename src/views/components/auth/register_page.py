@@ -9,7 +9,6 @@ from PySide6.QtCore import (
     QEasingCurve,
     QPropertyAnimation,
     QRect,
-    QRectF,
     QRegularExpression,
     Qt,
     QTimer,
@@ -35,17 +34,15 @@ from src.views.components.auth.password_checklist import PasswordChecklist
 from src.views.components.auth.question_field import COLUMN, HALF, QuestionStep
 from src.views.components.auth.stepper import Stepper
 from src.views.components.common.button import make_button
+from src.views.components.common.callout import Callout
 from src.views.components.common.form_field import FormField
 from src.views.components.common.inputs import PasswordEdit, make_line_edit
 from src.views.components.common.painting import (
-    IconView,
-    crisp,
     transparent_scroll_area,
 )
 from src.views.components.common.segmented_control import SegmentedControl
-from src.views.components.common.toast import ToastHost
-from src.views.strings import Register, Toasts, fields_need_attention
-from src.views.theme import Colors, Motion, Radius, Space, make_label
+from src.views.strings import Register
+from src.views.theme import Colors, Motion, Space, make_label
 
 PHONE_PATTERN = re.compile(r"^\+\d{1,3}(?:[\s.-]?\d){6,14}$")
 PHONE_CHARACTERS = r"\+?[\d\s.-]*"
@@ -53,29 +50,6 @@ GUTTER = 18                       # room on each side of the 600 px column for t
 STEPS = len(Register.STEPS)
 
 Error = tuple[QWidget, QWidget]   # (widget to scroll to, widget to focus)
-
-
-class Callout(QWidget):
-    """Info callout: P50 fill, P200 border, info icon and text."""
-
-    def __init__(self, text: str, parent: QWidget | None = None):
-        super().__init__(parent)
-        layout = QHBoxLayout(self)
-        layout.setContentsMargins(Space.S3, Space.S3, Space.S3, Space.S3)
-        layout.setSpacing(Space.S2)
-        icon_box = QVBoxLayout()
-        icon_box.setContentsMargins(0, 2, 0, 0)
-        icon_box.addWidget(IconView("info", Colors.P600, 16))
-        icon_box.addStretch(1)
-        layout.addLayout(icon_box)
-        layout.addWidget(make_label(text, "body", "info", wrap=True), 1)
-
-    def paintEvent(self, event) -> None:
-        painter = QPainter(self)
-        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-        painter.setPen(QColor(Colors.P200))
-        painter.setBrush(QColor(Colors.P50))
-        painter.drawRoundedRect(crisp(QRectF(self.rect())), Radius.R_MD, Radius.R_MD)
 
 
 class _Footer(QWidget):
@@ -157,6 +131,14 @@ class RegisterPage(QWidget):
         self.stepper = Stepper(Register.STEPS)
         self.stepper.step_clicked.connect(self._on_step_clicked)
         layout.addWidget(self.stepper)
+
+        self.error = Callout("", "danger")       # server errors that belong to no field
+        self.error_box = QWidget()
+        error_layout = QVBoxLayout(self.error_box)
+        error_layout.setContentsMargins(0, Space.S4, 0, 0)
+        error_layout.addWidget(self.error)
+        self.error_box.hide()
+        layout.addWidget(self.error_box)
         return header
 
     def _wrap(self, page: QWidget) -> QScrollArea:
@@ -322,6 +304,7 @@ class RegisterPage(QWidget):
     def _on_next(self) -> None:
         if self._busy:
             return
+        self.error_box.hide()
         if self._current < STEPS - 1:
             errors = self._validate(self._current)
             if errors:
@@ -394,7 +377,7 @@ class RegisterPage(QWidget):
         return errors
 
     def _report(self, errors: list[Error], total: int | None = None) -> None:
-        ToastHost.for_widget(self).error(fields_need_attention(total or len(errors)), title=Toasts.VALIDATION_TITLE)
+        """Errors are shown inline under each field; scroll to the first one and focus it."""
         self._pending_scroll = errors[0]
         self._scroll_timer.start()   # after the page has been laid out
 
@@ -456,6 +439,7 @@ class RegisterPage(QWidget):
         return self._busy
 
     def show_server_error(self, message: str) -> None:
+        """The controller refused the sign-up: point at the field, or explain it in the callout."""
         self.set_busy(False)
         lowered = message.lower()
         if "email" in lowered:
@@ -469,11 +453,15 @@ class RegisterPage(QWidget):
             self.role_field.set_error(Register.ROLE_REQUIRED)
             self._pending_scroll = (self.role_field, self.role.focus_target())
             self._scroll_timer.start()
+        else:
+            self.error.set_message(message)
+            self.error_box.show()
 
     def reset(self) -> None:
         self.setUpdatesEnabled(False)
         try:
             self._busy = False
+            self.error_box.hide()
             self.next.set_loading(False)
             self.pages.setEnabled(True)
             self.back_link.setEnabled(True)
