@@ -46,7 +46,7 @@ For every frame, `BaseVideoWorker` runs this pipeline in its own thread:
 ### Risk levels
 
 Each patient has a risk level, calculated at sign-up. The caregiver answers a health questionnaire
-about the patient (`src/dtos/questionnaire.py`: age, mobility, pain, conditions, medication...) and a
+about the patient (`src/domain/questionnaire.py`: age, mobility, pain, conditions, medication...) and a
 Random Forest (`src/ai/risk_assessor.py`) turns the answers into LOW, MEDIUM or HIGH. If the model cannot
 be used, the patient is registered as HIGH, the strictest level. The level decides how the camera is
 configured and which model is used (`src/workers/strategies.py`):
@@ -97,7 +97,7 @@ The application follows **Model-View-Controller** on top of PySide6 (Qt):
   the `User`, `Patient` and `FallEvent` models. Repositories are the only classes that query
   the database. Every account, administrators included, is a `User` row with a role (role-based
   access): the role decides the screen and the permissions, and the table only accepts the roles
-  defined in `src/dtos/roles.py`. Administrators simply have no `Patient`.
+  defined in `src/domain/roles.py`. Administrators simply have no `Patient`.
 * **Notifications** (`src/notifications/`): builds and sends the alert e-mail.
 
 ---
@@ -121,7 +121,8 @@ fall-detection-system/
 │   ├── ai/                 # MediaPipe pose extractor and risk-level assessor
 │   ├── controllers/        # Auth and monitoring controllers
 │   ├── database/           # SQLite connection and Peewee models
-│   ├── dtos/               # Data passed from the views to the controllers, roles, password rules, questionnaire
+│   ├── domain/             # Domain rules: user roles, password policy and the health questionnaire
+│   ├── dtos/               # Data transfer objects between layers (immutable dataclasses)
 │   ├── notifications/      # Alert e-mail (sender and template)
 │   ├── repositories/       # Database access for users, patients and fall events
 │   ├── navigation/         # Screen flow (AppCoordinator) and screen changes (Navigator)
@@ -257,7 +258,7 @@ python -m training.risk_assessment.train_risk_model
 ```
 
 The application only needs that `.joblib` file. Questions are defined once in
-`src/dtos/questionnaire.py`; each one is a feature of the model.
+`src/domain/questionnaire.py`; each one is a feature of the model.
 
 ---
 

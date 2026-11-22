@@ -27,10 +27,10 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from src.dtos import password_policy
-from src.dtos.questionnaire import DAILY_LIFE, HEALTH, PROFILE
+from src.domain import password_policy
+from src.domain.questionnaire import DAILY_LIFE, HEALTH, PROFILE
+from src.domain.roles import SIGNUP_ROLES
 from src.dtos.registration_data import RegistrationData
-from src.dtos.roles import SIGNUP_ROLES
 from src.views.components.auth.login_page import EMAIL_CHARACTERS, EMAIL_PATTERN
 from src.views.components.auth.page_heading import PageHeading
 from src.views.components.auth.password_checklist import PasswordChecklist

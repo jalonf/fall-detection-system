@@ -5,14 +5,14 @@ import datetime
 from peewee import CharField, Check, DateTimeField
 
 from src.database.models.base_model import BaseModel
-from src.dtos.roles import ROLES, is_admin
+from src.domain.roles import ROLES, is_admin
 
 # SQL list of the valid roles, for the table's CHECK constraint ('Family / Caregiver', 'Medical Staff', ...).
 _ROLE_VALUES = ", ".join("'" + role.replace("'", "''") + "'" for role in ROLES)
 
 
 class User(BaseModel):
-    """Model for the users table: every account, whatever its role (see `src/dtos/roles.py`).
+    """Model for the users table: every account, whatever its role (see `src/domain/roles.py`).
 
     The role is checked twice: here before saving, and by a CHECK constraint in tables created from
     now on, so not even a direct SQL insert can store an unknown role.

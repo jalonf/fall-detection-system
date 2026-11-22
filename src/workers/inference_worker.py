@@ -6,13 +6,18 @@ import numpy as np
 import tensorflow as tf
 from PySide6.QtCore import QMutex, QMutexLocker, QThread, QWaitCondition
 
+from src.dtos.fall_prediction import FallPrediction
+
 logger = logging.getLogger(__name__)
+
+FALL_THRESHOLD = 0.5   # a probability of 0.5 or more is a fall
+
 
 class InferenceWorker(QThread):
     """Runs the fall model in its own thread.
 
     The video thread hands over the newest sequence with `predict` and reads the most
-    recent result from `latest` (an `(is_fall, probability)` tuple; assigning it is atomic).
+    recent result from `latest` (a FallPrediction; replacing the reference is atomic).
 
     The thread sleeps on a `QWaitCondition` until `predict` wakes it, so it uses no CPU
     while there is nothing to do. Only the newest sequence is kept: if a new one arrives
@@ -23,7 +28,7 @@ class InferenceWorker(QThread):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.model = None
-        self.latest: tuple[bool, float] | None = None
+        self.latest: FallPrediction | None = None
 
         self._mutex = QMutex()
         self._has_work = QWaitCondition()
@@ -60,7 +65,7 @@ class InferenceWorker(QThread):
             try:
                 # Direct tensor call (faster than .predict() for real-time)
                 probability = float(self.model(seq, training=False)[0][0])
-                self.latest = (probability >= 0.5, probability)
+                self.latest = FallPrediction(is_fall=probability >= FALL_THRESHOLD, probability=probability)
             except (ValueError, TypeError, tf.errors.OpError) as e:
                 logger.error(f"Inference error: {e}")
 

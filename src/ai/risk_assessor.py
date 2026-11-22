@@ -1,27 +1,15 @@
 """Patient risk level from the sign-up health questionnaire (Random Forest)."""
 
 import logging
-from dataclasses import dataclass
 
 import joblib
 import numpy as np
 import pandas as pd
 
+from src.dtos.risk_result import RiskResult
 from src.paths import RISK_MODEL
 
 logger = logging.getLogger(__name__)
-
-
-@dataclass(frozen=True)
-class RiskResult:
-    """Result of a risk assessment.
-
-    Attributes:
-        level: "LOW", "MEDIUM" or "HIGH"; it selects the monitoring strategy.
-        probability: Probability (0-1) of an accident at home or during leisure time.
-    """
-    level: str           # "LOW", "MEDIUM" or "HIGH": it selects the monitoring strategy
-    probability: float   # probability (0-1) that the patient has an accident at home or in leisure time
 
 
 class RiskAssessor:

@@ -42,6 +42,7 @@ from PySide6.QtGui import QColor, QImage, QLinearGradient, QPainter, QPen
 from PySide6.QtWidgets import QApplication, QMainWindow, QWidget
 
 from src.dtos.registration_data import RegistrationData
+from src.dtos.telemetry import Telemetry
 from src.views.admin_view import AdminView
 from src.views.auth_view import AuthView
 from src.views.base_monitor_view import BaseMonitorView
@@ -212,11 +213,11 @@ class FakeMonitorController(QObject):
         self.view.update_video_frame(synthetic_frame(self.t))
         if isinstance(self.view, AdminView):
             self.view.skeleton_panel.update_frame(synthetic_skeleton(self.t))
-            self.view.skeleton_panel.update_telemetry({
-                "inference_ms": 11 + 4 * abs(math.sin(self.t)),
-                "confidence": 0.45 + 0.5 * abs(math.sin(self.t / 3)),
-                "centroid_y": 0.52 + 0.1 * math.sin(self.t),
-            })
+            self.view.skeleton_panel.update_telemetry(Telemetry(
+                inference_ms=11 + 4 * abs(math.sin(self.t)),
+                confidence=0.45 + 0.5 * abs(math.sin(self.t / 3)),
+                centroid_y=0.52 + 0.1 * math.sin(self.t),
+            ))
         if self.auto_falls and self.frames in (120, 210):
             self.fall(0.87 if self.frames == 120 else 0.91)
 

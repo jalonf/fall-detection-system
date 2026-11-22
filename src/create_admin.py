@@ -21,8 +21,8 @@ from src.database.database_manager import databaseManager, db_connection
 from src.database.models.fall_event import FallEvent
 from src.database.models.patient import Patient
 from src.database.models.user import User
-from src.dtos import password_policy
-from src.dtos.roles import ADMINISTRATOR
+from src.domain import password_policy
+from src.domain.roles import ADMINISTRATOR
 from src.repositories.user_repository import UserRepository
 
 EMAIL_PATTERN = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")   # same rule as the sign-in form

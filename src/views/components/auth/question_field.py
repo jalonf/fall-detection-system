@@ -13,7 +13,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from src.dtos.questionnaire import CHECK, CHOICE, NUMBER, QUESTIONS, Question
+from src.domain.questionnaire import CHECK, CHOICE, NUMBER, QUESTIONS, Question
 from src.views.components.common.form_field import FieldMessage, FormField
 from src.views.components.common.inputs import CheckBox, RadioButton, make_line_edit
 from src.views.components.common.painting import Divider

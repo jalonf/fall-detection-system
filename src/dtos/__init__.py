@@ -1,1 +1,1 @@
-"""Data passed between layers, and shared definitions (roles, password rules, questionnaire)."""
+"""Data transfer objects: immutable dataclasses that carry data between layers and threads."""

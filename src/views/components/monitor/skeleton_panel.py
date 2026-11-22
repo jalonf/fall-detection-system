@@ -27,6 +27,7 @@ from PySide6.QtGui import (
 )
 from PySide6.QtWidgets import QSizePolicy, QToolTip, QWidget
 
+from src.dtos.telemetry import Telemetry
 from src.views.components.common.panel import Panel
 from src.views.components.monitor.video_widget import VideoWidget
 from src.views.strings import EM_DASH, Pose
@@ -264,7 +265,7 @@ class SkeletonPanel(Panel):
     def __init__(self, parent: QWidget | None = None):
         super().__init__(Pose.TITLE, subtitle=Pose.SUBTITLE, parent=parent)
         self._state = "idle"
-        self._telemetry: dict = {}
+        self._telemetry: Telemetry | None = None
         self.add_action(make_label(Pose.TREND_WINDOW, "caption", "tertiary"))
 
         self.view = SkeletonView()
@@ -296,16 +297,16 @@ class SkeletonPanel(Panel):
             return
         self.view.set_image(qimage)
 
-    @Slot(dict)
-    def update_telemetry(self, data: dict) -> None:
+    @Slot(object)
+    def update_telemetry(self, data: Telemetry) -> None:
         """Stores the newest telemetry; the trends sample it at 4 Hz.
 
         Args:
-            data: inference_ms, confidence and centroid_y.
+            data: The measurements of the newest frame.
         """
         if self._state in STOPPED:
             return
-        self._telemetry = data or {}
+        self._telemetry = data
 
     # ------------------------------------------------------------------ state
     def set_state(self, state: str) -> None:
@@ -320,7 +321,7 @@ class SkeletonPanel(Panel):
         else:
             self._timer.stop()
         if state == "starting" or (state in STOPPED and previous not in STOPPED):
-            self._telemetry = {}
+            self._telemetry = None
             self.view.clear()
             self.table.clear()
 
@@ -330,7 +331,8 @@ class SkeletonPanel(Panel):
         data = self._telemetry
         values: dict[str, float | None] = {}
         for metric in self.metrics:
-            raw = data.get(metric.key)
+            # Each metric's key is the name of a Telemetry field.
+            raw = getattr(data, metric.key) if data is not None else None
             values[metric.key] = float(raw) if raw is not None else None
         if values.get("confidence") is not None:
             values["confidence"] = max(0.0, min(1.0, values["confidence"]))

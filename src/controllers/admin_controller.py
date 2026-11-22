@@ -6,8 +6,8 @@ import os
 from PySide6.QtCore import Slot
 
 from src.controllers.base_monitor_controller import BaseMonitorController
+from src.domain.roles import is_admin
 from src.dtos.frame_packet import FramePacket
-from src.dtos.roles import is_admin
 from src.workers.base_video_worker import BaseVideoWorker
 from src.workers.strategies import strategy_for
 from src.workers.video_file_worker import VideoFileWorker

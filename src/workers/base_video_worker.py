@@ -11,8 +11,10 @@ import numpy as np
 from PySide6.QtCore import QThread, Signal
 
 from src.ai.extractor import MediaPipeExtractor
+from src.dtos.fall_alert import FallAlert
 from src.dtos.frame_packet import FramePacket
-from src.notifications.email_notifier import EmailNotifier, fall_event_data
+from src.dtos.telemetry import Telemetry
+from src.notifications.email_notifier import EmailNotifier
 from src.repositories.fall_repository import FallRepository
 from src.views.theme import Colors
 from src.workers.frame_utils import (
@@ -190,8 +192,8 @@ class BaseVideoWorker(QThread):
         fall_probability = self._poll_fall()
 
         # 4. Drawing and telemetry. The skeleton panel gets its own image.
-        telemetry = {"inference_ms": (time.perf_counter() - started) * 1000,
-                     "centroid_y": None, "confidence": 0.0}
+        inference_ms = (time.perf_counter() - started) * 1000
+        confidence, centroid_y = 0.0, None
         skeleton_view = np.full(frame.shape, SKELETON_BACKGROUND, dtype=np.uint8)
 
         if landmarks:
@@ -210,29 +212,29 @@ class BaseVideoWorker(QThread):
                 x1, y1, x2, y2 = crop
                 skeleton_view = skeleton_view[y1:y2, x1:x2]
 
-            telemetry["confidence"] = sum(lm.visibility for lm in landmarks) / len(landmarks)
+            confidence = sum(lm.visibility for lm in landmarks) / len(landmarks)
             hips = landmarks[23:25]   # left and right hip
             if len(hips) == 2 and all(hip.visibility > 0.5 for hip in hips):
-                telemetry["centroid_y"] = (hips[0].y + hips[1].y) / 2
+                centroid_y = (hips[0].y + hips[1].y) / 2
 
         # 5. Fall: handled after drawing, so the stored capture shows the red box and skeleton.
         if fall_probability is not None:
             self._handle_fall(frame, fall_probability)
 
         # 6. Hand everything to the interface (only the newest frame is kept).
+        telemetry = Telemetry(inference_ms=inference_ms, confidence=confidence, centroid_y=centroid_y)
         self._publish(FramePacket(to_qimage(frame), to_qimage(skeleton_view), telemetry))
 
     def _poll_fall(self) -> float | None:
         """Returns the probability when a fall has just started, otherwise None."""
         _, inference_worker = self._models()
-        result = inference_worker.latest
-        if result is None:
+        prediction = inference_worker.latest
+        if prediction is None:
             return None
 
-        is_fall, probability = result
-        started = is_fall and not self.current_is_fall   # only the moment it changes to "fall"
-        self.current_is_fall = is_fall
-        return probability if started else None
+        started = prediction.is_fall and not self.current_is_fall   # only the moment it changes to "fall"
+        self.current_is_fall = prediction.is_fall
+        return prediction.probability if started else None
 
     def _handle_fall(self, frame, probability: float) -> None:
         """A fall has just started: store the event, tell the UI, e-mail the alert with the capture."""
@@ -245,21 +247,26 @@ class BaseVideoWorker(QThread):
         self.fall_detected.emit(probability)
 
         if self.user is not None:
-            timestamp = datetime.now().astimezone().strftime("%d/%m/%Y %H:%M:%S")
-            event_data = fall_event_data(self.patient, self.user, probability, timestamp, snapshot)
+            alert = FallAlert(
+                patient_name=getattr(self.patient, "name", None) or self.user.name,
+                medical_notes=getattr(self.patient, "medical_notes", None) or "N/A",
+                probability=probability,
+                timestamp=datetime.now().astimezone().strftime("%d/%m/%Y %H:%M:%S"),
+                snapshot=snapshot,
+            )
 
             # Send the e-mail in a separate thread so the video does not freeze while waiting for the SMTP server.
             threading.Thread(
                 target=self._send_alert,
-                args=(self.user.email, event_data, fall_event),
+                args=(self.user.email, alert, fall_event),
                 name="fall-alert-email",
             ).start()
 
-    def _send_alert(self, recipient: str, event_data: dict, fall_event) -> None:
+    def _send_alert(self, recipient: str, alert: FallAlert, fall_event) -> None:
         """Runs in its own thread: the SMTP call can take a second or more."""
         ok = False
         try:
-            ok = EmailNotifier(recipient).update(event_data)
+            ok = EmailNotifier(recipient).send(alert)
             if ok and fall_event is not None:
                 FallRepository().mark_notification_sent(fall_event)
         except Exception:

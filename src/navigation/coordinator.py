@@ -17,7 +17,7 @@ from PySide6.QtWidgets import QMainWindow
 from src.controllers.admin_controller import AdminController
 from src.controllers.auth_controller import AuthController
 from src.controllers.monitor_controller import MonitorController
-from src.dtos.roles import is_admin
+from src.domain.roles import is_admin
 from src.navigation.navigator import Navigator, Screen
 from src.repositories.patient_repository import PatientRepository
 from src.views.admin_view import AdminView

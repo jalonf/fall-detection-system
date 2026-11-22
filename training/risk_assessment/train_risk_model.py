@@ -15,7 +15,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import ConfusionMatrixDisplay, roc_auc_score
+from sklearn.metrics import ConfusionMatrixDisplay, confusion_matrix, roc_auc_score
 from sklearn.model_selection import StratifiedKFold, cross_val_predict
 
 from src.paths import DOCS_DIR, RISK_MODEL, RISK_PROCESSED_DIR
@@ -58,14 +58,15 @@ def save_confusion_matrices(y: pd.Series, levels: pd.Series, docs_dir: Path) -> 
 
     _, axes = plt.subplots(1, len(rules), figsize=(11, 4))
     for ax, (rule, flagged) in zip(axes, rules.items()):
-        display = ConfusionMatrixDisplay.from_predictions(
-            y, flagged.astype(int), display_labels=["No", "Yes"], cmap="Blues", ax=ax, colorbar=False
-        )
+        # The matrix is computed here (always 2 x 2, even if a class is missing) and then drawn, so
+        # its counts come from the typed `confusion_matrix` function instead of the display object.
+        matrix = confusion_matrix(y, flagged.astype(int), labels=[0, 1])
+        ConfusionMatrixDisplay(matrix, display_labels=["No", "Yes"]).plot(cmap="Blues", ax=ax, colorbar=False)
         ax.set_title(f"Flagged when the level is {rule}")
         ax.set_xlabel("Flagged by the model")
         ax.set_ylabel("Had the event")
 
-        true_negative, false_positive, false_negative, true_positive = display.confusion_matrix.ravel()
+        true_negative, false_positive, false_negative, true_positive = matrix.ravel()
         logger.info(
             "%s -> sensitivity (events found) %.2f, specificity %.2f, precision %.2f",
             rule,

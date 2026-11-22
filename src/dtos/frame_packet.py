@@ -4,10 +4,19 @@ from dataclasses import dataclass
 
 from PySide6.QtGui import QImage
 
+from src.dtos.telemetry import Telemetry
+
 
 @dataclass(frozen=True)
 class FramePacket:
-    """DTO with everything the interface shows for one processed frame."""
-    frame: QImage       # camera image with the person box and skeleton drawn on it
-    skeleton: QImage    # skeleton alone, cropped around the person
-    telemetry: dict     # inference_ms, centroid_y, confidence
+    """Everything the interface shows for one processed frame.
+
+    Attributes:
+        frame: Camera image with the person box and the skeleton drawn on it.
+        skeleton: The skeleton alone, cropped around the person.
+        telemetry: Measurements of the frame (administrators' pose panel).
+    """
+
+    frame: QImage
+    skeleton: QImage
+    telemetry: Telemetry

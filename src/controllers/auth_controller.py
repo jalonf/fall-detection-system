@@ -6,8 +6,8 @@ from PySide6.QtCore import QObject, QTimer, Slot
 
 from src.ai.risk_assessor import RiskAssessor
 from src.database.database_manager import db_connection
+from src.domain.roles import SIGNUP_ROLES
 from src.dtos.registration_data import RegistrationData
-from src.dtos.roles import SIGNUP_ROLES
 from src.repositories.patient_repository import PatientRepository
 from src.repositories.user_repository import UserRepository
 
