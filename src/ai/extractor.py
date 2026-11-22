@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 LEFT_HIP, RIGHT_HIP = 23, 24
 
 
-def center_on_hips(coords: np.ndarray) -> np.ndarray:
+def _center_on_hips(coords: np.ndarray) -> np.ndarray:
     """Moves the pose so the midpoint of the hips is the origin (where the person stands no longer matters)."""
     return coords - (coords[LEFT_HIP] + coords[RIGHT_HIP]) / 2
 
@@ -89,7 +89,7 @@ class MediaPipeExtractor:
 
         # 4. 3D world landmarks (in meters), centred on the hips: the model input
         landmarks_3d = result.pose_world_landmarks[0]
-        pose = center_on_hips(np.array([(lm.x, lm.y, lm.z) for lm in landmarks_3d], dtype=np.float32))
+        pose = _center_on_hips(np.array([(lm.x, lm.y, lm.z) for lm in landmarks_3d], dtype=np.float32))
 
         # 5. Normalized 2D screen-space landmarks for drawing
         landmarks_2d = result.pose_landmarks[0]
