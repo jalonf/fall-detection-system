@@ -23,7 +23,7 @@ from PySide6.QtCore import (
     Signal,
     Slot,
 )
-from PySide6.QtGui import QAccessible, QAccessibleEvent, QColor, QPainter
+from PySide6.QtGui import QColor, QPainter
 from PySide6.QtWidgets import QWidget
 
 from src.views import icons
@@ -138,7 +138,8 @@ class Toast(QWidget):
         self.raise_()
         self._run(1.0, 0.0, Motion.OUT)
         self._start_timer(self._duration)
-        QAccessible.updateAccessibility(QAccessibleEvent(self, QAccessible.Event.Alert))
+        # No QAccessible "Alert" event here: on Windows Qt plays the system "Asterisk" sound for it.
+        # Screen readers still get the toast (and its accessible name) when it is shown.
 
     def bump(self) -> None:
         """The same message arrived again: count it and restart the timer."""
