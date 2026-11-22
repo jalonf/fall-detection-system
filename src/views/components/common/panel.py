@@ -1,11 +1,11 @@
-"""Panel: N0 surface, N200 border, radius 8, a 48 px header and an optional 56 px footer."""
+"""Panel: N0 surface, N200 border, small radius, a 48 px N50 header band and an optional 56 px footer."""
 
 from __future__ import annotations
 
 import math
 
 from PySide6.QtCore import QEvent, QRect, QRectF, Qt
-from PySide6.QtGui import QColor, QPainter, QPen, QRegion
+from PySide6.QtGui import QColor, QPainter, QPainterPath, QPen, QRegion
 from PySide6.QtWidgets import QHBoxLayout, QLabel, QVBoxLayout, QWidget
 
 from src.views.components.common.painting import crisp
@@ -89,14 +89,25 @@ class Panel(QWidget):
     def paintEvent(self, event) -> None:
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        frame = crisp(QRectF(self.rect()))
+        outline = QPainterPath()
+        outline.addRoundedRect(frame, Radius.R_LG, Radius.R_LG)
+        painter.fillPath(outline, QColor(Colors.N0))
+
+        # Header band: a sober N50 strip with an N200 rule underneath.
+        header_bottom = self.header.geometry().bottom() + 1
+        painter.save()
+        painter.setClipPath(outline)
+        painter.fillRect(QRectF(0, 0, self.width(), header_bottom), QColor(Colors.N50))
+        painter.restore()
+
         painter.setPen(QPen(QColor(Colors.N200), 1))
-        painter.setBrush(QColor(Colors.N0))
-        painter.drawRoundedRect(crisp(QRectF(self.rect())), Radius.R_LG, Radius.R_LG)
+        painter.setBrush(Qt.BrushStyle.NoBrush)
+        painter.drawPath(outline)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing, False)
-        divider = QColor(Colors.N150)
-        painter.fillRect(QRect(1, self.header.geometry().bottom() + 1, self.width() - 2, 1), divider)
+        painter.fillRect(QRect(1, header_bottom, self.width() - 2, 1), QColor(Colors.N200))
         if self.footer is not None:
-            painter.fillRect(QRect(1, self.footer.geometry().top() - 1, self.width() - 2, 1), divider)
+            painter.fillRect(QRect(1, self.footer.geometry().top() - 1, self.width() - 2, 1), QColor(Colors.N150))
 
     def eventFilter(self, watched, event) -> bool:
         if watched is self.body and event.type() == QEvent.Type.Resize:

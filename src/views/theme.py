@@ -139,7 +139,7 @@ class Type:
         "caption": TypeSpec(12, 400, 16),
         "caption-strong": TypeSpec(12, 600, 16),
         "overline": TypeSpec(11, 600, 16, 0.6),
-        "metric": TypeSpec(20, 600, 26),
+        "metric": TypeSpec(16, 600, 22),
     }
 
     _cache: ClassVar[dict[tuple[str, bool], QFont]] = {}
@@ -216,9 +216,12 @@ class Size:
 
 
 class Radius:
-    R_SM = 4            # badges, checkboxes, tooltips
-    R_MD = 6            # buttons, inputs, segments, callouts
-    R_LG = 8            # panels, toasts, dialogs
+    """Small radii: square, sober containers with only the corners softened."""
+
+    R_SM = 2            # badges, checkboxes, tooltips, pills
+    R_MD = 3            # buttons, inputs, segments, callouts
+    R_LG = 4            # panels, toasts, dialogs
+    R_INNER = R_MD - 1  # first / last segment inside a bordered control
 
 
 class Motion:

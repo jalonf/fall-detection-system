@@ -9,7 +9,7 @@ from PySide6.QtWidgets import QWidget
 
 from src.views import icons
 from src.views.strings import Monitor
-from src.views.theme import Colors, Type, mix, qcolor
+from src.views.theme import Colors, Radius, Type, mix, qcolor
 
 BAR = 40
 _PILL_HEIGHT = 20
@@ -103,7 +103,7 @@ class StageOverlay(QWidget):
         pill = QRectF(self.width() - 12 - pill_width, (BAR - _PILL_HEIGHT) / 2, pill_width, _PILL_HEIGHT)
         painter.setPen(Qt.PenStyle.NoPen)
         painter.setBrush(QColor(0, 0, 0, round(255 * 0.45)))
-        painter.drawRoundedRect(pill, _PILL_HEIGHT / 2, _PILL_HEIGHT / 2)
+        painter.drawRoundedRect(pill, Radius.R_SM, Radius.R_SM)
         marker = QRectF(pill.left() + 8, pill.center().y() - 3, 6, 6)
         if self._live:
             painter.setBrush(QColor(Colors.G500))

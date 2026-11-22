@@ -88,9 +88,9 @@ QPushButton[variant="segment"]:disabled { background-color: transparent; }
 QPushButton[variant="segment"]:checked:disabled { background-color: @N150@; }
 QPushButton[variant="segment"]:focus { border: 2px solid @P600@; }
 QPushButton[variant="segment"]:checked:focus { border: 2px solid @P200@; }
-QPushButton[variant="segment"][position="first"] { border-top-left-radius: 5px; border-bottom-left-radius: 5px; }
-QPushButton[variant="segment"][position="last"] { border-top-right-radius: 5px; border-bottom-right-radius: 5px; }
-QPushButton[variant="segment"][position="only"] { border-radius: 5px; }
+QPushButton[variant="segment"][position="first"] { border-top-left-radius: @R_INNER@; border-bottom-left-radius: @R_INNER@; }
+QPushButton[variant="segment"][position="last"] { border-top-right-radius: @R_INNER@; border-bottom-right-radius: @R_INNER@; }
+QPushButton[variant="segment"][position="only"] { border-radius: @R_INNER@; }
 
 /* ------------------------------------------------------------------ text inputs */
 QLineEdit, QPlainTextEdit {
@@ -213,9 +213,9 @@ QTableView {
     gridline-color: transparent;
     outline: 0px;
 }
-QHeaderView { background-color: @N50@; border: none; }
+QHeaderView { background-color: @N0@; border: none; }
 QHeaderView::section {
-    background-color: @N50@;
+    background-color: @N0@;
     color: @N600@;
     border: none;
     border-bottom: 1px solid @N200@;
@@ -223,4 +223,4 @@ QHeaderView::section {
     font-size: 12px;
     font-weight: 600;
 }
-QTableCornerButton::section { background-color: @N50@; border: none; }
+QTableCornerButton::section { background-color: @N0@; border: none; }

@@ -49,7 +49,7 @@ class MetricTile(QWidget):
         painter.drawText(QRect(x, 8, width, 16), int(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter),
                          self._label)
 
-        value_rect = QRect(x, 24, width, 26)
+        value_rect = QRect(x, 26, width, Type.line_height("metric"))
         value_font = Type.font("metric", tabular=True)
         painter.setFont(value_font)
         if self._value is None:
@@ -69,9 +69,9 @@ class MetricTile(QWidget):
                                  int(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop), self._unit)
 
         if self._bar:
-            track = QRect(x, 54, width, 3)
+            track = QRect(x, 52, width, 3)
             painter.fillRect(track, QColor(Colors.N150))
             if self._ratio is not None:
                 ratio = max(0.0, min(1.0, self._ratio))
                 fill = Colors.A600 if ratio < 0.5 else Colors.P600
-                painter.fillRect(QRect(x, 54, round(width * ratio), 3), QColor(fill))
+                painter.fillRect(QRect(x, 52, round(width * ratio), 3), QColor(fill))
