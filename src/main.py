@@ -52,12 +52,16 @@ class MainWindow(QMainWindow):
         logger.info("Transitioning to dashboard for user: %s (Role: %s)", user.name, user.role)
         
         patient = self.auth_controller.user_repo.get_patient_by_user(user)
-        
+        patient_name = getattr(patient, "name", None)
+        risk_level = getattr(patient, "risk_level", None)
+
         # Check user role and instantiate the corresponding view and controller dynamically
         role_str = str(getattr(user, 'role', '')).strip().lower()
         if role_str in ["admin", "administrator"]:
             logger.info("Instantiating AdminView and AdminController for administrator role.")
-            self.monitor_view = AdminView(user_name=user.name, user_role=user.role)
+            self.monitor_view = AdminView(
+                user_name=user.name, user_role=user.role, patient_name=patient_name, risk_level=risk_level
+            )
             self.monitor_controller = AdminController(
                 view=self.monitor_view,
                 current_user=user,
@@ -66,7 +70,9 @@ class MainWindow(QMainWindow):
             )
         else:
             logger.info("Instantiating MonitorView and MonitorController for standard user role.")
-            self.monitor_view = MonitorView(user_name=user.name, user_role=user.role)
+            self.monitor_view = MonitorView(
+                user_name=user.name, user_role=user.role, patient_name=patient_name, risk_level=risk_level
+            )
             self.monitor_controller = MonitorController(
                 view=self.monitor_view,
                 current_user=user,
