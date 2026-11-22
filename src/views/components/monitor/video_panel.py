@@ -23,8 +23,11 @@ STOPPED = ("idle", "error", "finished")
 
 
 class Stage(QWidget):
-    """Full-bleed dark area. A stacked layout switches video / placeholder; the overlay is a free
-    child on top. Its size hint never changes, so frames never relayout."""
+    """Full-bleed dark area where the video (or its placeholder) is shown.
+
+    A stacked layout switches video / placeholder; the overlay is a free child on top. Its
+    size hint never changes, so frames never relayout.
+    """
 
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
@@ -39,24 +42,44 @@ class Stage(QWidget):
         self.overlay = StageOverlay(self)
 
     def sizeHint(self) -> QSize:
+        """Preferred size: 16:9."""
         return QSize(640, 360)
 
     def minimumSizeHint(self) -> QSize:
+        """Smallest size of the stage."""
         return QSize(320, 180)
 
     def show_video(self, visible: bool) -> None:
+        """Shows the video, or the placeholder.
+
+        Args:
+            visible: True when there is an image to show.
+        """
         target = self.video if visible else self.placeholder
         if self._stack.currentWidget() is not target:
             self._stack.setCurrentWidget(target)
             self.overlay.raise_()
 
     def resizeEvent(self, event) -> None:
+        """Keeps the overlay across the top of the stage."""
         super().resizeEvent(event)
         self.overlay.setGeometry(0, 0, self.width(), BAR)   # only the top bar repaints with each frame
         self.overlay.raise_()
 
 
 class VideoPanel(Panel):
+    """Live video panel: the stage, and the source controls in its footer.
+
+    Signals:
+        start_clicked(int): Start the camera at this index (the position in the combo).
+        stop_clicked: Stop the running source.
+        file_chosen(str): Path of the video file chosen to analyse.
+        retry_clicked: Try the last source again.
+
+    Args:
+        can_analyse_files: Shows "Analyse video…" (administrators).
+        parent: Parent widget.
+    """
     start_clicked = Signal(int)       # camera index (the position in the source combo)
     stop_clicked = Signal()
     file_chosen = Signal(str)
@@ -109,12 +132,27 @@ class VideoPanel(Panel):
                 self.source_combo.setCurrentIndex(source.arg)
 
     def set_run_error(self, message: str | None) -> None:
+        """Stores the source error shown by the error placeholder.
+
+        Args:
+            message: The error, or None.
+        """
         self._error = message
 
     def set_duration(self, text: str) -> None:
+        """Stores the duration shown by the finished placeholder.
+
+        Args:
+            text: "HH:MM:SS".
+        """
         self._duration = text
 
     def set_state(self, state: str) -> None:
+        """Follows the monitoring state: subtitle, controls, primary button and placeholder.
+
+        Args:
+            state: The monitoring state.
+        """
         self._state = state
         label = self._source.label if self._source is not None else ""
         subtitles = {
@@ -148,16 +186,23 @@ class VideoPanel(Panel):
         self._refresh_stage()
 
     def show_frame(self, image: QImage) -> None:
+        """Shows a processed frame.
+
+        Args:
+            image: The frame.
+        """
         first = not self.stage.video.has_image()
         self.stage.video.set_image(image)
         if first:
             self._refresh_stage()
 
     def clear_frame(self) -> None:
+        """Removes the image; the placeholder shows the state."""
         self.stage.video.clear()
         self._refresh_stage()
 
     def camera_index(self) -> int:
+        """Returns the camera chosen in the combo (its index)."""
         return self.source_combo.currentIndex()
 
     @Slot()

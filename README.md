@@ -270,3 +270,12 @@ ruff check src/ training/
 
 GitHub Actions installs the dependencies and runs the linter on every push and pull request
 to `main` (`.github/workflows/ci.yml`).
+
+### Docstrings
+
+Every module, class and public function is documented in
+[Google style](https://google.github.io/styleguide/pyguide.html#38-comments-and-docstrings): a one-line
+summary, a blank line, the description and, where they help, `Args`, `Returns`, `Raises`, `Attributes`
+and `Signals` (for Qt signals) sections. Types are not repeated: they are in the annotations. Comments
+(`#`) explain *why* something is done, not what. Ruff checks the docstrings (`pyproject.toml`: rules
+`D` with the Google convention), so the linter fails when one is missing or malformed.

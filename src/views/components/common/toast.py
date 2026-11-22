@@ -55,6 +55,11 @@ _DEDUP_SECONDS = 2.0
 
 
 class Toast(QWidget):
+    """One painted notification card that fades in and out.
+
+    Signals:
+        closed: It finished fading out and is about to be deleted.
+    """
     closed = Signal()
 
     def __init__(self, window: QWidget, kind: str, title: str, message: str, duration_ms: int):
@@ -109,12 +114,14 @@ class Toast(QWidget):
     # ------------------------------------------------------------------ content
     @property
     def title(self) -> str:
+        """Title, with the repetition count ("×2") when the same message arrived again."""
         return self._base_title if self._count == 1 else f"{self._base_title} ×{self._count}"
 
     def _lines(self) -> tuple[str, ...]:
         return wrap_text(self.message, Type.font("body"), _TEXT_WIDTH, 3)
 
     def card_height(self) -> int:
+        """Returns the card's height for its title and wrapped message."""
         lines = self._lines()
         height = _PAD_TOP + Type.line_height("title-sm") + _PAD_BOTTOM
         if lines:
@@ -134,6 +141,7 @@ class Toast(QWidget):
 
     # ------------------------------------------------------------------ lifecycle
     def appear(self) -> None:
+        """Shows the toast with a fade and starts its timer."""
         self.show()
         self.raise_()
         self._run(1.0, 0.0, Motion.OUT)
@@ -151,6 +159,7 @@ class Toast(QWidget):
 
     @Slot()
     def dismiss(self) -> None:
+        """Fades the toast out; it deletes itself at the end."""
         if self._closing:
             return
         self._closing = True
@@ -158,6 +167,7 @@ class Toast(QWidget):
         self._run(0.0, -8.0, Motion.IN)
 
     def is_closing(self) -> bool:
+        """True once it has started fading out."""
         return self._closing
 
     def _run(self, opacity: float, offset: float, curve) -> None:
@@ -182,27 +192,32 @@ class Toast(QWidget):
             self._timer.start(duration)
 
     def pause(self) -> None:
+        """Stops the timer while the pointer is over the toast."""
         if self._timer.isActive():
             self._remaining = max(0, self._remaining - self._clock.elapsed())
             self._timer.stop()
 
     def resume(self) -> None:
+        """Restarts the timer with the time that was left (at least 0.8 s)."""
         if self._duration > 0 and not self._closing and not self._timer.isActive():
             self._clock.start()
             self._timer.start(max(800, self._remaining))
 
     # ------------------------------------------------------------------ events
     def enterEvent(self, event) -> None:
+        """Pauses the timer while the pointer is over the toast."""
         super().enterEvent(event)
         self.pause()
 
     def leaveEvent(self, event) -> None:
+        """Resumes the timer when the pointer leaves."""
         super().leaveEvent(event)
         self._hover_close = False
         self.update()
         self.resume()
 
     def mouseMoveEvent(self, event) -> None:
+        """Highlights the close button under the pointer."""
         hover = self._close_rect().contains(event.position().toPoint())
         if hover != self._hover_close:
             self._hover_close = hover
@@ -210,12 +225,14 @@ class Toast(QWidget):
             self.update(self._close_rect())
 
     def mousePressEvent(self, event) -> None:
+        """Closes the toast when its close button is clicked."""
         if self._close_rect().contains(event.position().toPoint()):
             self.dismiss()
         event.accept()
 
     # ------------------------------------------------------------------ painting
     def paintEvent(self, event) -> None:
+        """Paints the shadow, the card, the accent bar, the icon, the texts and the close button."""
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
         painter.setOpacity(self._opacity)
@@ -280,12 +297,28 @@ class ToastHost(QObject):
 
     @classmethod
     def for_widget(cls, widget: QWidget) -> ToastHost:
+        """Returns the toast host of a widget's window, creating it the first time.
+
+        Args:
+            widget: Any widget of the window.
+        """
         window = widget.window()
         host = window.findChild(ToastHost, options=Qt.FindChildOption.FindDirectChildrenOnly)
         return host if host is not None else cls(window)
 
     # ------------------------------------------------------------------ API
     def notify(self, kind: str, message: str, *, title: str | None = None, duration_ms: int | None = None) -> Toast:
+        """Shows a toast, or counts it again if the same one is still on screen.
+
+        Args:
+            kind: "success", "info", "warning" or "error".
+            message: Text of the toast.
+            title: Title; None uses the kind's default.
+            duration_ms: Time on screen; None uses the kind's default.
+
+        Returns:
+            The toast shown.
+        """
         title = title or Toasts.KIND_TITLES[kind]
         duration = KINDS[kind][2] if duration_ms is None else duration_ms
         now = time.monotonic()
@@ -307,9 +340,20 @@ class ToastHost(QObject):
         return toast
 
     def success(self, message: str, *, title: str | None = None, duration_ms: int | None = None) -> Toast:
+        """Shows a success toast (see `notify`).
+
+        Args:
+            message: Text of the toast.
+            title: Title; None uses the default.
+            duration_ms: Time on screen; None uses the default.
+
+        Returns:
+            The toast shown.
+        """
         return self.notify("success", message, title=title, duration_ms=duration_ms)
 
     def dismiss_all(self) -> None:
+        """Fades out every toast."""
         for toast in list(self._toasts):
             toast.dismiss()
 
@@ -320,6 +364,7 @@ class ToastHost(QObject):
             self._reposition()
 
     def toasts(self) -> list[Toast]:
+        """Returns the toasts on screen that are not fading out."""
         return [toast for toast in self._toasts if not toast.is_closing()]
 
     # ------------------------------------------------------------------ placement
@@ -344,6 +389,7 @@ class ToastHost(QObject):
             toast.raise_()
 
     def eventFilter(self, watched, event) -> bool:
+        """Repositions the toasts on resize and keeps them above new child widgets."""
         if watched is self._window:
             if event.type() == QEvent.Type.Resize:
                 self._reposition()

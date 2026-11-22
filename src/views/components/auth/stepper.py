@@ -15,6 +15,15 @@ _LABEL_TOP = 28
 
 
 class Stepper(QWidget):
+    """Progress of the sign-up form; completed steps can be clicked to go back to them.
+
+    Signals:
+        step_clicked(int): Index of the step the user clicked.
+
+    Args:
+        labels: Name of each step.
+        parent: Parent widget.
+    """
     step_clicked = Signal(int)
 
     def __init__(self, labels: tuple[str, ...], parent: QWidget | None = None):
@@ -28,18 +37,30 @@ class Stepper(QWidget):
         self._describe()
 
     def set_current(self, index: int) -> None:
+        """Marks a step as the current one.
+
+        Args:
+            index: Index of the step.
+        """
         self._current = index
         self._describe()
         self.update()
 
     def set_completed(self, count: int) -> None:
+        """Sets how many steps have been validated (they can be clicked).
+
+        Args:
+            count: Steps 0 .. count - 1 are completed.
+        """
         self._completed = count
         self.update()
 
     def current(self) -> int:
+        """Returns the index of the current step."""
         return self._current
 
     def completed(self) -> int:
+        """Returns how many steps are completed."""
         return self._completed
 
     def _describe(self) -> None:
@@ -59,19 +80,23 @@ class Stepper(QWidget):
         return self.isEnabled() and index != self._current and index < self._completed
 
     def mouseMoveEvent(self, event) -> None:
+        """Shows the pointing-hand cursor over steps that can be clicked."""
         index = self._index_at(event.position().x())
         self.setCursor(Qt.CursorShape.PointingHandCursor if self._clickable(index) else Qt.CursorShape.ArrowCursor)
 
     def mousePressEvent(self, event) -> None:
+        """Emits `step_clicked` for a completed step."""
         index = self._index_at(event.position().x())
         if self._clickable(index):
             self.step_clicked.emit(index)
 
     def sizeHint(self) -> QSize:
+        """Preferred size of the stepper."""
         return QSize(600, _HEIGHT)
 
     # ------------------------------------------------------------------ painting
     def paintEvent(self, event) -> None:
+        """Paints the connectors, the nodes (number or tick) and the labels."""
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
         count = len(self._labels)

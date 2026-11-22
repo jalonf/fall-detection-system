@@ -1,3 +1,5 @@
+"""The SQLite connection shared by the whole application."""
+
 import logging
 
 from peewee import SqliteDatabase
@@ -8,14 +10,15 @@ logger = logging.getLogger(__name__)
 
 
 class DatabaseManager:
-    """
-    Class in charge of managing the SQLite connection.
-    It is implemented as a Singleton to ensure a single global connection.
+    """Owns the SQLite connection (a singleton: one global connection).
+
+    The database uses WAL journaling, foreign keys and a 5 s busy timeout.
     """
     instance = None
     db_connection: SqliteDatabase
     
     def __new__(cls, *args, **kwargs):
+        """Returns the only instance, creating and configuring it the first time."""
         if cls.instance is None:
             cls.instance = super().__new__(cls)
             cls.instance.configure()

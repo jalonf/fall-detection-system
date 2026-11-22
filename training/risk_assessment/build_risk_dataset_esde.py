@@ -1,3 +1,12 @@
+"""Builds the risk-assessment dataset from the ESdE 2025 health survey (INE).
+
+It keeps the respondents aged 65+, computes the predictors the application asks in its
+questionnaire and the targets (accidents at home or during leisure time), and writes the CSV
+with its dictionary to `data/risk_assessment/processed/`.
+
+    python -m training.risk_assessment.build_risk_dataset_esde
+"""
+
 import io
 import logging
 import zipfile
@@ -72,6 +81,14 @@ def prescribed_medicine_types(df: pd.DataFrame) -> pd.Series:
 # --------------------------------------------------------------------------------------------------
 @dataclass(frozen=True)
 class Feature:
+    """One column of the dataset and how it is computed from the survey.
+
+    Attributes:
+        name: Column of the CSV.
+        source: ESdE variable(s) it is computed from.
+        description: What is asked.
+        coding: Meaning of the values.
+    """
     name: str                              # column of the CSV
     source: str                            # ESdE variable(s) it is computed from
     description: str                       # what is asked
@@ -241,6 +258,14 @@ def load_adults(path: Path) -> pd.DataFrame:
 
 
 def build_predictors(df: pd.DataFrame) -> pd.DataFrame:
+    """Computes every predictor column from the survey answers.
+
+    Args:
+        df: Survey rows (one per respondent).
+
+    Returns:
+        One column per feature of `FEATURES`.
+    """
     return pd.DataFrame({feature.name: feature.build(df) for feature in FEATURES})
 
 
@@ -264,6 +289,15 @@ def fill_missing(data: pd.DataFrame, how: str) -> pd.DataFrame:
 
 
 def build_dataset(adults: pd.DataFrame, missing: str) -> pd.DataFrame:
+    """Builds the final dataset: id, predictors, targets and survey weight.
+
+    Args:
+        adults: Respondents aged 65+.
+        missing: How missing answers are filled (see `fill_missing`).
+
+    Returns:
+        The dataset written to the CSV.
+    """
     data = pd.concat([build_predictors(adults), build_targets(adults)], axis=1)
     data.insert(0, "person_id", np.arange(1, len(data) + 1))   # position among the respondents aged 65+
     data[WEIGHT_COLUMN] = adults["FACTORADULTO"].astype(float).round(3)

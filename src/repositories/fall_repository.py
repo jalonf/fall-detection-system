@@ -1,3 +1,5 @@
+"""Database access for fall events."""
+
 import logging
 
 from src.database.models.fall_event import FallEvent

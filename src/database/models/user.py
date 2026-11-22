@@ -1,3 +1,5 @@
+"""User model: every account of the application, whatever its role."""
+
 import datetime
 
 from peewee import CharField, Check, DateTimeField
@@ -24,9 +26,15 @@ class User(BaseModel):
 
     @property
     def is_admin(self) -> bool:
+        """True when the account is an administrator."""
         return is_admin(self)
 
     def save(self, *args, **kwargs):
+        """Saves the row after checking the role.
+
+        Raises:
+            ValueError: If the role is not one of `roles.ROLES`.
+        """
         if self.role not in ROLES:
             raise ValueError(f"Unknown user role: {self.role!r}")
         return super().save(*args, **kwargs)

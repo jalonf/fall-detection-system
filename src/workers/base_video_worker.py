@@ -36,8 +36,7 @@ POSE_VALUES = 99                                    # 33 landmarks x (x, y, z)
 
 
 class BaseVideoWorker(QThread):
-    """
-    Processes frames: pose extraction, face blur, fall inference and drawing.
+    """Processes frames: pose extraction, face blur, fall inference and drawing.
 
     Subclasses only decide where the frames come from (`_open_source`). Everything else
     lives here, so the fall logic exists once and runs in a single thread (the one
@@ -93,6 +92,7 @@ class BaseVideoWorker(QThread):
 
     # ------------------------------------------------------------------ thread
     def run(self):
+        """Opens the source, loads the models and processes frames until stopped or the source ends."""
         cap, strategy = self._open_source()
         if not cap.isOpened():
             logger.error("Could not open %s", self.source_label)
@@ -127,8 +127,13 @@ class BaseVideoWorker(QThread):
         self.inference_worker.start()
 
     def _models(self) -> tuple[MediaPipeExtractor, InferenceWorker]:
-        """The pose extractor and the fall model. They exist from `_setup` on, and every frame is
-        processed after it; asking for them earlier is a programming error."""
+        """Returns the pose extractor and the fall model, created by `_setup`.
+
+        Every frame is processed after `_setup`; asking for them earlier is a programming error.
+
+        Raises:
+            RuntimeError: If `_setup` has not created them yet.
+        """
         if self.extractor is None or self.inference_worker is None:
             raise RuntimeError("The video pipeline was used before _setup() created its models")
         return self.extractor, self.inference_worker
@@ -141,8 +146,8 @@ class BaseVideoWorker(QThread):
         return packet
 
     def _publish(self, packet: FramePacket) -> None:
-        """
-        Leaves `packet` in the slot, replacing a frame the interface has not taken yet.
+        """Leaves `packet` in the slot, replacing a frame the interface has not taken yet.
+
         The signal is only emitted when the slot was empty, so at most one is ever queued.
         """
         with self._frame_lock:

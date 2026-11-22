@@ -1,0 +1,12 @@
+# Tool configuration (the dependencies are in requirements.txt).
+
+[tool.ruff.lint]
+# Ruff's default rules, plus the docstring rules (pydocstyle) in Google style.
+extend-select = ["D"]
+ignore = [
+    "D105",   # magic methods (__repr__, __eq__...) need no docstring
+    "D107",   # __init__: in Google style the constructor's arguments go in the class docstring
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"

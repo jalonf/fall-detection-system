@@ -14,6 +14,11 @@ _PADDING = 24   # 12 px each side of a segment's text
 
 
 class SegmentedControl(QWidget):
+    """Equal-width checkable segments; nothing is selected until the user picks.
+
+    Signals:
+        selection_changed(int): Index of the segment chosen.
+    """
     selection_changed = Signal(int)
 
     def __init__(self, labels: list[str] | tuple[str, ...], *, height: int = Size.H_MD,
@@ -51,6 +56,14 @@ class SegmentedControl(QWidget):
     # ------------------------------------------------------------------ API
     @staticmethod
     def minimum_width(labels) -> int:
+        """Returns the width the segments need to fit their labels at equal width.
+
+        Args:
+            labels: Label of each segment.
+
+        Returns:
+            The width in pixels, borders included.
+        """
         metrics = QFontMetrics(Type.font("body-strong"))
         widest = max((metrics.horizontalAdvance(label) for label in labels), default=0)
         return len(labels) * (widest + _PADDING) + len(labels) + 1
@@ -63,25 +76,38 @@ class SegmentedControl(QWidget):
         return total <= width and SegmentedControl.minimum_width(labels) <= width
 
     def selected(self) -> int:
+        """Returns the index of the checked segment, or -1."""
         return self._group.checkedId()
 
     def set_selected(self, index: int) -> None:
+        """Checks a segment from code.
+
+        Args:
+            index: Index of the segment.
+        """
         button = self._group.button(index)
         if button is not None:
             button.setChecked(True)
 
     def clear(self) -> None:
+        """Unchecks every segment."""
         self._group.setExclusive(False)
         for button in self.buttons:
             button.setChecked(False)
         self._group.setExclusive(True)
 
     def set_invalid(self, invalid: bool) -> None:
+        """Marks the control as invalid (red border) or valid.
+
+        Args:
+            invalid: True to show the error state.
+        """
         if invalid != self._invalid:
             self._invalid = invalid
             self.update()
 
     def focus_target(self) -> QWidget:
+        """Returns the widget to focus: the checked segment, or the first one."""
         checked = self._group.checkedButton()
         return checked or self.buttons[0]
 
@@ -92,6 +118,7 @@ class SegmentedControl(QWidget):
 
     # ------------------------------------------------------------------ painting
     def paintEvent(self, event) -> None:
+        """Paints the outer border and the dividers between segments."""
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
         rect = crisp(QRectF(self.rect()))

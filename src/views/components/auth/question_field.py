@@ -51,19 +51,27 @@ class RadioGroup(QWidget):
             self.setAccessibleName(accessible_name)
 
     def selected(self) -> int:
+        """Returns the index of the checked option, or -1."""
         return self._group.checkedId()
 
     def clear(self) -> None:
+        """Unchecks every option."""
         self._group.setExclusive(False)
         for button in self.buttons:
             button.setChecked(False)
         self._group.setExclusive(True)
 
     def set_invalid(self, invalid: bool) -> None:
+        """Marks the options as invalid (red) or valid.
+
+        Args:
+            invalid: True to show the error state.
+        """
         for button in self.buttons:
             set_props(button, invalid=invalid)
 
     def focus_target(self) -> QWidget:
+        """Returns the widget to focus: the checked option, or the first one."""
         return self._group.checkedButton() or self.buttons[0]
 
 
@@ -141,6 +149,11 @@ class QuestionField(QWidget):
         return False
 
     def set_error(self, message: str | None) -> None:
+        """Shows an inline error under the question, or clears it.
+
+        Args:
+            message: The error, or None to clear it.
+        """
         self._error = message is not None
         if self.field is not None:
             self.field.set_error(message)
@@ -150,6 +163,7 @@ class QuestionField(QWidget):
             self.options.setAccessibleDescription(message or "")
 
     def reset(self) -> None:
+        """Clears the answer and the error."""
         if self.options is not None:
             self.options.clear()
         if self.edit is not None:
@@ -159,6 +173,7 @@ class QuestionField(QWidget):
         self.set_error(None)
 
     def focus_target(self) -> QWidget:
+        """Returns the widget to focus to answer this question."""
         if self.options is not None:
             return self.options.focus_target()
         if self.edit is not None:
@@ -173,8 +188,14 @@ class QuestionField(QWidget):
 
 
 class QuestionStep(QWidget):
-    """All the questions of one step, grouped by section. Consecutive NUMBER questions share a
-    row; consecutive CHECK questions form a two-column grid."""
+    """All the questions of one step of the sign-up form, grouped by section.
+
+    Consecutive NUMBER questions share a row; consecutive CHECK questions form a two-column grid.
+
+    Args:
+        step: The step (PROFILE, DAILY_LIFE or HEALTH).
+        parent: Parent widget.
+    """
 
     def __init__(self, step: str, parent: QWidget | None = None):
         super().__init__(parent)
@@ -230,6 +251,11 @@ class QuestionStep(QWidget):
                 layout.addWidget(fields[0])
 
     def answers(self) -> dict[str, float]:
+        """Returns the answers of this step.
+
+        Returns:
+            Model feature -> value; None for questions not answered yet.
+        """
         return {field.question.key: field.value() for field in self.fields}
 
     def validate(self) -> list[tuple[QWidget, QWidget]]:
@@ -237,5 +263,6 @@ class QuestionStep(QWidget):
         return [(field, field.focus_target()) for field in self.fields if not field.validate()]
 
     def reset(self) -> None:
+        """Clears every answer and error of this step."""
         for field in self.fields:
             field.reset()

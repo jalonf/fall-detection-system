@@ -1,3 +1,10 @@
+"""Trains and evaluates the two GRU fall-detection models (15 and 30 FPS).
+
+The models are saved in `models/fall_detection/` and the evaluation plots in `docs/`.
+
+    python -m training.fall_detection.train_fall_model
+"""
+
 import os
 
 os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'

@@ -28,6 +28,11 @@ logger = logging.getLogger(__name__)
 
 
 class AppCoordinator:
+    """Decides which screen comes next and builds it.
+
+    Args:
+        window: The main window; the navigator shows the screens in it.
+    """
     def __init__(self, window: QMainWindow):
         self.navigator = Navigator(window)
         self._patients = PatientRepository()

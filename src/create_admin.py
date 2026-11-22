@@ -56,6 +56,14 @@ def _ask_password() -> str:
 
 
 def main(argv: list[str] | None = None) -> int:
+    """Creates an administrator account from the prompts (or the arguments).
+
+    Args:
+        argv: Command-line arguments; None reads `sys.argv`.
+
+    Returns:
+        The exit code: 0 when the account was created, 1 otherwise.
+    """
     parser = argparse.ArgumentParser(prog="python -m src.create_admin", description="Create an administrator account.")
     parser.add_argument("--name", help="full name (asked when omitted)")
     parser.add_argument("--email", help="e-mail used to sign in (asked when omitted)")

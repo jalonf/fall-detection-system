@@ -30,6 +30,12 @@ class _FormArea(QWidget):
 
 
 class AuthView(QWidget):
+    """Sign-in and sign-up screen: the brand panel on the left, the form pages on the right.
+
+    Signals:
+        login_requested(str, str): E-mail and password to sign in with.
+        register_requested(RegistrationData): The completed sign-up form.
+    """
     login_requested = Signal(str, str)
     register_requested = Signal(RegistrationData)
 
@@ -97,9 +103,12 @@ class AuthView(QWidget):
         self._unlock_if_unanswered()
 
     def _unlock_if_unanswered(self) -> None:
-        """If the controller raised instead of answering (a database error, a password bcrypt
+        """Unlocks the page with a generic error when the controller did not answer.
+
+        If the controller raised instead of answering (a database error, a password bcrypt
         rejects...), PySide only prints the exception and the page would stay locked on
-        "Signing in…" for good. Unlock it with a generic error instead."""
+        "Signing in…" for good.
+        """
         if not self._answered:
             self.show_error(Common.UNEXPECTED_ERROR)
 
@@ -128,10 +137,12 @@ class AuthView(QWidget):
 
     # ------------------------------------------------------------------ events
     def resizeEvent(self, event) -> None:
+        """Keeps the brand panel at 40 % of the width, between 440 and 640 px."""
         super().resizeEvent(event)
         self._brand.set_target_width(max(440, min(640, round(self.width() * 0.40))))
 
     def showEvent(self, event) -> None:
+        """Resets the forms after a sign-out and focuses the first field."""
         super().showEvent(event)
         if event.spontaneous():
             return
@@ -143,11 +154,13 @@ class AuthView(QWidget):
         self._pages.currentWidget().focus_first()
 
     def hideEvent(self, event) -> None:
+        """Remembers that the app hid the screen (a sign-in), so it resets when shown again."""
         super().hideEvent(event)
         if not event.spontaneous():
             self._hidden_by_app = True
 
     def keyPressEvent(self, event) -> None:
+        """Ignores Esc, which has no meaning on these screens."""
         if event.key() == Qt.Key.Key_Escape:   # Esc does nothing on these screens
             event.accept()
             return

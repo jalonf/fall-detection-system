@@ -69,24 +69,42 @@ class Panel(QWidget):
 
     # ------------------------------------------------------------------ API
     def set_title(self, title: str) -> None:
+        """Changes the title in the header.
+
+        Args:
+            title: The new title.
+        """
         self.title_label.setText(title)
 
     def set_subtitle(self, text: str) -> None:
+        """Changes the text next to the title.
+
+        Args:
+            text: The new subtitle (or counter).
+        """
         if text != self.subtitle_label.text():
             self.subtitle_label.setText(text)
 
     def add_action(self, widget: QWidget) -> None:
+        """Adds a widget to the right of the header.
+
+        Args:
+            widget: Button, combo or label.
+        """
         self._actions.addWidget(widget, 0, Qt.AlignmentFlag.AlignVCenter)
 
     def body_layout(self) -> QVBoxLayout:
+        """Returns the layout where the panel's content goes."""
         return self._body_layout
 
     def footer_layout(self) -> QHBoxLayout:
+        """Returns the footer's layout (the panel must be created with `footer=True`)."""
         assert self._footer_layout is not None, "the panel was created without a footer"
         return self._footer_layout
 
     # ------------------------------------------------------------------ painting
     def paintEvent(self, event) -> None:
+        """Paints the surface, the header band and the borders."""
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
         frame = crisp(QRectF(self.rect()))
@@ -110,6 +128,7 @@ class Panel(QWidget):
             painter.fillRect(QRect(1, self.footer.geometry().top() - 1, self.width() - 2, 1), QColor(Colors.N150))
 
     def eventFilter(self, watched, event) -> bool:
+        """Re-masks a flush body to the rounded corners when it is resized."""
         if watched is self.body and event.type() == QEvent.Type.Resize:
             self._mask_body()
         return False

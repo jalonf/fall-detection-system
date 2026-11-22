@@ -23,6 +23,11 @@ _SHIFT = 40.0
 
 
 class PageTransition(QWidget):
+    """Overlay that slides between two pages of a QStackedWidget.
+
+    Signals:
+        finished: The slide ended and the new page is the current one.
+    """
     finished = Signal()
 
     def __init__(self, parent: QWidget):
@@ -59,6 +64,7 @@ class PageTransition(QWidget):
     to_x = Property(float, _get_to_x, _set_to_x)
 
     def is_running(self) -> bool:
+        """True while a slide is in progress."""
         return self._group.state() == QParallelAnimationGroup.State.Running
 
     def slide(self, stack: QStackedWidget, target: QWidget, forward: bool) -> None:
@@ -97,6 +103,7 @@ class PageTransition(QWidget):
         self.finished.emit()
 
     def paintEvent(self, event) -> None:
+        """Paints both page snapshots at their current offset and opacity."""
         painter = QPainter(self)
         painter.fillRect(self.rect(), QColor(Colors.N0))
         progress = 1.0 - min(1.0, abs(self._to_x) / _SHIFT)

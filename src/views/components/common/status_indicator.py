@@ -39,6 +39,13 @@ def paint_triangle(painter: QPainter, rect: QRectF, color: QColor, mark: QColor)
 
 
 class StatusIndicator(QWidget):
+    """Shape, colour and text of a monitoring state, so it never depends on colour alone.
+
+    Args:
+        on_dark: Colours for a dark background.
+        reserve: Texts it may show; its width fits the widest, so it never relayouts.
+        parent: Parent widget.
+    """
     KINDS = ("idle", "starting", "live", "stopping", "error", "finished", "alert")
 
     def __init__(self, *, on_dark: bool = False, reserve: tuple[str, ...] = (), parent: QWidget | None = None):
@@ -55,6 +62,12 @@ class StatusIndicator(QWidget):
         self.setFixedHeight(Type.line_height("body-strong"))
 
     def set_status(self, kind: str, text: str) -> None:
+        """Changes the state shown.
+
+        Args:
+            kind: One of `KINDS`; it picks the shape and colour.
+            text: Text next to the shape.
+        """
         self._kind = kind
         self._text = text
         self.setAccessibleName(text)
@@ -66,12 +79,19 @@ class StatusIndicator(QWidget):
         self.update()
 
     def kind(self) -> str:
+        """Returns the kind shown."""
         return self._kind
 
     def text(self) -> str:
+        """Returns the text shown."""
         return self._text
 
     def set_pulse_phase(self, phase: float) -> None:
+        """Moves the alert triangle's colour along the pulse.
+
+        Args:
+            phase: 0 (R600) to 1 (R300).
+        """
         if self._kind == "alert":
             self._phase = phase
             self.update(self._indicator_rect().toAlignedRect().adjusted(-1, -1, 1, 1))
@@ -82,15 +102,18 @@ class StatusIndicator(QWidget):
         self.update(self._indicator_rect().toAlignedRect().adjusted(-1, -1, 1, 1))
 
     def showEvent(self, event) -> None:
+        """Starts the spinner of the starting and stopping states."""
         super().showEvent(event)
         if self._kind in ("starting", "stopping"):
             self._rotation.start()
 
     def hideEvent(self, event) -> None:
+        """Stops the spinner while hidden."""
         super().hideEvent(event)
         self._rotation.stop()
 
     def sizeHint(self) -> QSize:
+        """Preferred size: shape, gap and the widest reserved text."""
         metrics = QFontMetrics(Type.font("body-strong"))
         text_width = max(metrics.horizontalAdvance(self._text), self._reserved)
         return QSize(_BOX + _GAP + text_width + 1, Type.line_height("body-strong"))
@@ -99,6 +122,7 @@ class StatusIndicator(QWidget):
         return QRectF(0, (self.height() - _BOX) / 2, _BOX, _BOX)
 
     def paintEvent(self, event) -> None:
+        """Paints the shape of the state and the text."""
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
         box = self._indicator_rect()

@@ -105,10 +105,17 @@ def encode_snapshot(frame) -> bytes | None:
 
 
 def to_qimage(bgr) -> QImage:
-    """
-    BGR array to QImage. Qt reads BGR directly (`Format_BGR888`), so there is no colour
-    conversion. `.copy()` detaches the image from the NumPy buffer, which is freed as soon
-    as the worker moves on to the next frame.
+    """Converts a BGR array to a QImage.
+
+    Qt reads BGR directly (`Format_BGR888`), so there is no colour conversion. `.copy()`
+    detaches the image from the NumPy buffer, which is freed as soon as the worker moves on
+    to the next frame.
+
+    Args:
+        bgr: Image (H, W, 3), possibly a non-contiguous crop.
+
+    Returns:
+        An independent QImage.
     """
     bgr = np.ascontiguousarray(bgr)   # a crop is a view with gaps between rows
     height, width, _ = bgr.shape

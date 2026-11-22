@@ -18,6 +18,11 @@ _MAX_TEXT = 360
 
 
 class EmptyState(QWidget):
+    """Centred icon (or spinner), title, text and optional action, for areas with no content.
+
+    Signals:
+        action_clicked: The action button was pressed.
+    """
     action_clicked = Signal()
 
     def __init__(self, *, on_dark: bool = False, parent: QWidget | None = None):
@@ -38,6 +43,16 @@ class EmptyState(QWidget):
 
     def set_content(self, *, icon: str | None = None, icon_color: str | None = None, spinner: bool = False,
                     title: str = "", text: str = "", action: str | None = None) -> None:
+        """Changes what is shown.
+
+        Args:
+            icon: Name of the icon, or None.
+            icon_color: Colour of the icon (or spinner); None uses the default.
+            spinner: Show a spinner instead of the icon.
+            title: Title.
+            text: Line of text under the title.
+            action: Text of the action button, or None to hide it.
+        """
         self._icon, self._icon_color, self._spinner = icon, icon_color, spinner
         self._title, self._text = title, text
         self.setAccessibleName(title)
@@ -56,6 +71,7 @@ class EmptyState(QWidget):
         self.update()
 
     def action_button(self) -> Button:
+        """Returns the action button."""
         return self._action
 
     @Slot("QVariant")
@@ -64,15 +80,18 @@ class EmptyState(QWidget):
         self.update(self._tile_rect().toAlignedRect())
 
     def showEvent(self, event) -> None:
+        """Starts the spinner if it is shown."""
         super().showEvent(event)
         if self._spinner:
             self._rotation.start()
 
     def hideEvent(self, event) -> None:
+        """Stops the spinner while hidden."""
         super().hideEvent(event)
         self._rotation.stop()
 
     def resizeEvent(self, event) -> None:
+        """Keeps the action button under the text."""
         super().resizeEvent(event)
         self._place_action()
 
@@ -106,6 +125,7 @@ class EmptyState(QWidget):
 
     # ------------------------------------------------------------------ painting
     def paintEvent(self, event) -> None:
+        """Paints the icon (or spinner), the title and the wrapped text, centred."""
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
         if self._on_dark:

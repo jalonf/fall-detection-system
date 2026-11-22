@@ -20,6 +20,12 @@ _ICON = 24
 
 
 class IconTile(QWidget):
+    """48 px square with an icon, the mark of a page's heading.
+
+    Args:
+        icon: Name of the icon (see `icons.ICONS`).
+        parent: Parent widget.
+    """
     def __init__(self, icon: str, parent: QWidget | None = None):
         super().__init__(parent)
         self._icon = icon
@@ -27,6 +33,7 @@ class IconTile(QWidget):
         self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
 
     def paintEvent(self, event) -> None:
+        """Paints the P50 square and the icon centred on it."""
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
         painter.setPen(Qt.PenStyle.NoPen)

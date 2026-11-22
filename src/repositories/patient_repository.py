@@ -1,3 +1,5 @@
+"""Database access for patients."""
+
 import logging
 
 from src.database.models.patient import Patient
@@ -27,10 +29,13 @@ class PatientRepository:
             return None
 
     def get_patient_by_caregiver(self, caregiver_id):
-        """
-        Retrieves the patient associated with the caregiver. 
-        Currently returns the first match (1:1), but returns a list or 
-        can be easily adapted when expanding to 1:N.
+        """Returns the patient of a caregiver, or None.
+
+        There is one patient per caregiver today (1:1), so the first match is returned; this is
+        the place to change when a caregiver can have several patients (1:N).
+
+        Args:
+            caregiver_id: The caregiver (a User or its id).
         """
         logger.debug("Querying patient for caregiver ID: %s", caregiver_id)
         patient = Patient.select().where(Patient.caregiver_id == caregiver_id).first()

@@ -1,3 +1,5 @@
+"""FallEvent model: one detected fall of a patient."""
+
 import datetime
 
 from peewee import BooleanField, DateTimeField, FloatField, ForeignKeyField

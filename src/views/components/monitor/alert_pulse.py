@@ -24,14 +24,17 @@ class AlertPulse(QObject):
         self._animation.valueChanged.connect(self._on_value)
 
     def start(self) -> None:
+        """Starts the pulse (no-op if it is already running)."""
         if self._animation.state() != QVariantAnimation.State.Running:
             self._animation.start()
 
     def stop(self) -> None:
+        """Stops the pulse and resets the phase to 0."""
         self._animation.stop()
         self.phase_changed.emit(0.0)
 
     def is_active(self) -> bool:
+        """True while the pulse is running."""
         return self._animation.state() == QVariantAnimation.State.Running
 
     @Slot("QVariant")

@@ -7,6 +7,15 @@ from PySide6.QtGui import QColor, QPainter, QPen
 
 
 def paint_arc(painter: QPainter, rect: QRectF, angle: float, color: str, stroke: float = 2.0) -> None:
+    """Paints one frame of the spinner: a 270-degree arc.
+
+    Args:
+        painter: Painter to draw with.
+        rect: Square the arc fits in.
+        angle: Rotation, in degrees.
+        color: Colour token.
+        stroke: Line width.
+    """
     painter.save()
     painter.setRenderHint(QPainter.RenderHint.Antialiasing)
     pen = QPen(QColor(color), stroke)

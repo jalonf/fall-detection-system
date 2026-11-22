@@ -69,6 +69,14 @@ def synthetic_frame(t: float, width: int = 1280, height: int = 720) -> QImage:
 
 
 def synthetic_skeleton(t: float) -> QImage:
+    """Draws a synthetic skeleton image, standing in for the worker's skeleton view.
+
+    Args:
+        t: Time in seconds; the figure sways with it.
+
+    Returns:
+        A 360 x 480 image on the stage colour.
+    """
     image = QImage(360, 480, QImage.Format.Format_RGB32)
     image.fill(QColor(Colors.STAGE))
     painter = QPainter(image)
@@ -107,6 +115,7 @@ class FakeAuthController(QObject):
 
     @Slot(str, str)
     def login(self, email: str, password: str) -> None:
+        """Signs in with any password except "wrong"."""
         if password == "wrong":
             self.view.show_error("Invalid email or password. Please try again.")
             return
@@ -115,6 +124,7 @@ class FakeAuthController(QObject):
 
     @Slot(object)
     def register(self, data: RegistrationData) -> None:
+        """Signs up with MEDIUM risk, except for e-mails that start with "taken"."""
         self.registrations.append(data)
         print(f"[preview] registration: role={data.role!r}, {len(data.risk_answers)} answers")
         if data.email.startswith("taken"):
@@ -157,6 +167,7 @@ class FakeMonitorController(QObject):
 
     @Slot(int)
     def start_camera(self, index: int) -> None:
+        """Starts a fake camera run; camera 2 does not exist."""
         if self.running:
             return
         if isinstance(self.view, AdminView):     # same message as AdminController
@@ -171,6 +182,7 @@ class FakeMonitorController(QObject):
 
     @Slot(str)
     def start_file(self, path: str) -> None:
+        """Starts a fake 6-second file analysis."""
         if self.running:
             return
         self._begin(f"Processing video file: {os.path.basename(path)}", is_file=True)
@@ -184,12 +196,14 @@ class FakeMonitorController(QObject):
 
     @Slot()
     def connected(self) -> None:
+        """The fake source is ready: frames start."""
         self.frame_timer.start()
         if self.is_file:
             self.end_timer.start()
 
     @Slot()
     def frame(self) -> None:
+        """Sends one synthetic frame (and its telemetry to administrators)."""
         if self.waiting_first_frame:
             self.waiting_first_frame = False
             self.view.log_event("INFO", "Stream connected")
@@ -207,6 +221,11 @@ class FakeMonitorController(QObject):
             self.fall(0.87 if self.frames == 120 else 0.91)
 
     def fall(self, probability: float) -> None:
+        """Reports a fall, as the real controller does.
+
+        Args:
+            probability: Probability shown in the alert.
+        """
         self.view.trigger_fall_alert(f"Fall detected ({probability:.0%})")
         if not isinstance(self.view, AdminView):  # administrators run in test mode: no e-mail
             self.view.log_event("INFO", "Sending notification e-mail...")
@@ -214,10 +233,12 @@ class FakeMonitorController(QObject):
 
     @Slot()
     def mail_sent(self) -> None:
+        """Logs that the alert e-mail was sent."""
         self.view.log_event("INFO", "Notification e-mail sent")
 
     @Slot()
     def stop(self) -> None:
+        """The user pressed Stop: the run ends shortly after."""
         if not self.running:
             return
         self.view.set_stopping()
@@ -225,11 +246,13 @@ class FakeMonitorController(QObject):
 
     @Slot()
     def fail(self) -> None:
+        """The source failed: logs the error and ends the run."""
         self.view.log_event("ERROR", self._pending_failure)
         self.finish()
 
     @Slot()
     def finish(self) -> None:
+        """Ends the run, as the real controller does when the worker finishes."""
         for timer in (self.frame_timer, self.connect_timer, self.end_timer):
             timer.stop()
         if not self.running:
@@ -242,12 +265,22 @@ class FakeMonitorController(QObject):
 
 # ---------------------------------------------------------------------- checks
 def run_checks() -> list[str]:
+    """Runs the start-up checks of the harness.
+
+    Returns:
+        The problems found: colour pairs below WCAG AA and toast rules no longer in the controllers.
+    """
     problems = [f"contrast: {failure}" for failure in check_contrast()]
     problems += [f"toast rule no longer in the controllers: {key!r}" for key in check_toast_rules()]
     return problems
 
 
 def forbidden_modules() -> list[str]:
+    """Lists the Qt modules loaded from outside PySide6-Essentials.
+
+    Returns:
+        Their names; empty when the interface only uses the allowed modules.
+    """
     loaded = {name.split(".")[1] for name in sys.modules if name.startswith("PySide6.Qt")}
     return sorted(loaded - ALLOWED_QT_MODULES)
 
@@ -271,6 +304,7 @@ class PreviewWindow(QMainWindow):
 
     @Slot()
     def open_dashboard(self) -> None:
+        """Opens the dashboard of the chosen role after signing in."""
         view: BaseMonitorView
         if self.admin:
             view = AdminView(user_name="Ana García", user_role="Administrator")
@@ -296,10 +330,12 @@ class Script(QObject):
         self.timer.timeout.connect(self.next)
 
     def start(self) -> None:
+        """Starts the steps."""
         self.timer.start(300)
 
     @Slot()
     def next(self) -> None:
+        """Runs the next step, recording its failure if it raises, and schedules the one after."""
         if self.index >= len(self.steps):
             QApplication.instance().exit(1 if self.failures else 0)
             return
@@ -330,6 +366,16 @@ def _clear_toasts(window: QWidget) -> None:
 
 
 def shot_steps(out: Path, size: tuple[int, int], keep: list) -> list[tuple[int, Callable[[], None]]]:
+    """Builds the scripted steps that capture every state of every screen.
+
+    Args:
+        out: Folder for the screenshots.
+        size: Window size (width, height).
+        keep: List that keeps the windows alive while the script runs.
+
+    Returns:
+        (delay in ms, action) pairs for `Script`.
+    """
     width, height = size
     suffix = f"{width}x{height}"
     steps: list[tuple[int, Callable[[], None]]] = []
@@ -516,6 +562,11 @@ def perf_steps(size: tuple[int, int], keep: list, report: dict) -> list[tuple[in
 
 # ---------------------------------------------------------------------- entry point
 def main() -> int:
+    """Runs the harness in the mode chosen on the command line.
+
+    Returns:
+        The exit code: 1 when a check failed or a forbidden Qt module was loaded.
+    """
     app = QApplication(sys.argv[:1])
     app.setQuitOnLastWindowClosed(not (ARGS.shots or ARGS.perf))
     ThemeManager.setup_theme(app)

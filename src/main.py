@@ -1,3 +1,5 @@
+"""Entry point of the application: logging, theme, database and the main window."""
+
 import logging
 import os
 import sys

@@ -61,12 +61,14 @@ _ROOT = QModelIndex()
 
 @dataclass(frozen=True)
 class LogEntry:
+    """One event of the log: when, its type (INFO, ERROR or ALERT) and its description."""
     time: QTime
     kind: str
     message: str
 
 
 class EventLogModel(QAbstractTableModel):
+    """The session's events, newest first, at most `MAX_ROWS`."""
     TypeRole = Qt.ItemDataRole.UserRole + 1
     TimeRole = Qt.ItemDataRole.UserRole + 2
     MessageRole = Qt.ItemDataRole.UserRole + 3
@@ -77,12 +79,15 @@ class EventLogModel(QAbstractTableModel):
         self._rows: list[LogEntry] = []      # newest first
 
     def rowCount(self, parent=_ROOT) -> int:
+        """Returns the number of events (it is a flat list)."""
         return 0 if parent.isValid() else len(self._rows)
 
     def columnCount(self, parent=_ROOT) -> int:
+        """Returns the number of columns: time, type and description."""
         return 0 if parent.isValid() else len(Log.COLUMNS)
 
     def data(self, index, role=Qt.ItemDataRole.DisplayRole):
+        """Returns an event's time, type or description for the display and custom roles."""
         if not index.isValid():
             return None
         entry = self._rows[index.row()]
@@ -99,11 +104,19 @@ class EventLogModel(QAbstractTableModel):
         return None
 
     def headerData(self, section, orientation, role=Qt.ItemDataRole.DisplayRole):
+        """Returns the column titles."""
         if orientation == Qt.Orientation.Horizontal and role == Qt.ItemDataRole.DisplayRole:
             return Log.COLUMNS[section]
         return None
 
     def add_event(self, kind: str, message: str, when: QTime | None = None) -> None:
+        """Adds an event at the top, dropping the oldest one past `MAX_ROWS`.
+
+        Args:
+            kind: "INFO", "ERROR" or "ALERT".
+            message: Description.
+            when: Time of the event; None uses the current time.
+        """
         if len(self._rows) >= self.MAX_ROWS:
             last = len(self._rows) - 1
             self.beginRemoveRows(QModelIndex(), last, last)
@@ -114,15 +127,18 @@ class EventLogModel(QAbstractTableModel):
         self.endInsertRows()
 
     def clear(self) -> None:
+        """Removes every event."""
         self.beginResetModel()
         self._rows.clear()
         self.endResetModel()
 
     def entries(self) -> list[LogEntry]:
+        """Returns a copy of the events, newest first."""
         return list(self._rows)
 
 
 class EventFilterProxy(QSortFilterProxyModel):
+    """Shows all the events, or only those of one type."""
     FILTERS: ClassVar[dict[str, frozenset[str] | None]] = {
         "all": None, "alerts": frozenset({"ALERT"}), "errors": frozenset({"ERROR"}), "info": frozenset({"INFO"}),
     }
@@ -132,14 +148,21 @@ class EventFilterProxy(QSortFilterProxyModel):
         self._key = "all"
 
     def set_filter(self, key: str) -> None:
+        """Changes the filter.
+
+        Args:
+            key: "all", "alerts", "errors" or "info".
+        """
         if key in self.FILTERS and key != self._key:
             self._key = key
             self.invalidateRowsFilter()
 
     def filter_key(self) -> str:
+        """Returns the current filter's key."""
         return self._key
 
     def filterAcceptsRow(self, source_row: int, source_parent) -> bool:
+        """Accepts the events whose type the filter shows."""
         kinds = self.FILTERS[self._key]
         if kinds is None:
             return True
@@ -148,13 +171,17 @@ class EventFilterProxy(QSortFilterProxyModel):
 
 
 class EventFeedDelegate(QStyledItemDelegate):
-    """Two-line row: badge and time, then the description. ALERT rows get an R50 fill and a 3 px
-    R600 bar; selection P50; hover N50."""
+    """Paints each event as a two-line row: badge and time, then the description.
+
+    ALERT rows get an R50 fill and a 3 px R600 bar; selection P50; hover N50.
+    """
 
     def sizeHint(self, option: QStyleOptionViewItem, index) -> QSize:
+        """Every row is `ROW_HEIGHT` tall."""
         return QSize(option.rect.width(), ROW_HEIGHT)
 
     def paint(self, painter: QPainter, option: QStyleOptionViewItem, index) -> None:
+        """Paints one event (see the class docstring)."""
         rect = option.rect
         kind = index.data(EventLogModel.TypeRole) or "INFO"
         time = index.data(EventLogModel.TimeRole)
@@ -189,6 +216,7 @@ class EventFeedDelegate(QStyledItemDelegate):
 
 
 class EventList(QListView):
+    """The list of events, with copy (Ctrl+C) and tooltips for cut descriptions."""
     def __init__(self, model, parent: QWidget | None = None):
         super().__init__(parent)
         self.setModel(model)
@@ -221,6 +249,7 @@ class EventList(QListView):
             QGuiApplication.clipboard().setText("\n".join(lines))
 
     def viewportEvent(self, event) -> bool:
+        """Shows a tooltip only for descriptions cut by the row's width."""
         if event.type() == event.Type.ToolTip:
             index = self.indexAt(event.pos())
             text = index.data(EventLogModel.MessageRole) if index.isValid() else None
@@ -234,6 +263,7 @@ class EventList(QListView):
         return super().viewportEvent(event)
 
     def paintEvent(self, event) -> None:
+        """Paints the rows, or a message when there are none to show."""
         super().paintEvent(event)
         model = self.model()
         if model.rowCount() == 0:
@@ -246,6 +276,12 @@ class EventList(QListView):
 
 
 class EventLogPanel(Panel):
+    """Event log panel: the list, its type filter and the export / clear menu.
+
+    Args:
+        settings: Where the chosen filter is remembered.
+        parent: Parent widget.
+    """
     def __init__(self, settings: QSettings, parent: QWidget | None = None):
         super().__init__(Log.TITLE, flush=True, parent=parent)
         self.setMinimumHeight(200)
@@ -283,13 +319,22 @@ class EventLogPanel(Panel):
 
     # ------------------------------------------------------------------ API
     def add_event(self, kind: str, message: str, when: QTime | None = None) -> None:
+        """Adds an event to the log.
+
+        Args:
+            kind: "INFO", "ERROR" or "ALERT".
+            message: Description.
+            when: Time of the event; None uses the current time.
+        """
         self.model.add_event(kind, message, when)
 
     def total(self) -> int:
+        """Returns the number of events in the log, whatever the filter shows."""
         return self.model.rowCount()
 
     @Slot()
     def focus_events(self) -> None:
+        """Focuses the list (Ctrl+L) and selects the newest event if none is."""
         self.events.setFocus(Qt.FocusReason.ShortcutFocusReason)
         if not self.events.currentIndex().isValid() and self.proxy.rowCount():
             self.events.setCurrentIndex(self.proxy.index(0, 0))
@@ -339,6 +384,7 @@ class EventLogPanel(Panel):
 
     @Slot()
     def confirm_clear(self) -> None:
+        """Asks for confirmation and clears the log."""
         total = self.model.rowCount()
         if total == 0:
             return

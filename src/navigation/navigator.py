@@ -33,11 +33,19 @@ FADE_MS = 400
 
 @dataclass(eq=False)
 class Screen:
+    """A view and the controller that drives it.
+
+    Attributes:
+        view: The widget shown.
+        controller: Its controller; its `shutdown()` (if any) is called when leaving the screen.
+        persistent: Kept and reused after leaving it, instead of being destroyed.
+    """
     view: QWidget
     controller: object | None = None
     persistent: bool = False      # kept and reused after leaving it, instead of being destroyed
 
     def name(self) -> str:
+        """Returns the view's class name, for the log."""
         return type(self.view).__name__
 
     def stop(self) -> None:
@@ -61,6 +69,7 @@ class Navigator(QObject):
 
     @property
     def current(self) -> Screen | None:
+        """The screen shown now, or None before the first one."""
         return self._current
 
     def show(self, screen: Screen) -> None:

@@ -1,15 +1,16 @@
-"""Session card at the top of the monitoring screen's body: patient, camera, status and duration —
-the main place where the monitoring state shows.
+"""Session card at the top of the monitoring screen's body.
 
-It is a card like the panels under it (N0 fill, N200 border, square corners), separated from the top
-bar by the body's margin, so it reads as content rather than as part of the header.
+It shows the patient, camera, status and duration: the main place where the monitoring
+state shows. It is a card like the panels under it (N0 fill, N200 border, square
+corners), separated from the top bar by the body's margin, so it reads as content rather
+than as part of the header.
 
-Each item is a small overline label with its value underneath: the patient's name with a risk
-badge, the camera with the resolution and frame rate it runs at (set by the patient's risk level),
-the status and the duration. Administrators have no patient: the first item is their test-profile
-selector instead, with a TEST MODE badge. During a fall alert the card turns R50 with an R200 border
-and a 3 px R600 bar on the left (like the alert rows of the event log), its status pulses and an
-Acknowledge button appears on the right.
+Each item is a small overline label with its value underneath: the patient's name with a
+risk badge, the camera with the resolution and frame rate it runs at (set by the patient's
+risk level), the status and the duration. Administrators have no patient: the first item is
+their test-profile selector instead, with a TEST MODE badge. During a fall alert the card
+turns R50 with an R200 border and a 3 px R600 bar on the left (like the alert rows of the
+event log), its status pulses and an Acknowledge button appears on the right.
 """
 
 from __future__ import annotations
@@ -46,6 +47,17 @@ def _elide(label: QLabel, text: str, role: str, width: int, mode=Qt.TextElideMod
 
 
 class ContextBar(QWidget):
+    """The session card (see the module docstring).
+
+    Signals:
+        acknowledge_clicked: The user acknowledged the fall alert.
+
+    Args:
+        patient_name: Name of the patient, or None.
+        risk_level: Their risk level, or None.
+        parent: Parent widget.
+        profile_selector: Administrators: their test-profile selector, shown instead of the patient.
+    """
     acknowledge_clicked = Signal()
 
     def __init__(self, patient_name: str | None, risk_level: str | None, parent: QWidget | None = None, *,
@@ -164,6 +176,11 @@ class ContextBar(QWidget):
         self.source.setToolTip(self.source.toolTip() or tooltip)
 
     def set_duration(self, text: str | None) -> None:
+        """Shows the run's duration.
+
+        Args:
+            text: "HH:MM:SS", or None for an em dash.
+        """
         if text != self.duration.text():
             self.duration.setText(text or EM_DASH)
             set_props(self.duration, tone="primary" if text else "tertiary")
@@ -182,13 +199,20 @@ class ContextBar(QWidget):
             self.update()
 
     def set_pulse_phase(self, phase: float) -> None:
+        """Moves the status triangle along the alert pulse.
+
+        Args:
+            phase: 0 to 1.
+        """
         self.status.set_pulse_phase(phase)
 
     def status_text(self) -> str:
+        """Returns the status text shown."""
         return self.status.text()
 
     # ------------------------------------------------------------------ painting
     def sizeHint(self) -> QSize:
+        """Preferred size: its content's width and the fixed height."""
         return QSize(self.layout().sizeHint().width(), Size.CONTEXT_BAR)
 
     def paintEvent(self, event) -> None:

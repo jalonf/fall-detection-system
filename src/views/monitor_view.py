@@ -7,5 +7,6 @@ from src.views.strings import Monitor
 
 
 class MonitorView(BaseMonitorView):
+    """Monitoring screen of caregivers and medical staff: the shared screen as it is."""
     SECTION = Monitor.SECTION_MONITORING
     CAN_ANALYSE_FILES = False

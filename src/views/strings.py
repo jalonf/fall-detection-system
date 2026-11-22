@@ -14,6 +14,7 @@ EM_DASH = "—"
 
 
 class Common:
+    """Texts shared by several screens."""
     CANCEL = "Cancel"
     OPTIONAL = "Optional"
     SHOW_PASSWORD = "Show password"
@@ -23,6 +24,7 @@ class Common:
 
 
 class Brand:
+    """Brand panel of the sign-in screens."""
     OVERLINE = "FALL RISK ASSESSMENT AND DETECTION"
     HEADLINE = "Continuous, private fall monitoring"
     PARAGRAPH = "For older adults, at home or in a care home."
@@ -36,6 +38,7 @@ class Brand:
 
 
 class Login:
+    """Sign-in page."""
     TITLE = "Sign in"
     SUBTITLE = "Enter your account details to continue."
     EMAIL = "Email"
@@ -51,6 +54,7 @@ class Login:
 
 
 class Register:
+    """Sign-up page."""
     BACK_TO_SIGN_IN = "Back to sign in"
     TITLE = "Create an account"
     SUBTITLE = "Five short steps. The health questions set the patient's risk level."
@@ -96,6 +100,7 @@ class Register:
 
 
 class Monitor:
+    """Monitoring screens: top bar, session card, video panel and alerts."""
     SECTION_MONITORING = "Patient Monitoring"
     SECTION_ADMIN = "Administration Monitoring"
     SIGN_OUT = "Sign out"
@@ -177,6 +182,7 @@ class Monitor:
 
 
 class Log:
+    """Event log panel."""
     TITLE = "Event log"
     COUNT_ONE = "1 event"
     COUNT_MANY = "{n} events"
@@ -206,6 +212,7 @@ class Log:
 
 
 class Pose:
+    """Pose analysis panel (administrators)."""
     TITLE = "Pose analysis"
     SUBTITLE = "33 landmarks"
     SKELETON = "SKELETON"
@@ -226,6 +233,15 @@ class Toasts:
 
 
 def event_count(shown: int, total: int) -> str:
+    """Returns the event log's counter text.
+
+    Args:
+        shown: Events that pass the filter.
+        total: Events in the log.
+
+    Returns:
+        "3 events", or "2 of 3 events" while a filter hides some.
+    """
     if shown != total:
         return Log.COUNT_FILTERED.format(shown=shown, total=total)
     return Log.COUNT_ONE if total == 1 else Log.COUNT_MANY.format(n=total)
@@ -273,6 +289,14 @@ def toast_rule_for(source: str, text: str) -> ToastRule | None:
 
 
 def risk_level_in(text: str) -> str:
+    """Finds the risk level mentioned in a controller message.
+
+    Args:
+        text: E.g. "Account created! The patient's risk level is HIGH.".
+
+    Returns:
+        "LOW", "MEDIUM" or "HIGH", or an em dash when there is none.
+    """
     match = _RISK_LEVEL.search(text)
     return match.group(1) if match else EM_DASH
 

@@ -74,6 +74,12 @@ def _row(*widgets: QWidget) -> QHBoxLayout:
 
 
 class RegisterPage(QWidget):
+    """Five-step sign-up form: caregiver, account, patient, daily life and health.
+
+    Signals:
+        submitted(RegistrationData): The validated form.
+        back_to_login_clicked: The user wants to go back to sign in.
+    """
     submitted = Signal(RegistrationData)
     back_to_login_clicked = Signal()
 
@@ -405,6 +411,11 @@ class RegisterPage(QWidget):
 
     # ------------------------------------------------------------------ API
     def collect(self) -> RegistrationData:
+        """Builds the DTO sent to the controller from the validated form.
+
+        Returns:
+            The account, the patient and the answers to the health questionnaire.
+        """
         answers: dict[str, float] = {}
         for step in (self.profile, self.daily, self.health):
             answers.update(step.answers())
@@ -420,6 +431,7 @@ class RegisterPage(QWidget):
         )
 
     def focus_first(self) -> None:
+        """Focuses the first field of the current step."""
         first = {0: self.name, 1: self.email, 2: self.patient}.get(self._current)
         if first is not None:
             first.setFocus(Qt.FocusReason.OtherFocusReason)
@@ -427,6 +439,11 @@ class RegisterPage(QWidget):
             self.setFocus(Qt.FocusReason.OtherFocusReason)
 
     def set_busy(self, busy: bool) -> None:
+        """Locks the form while the controller creates the account.
+
+        Args:
+            busy: True to lock it (and show the spinner), False to unlock it.
+        """
         self._busy = busy
         self.pages.setEnabled(not busy)
         self.back_link.setEnabled(not busy)
@@ -437,6 +454,7 @@ class RegisterPage(QWidget):
             self._go(self._current)
 
     def is_busy(self) -> bool:
+        """True while a sign-up request is being handled."""
         return self._busy
 
     def show_server_error(self, message: str) -> None:
@@ -459,6 +477,7 @@ class RegisterPage(QWidget):
             self.error_box.show()
 
     def reset(self) -> None:
+        """Clears every field and error and goes back to the first step."""
         self.setUpdatesEnabled(False)
         try:
             self._busy = False
@@ -488,6 +507,7 @@ class RegisterPage(QWidget):
 
     # ------------------------------------------------------------------ keyboard
     def keyPressEvent(self, event) -> None:
+        """Enter presses the focused button or goes to the next step; Esc does nothing."""
         if event.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
             event.accept()
             if self._busy:

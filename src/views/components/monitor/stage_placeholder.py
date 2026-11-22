@@ -11,6 +11,11 @@ from src.views.theme import Colors
 
 
 class StagePlaceholder(EmptyState):
+    """What the video stage shows without an image: stopped, starting, error or finished.
+
+    Signals:
+        retry_clicked: "Try again" was pressed after a source error.
+    """
     retry_clicked = Signal()
 
     def __init__(self, parent: QWidget | None = None):
@@ -19,6 +24,14 @@ class StagePlaceholder(EmptyState):
         self.show_state("idle")
 
     def show_state(self, state: str, *, error: str | None = None, label: str = "", duration: str = "") -> None:
+        """Shows the content of a monitoring state.
+
+        Args:
+            state: The monitoring state.
+            error: The source's error message (error state).
+            label: Name of the source (finished state).
+            duration: How long the analysis took (finished state).
+        """
         if state == "starting":
             title, text = Monitor.PLACEHOLDER["starting"]
             self.set_content(spinner=True, title=title, text=text)

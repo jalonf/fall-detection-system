@@ -16,6 +16,7 @@ _GAP = 4
 
 
 class PasswordChecklist(QWidget):
+    """The four password requirements, each ticked as soon as it is met."""
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
         self._met = dict.fromkeys((key for key, _ in Register.CHECKLIST), False)
@@ -30,6 +31,11 @@ class PasswordChecklist(QWidget):
 
     @Slot(str)
     def set_password(self, password: str) -> None:
+        """Updates the ticks for the password being typed.
+
+        Args:
+            password: The text of the password field.
+        """
         met = self.requirements(password)
         if met != self._met:
             self._met = met
@@ -37,6 +43,7 @@ class PasswordChecklist(QWidget):
             self.update()
 
     def is_satisfied(self) -> bool:
+        """True when every requirement is met."""
         return all(self._met.values())
 
     def _describe(self) -> None:
@@ -44,9 +51,11 @@ class PasswordChecklist(QWidget):
         self.setAccessibleDescription("; ".join(parts))
 
     def sizeHint(self) -> QSize:
+        """Preferred size: two rows of requirements."""
         return QSize(600, 2 * _ROW + _GAP)
 
     def paintEvent(self, event) -> None:
+        """Paints the 2 x 2 grid of requirements: tick or empty circle, and label."""
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
         painter.setFont(Type.font("caption"))

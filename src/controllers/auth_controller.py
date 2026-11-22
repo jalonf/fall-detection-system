@@ -1,3 +1,5 @@
+"""Controller of the sign-in and sign-up screen."""
+
 import logging
 
 from PySide6.QtCore import QObject, QTimer, Slot
@@ -12,12 +14,15 @@ from src.repositories.user_repository import UserRepository
 logger = logging.getLogger(__name__)
 
 class AuthController(QObject):
-    """
-    Controller responsible for handling authentication-related logic.
-    Connects its methods to the signals emitted by the AuthView.
+    """Handles sign-in and sign-up for the AuthView.
 
-    It is a QObject living in the GUI thread, like the monitoring controllers, so its handlers are
-    real Qt slots.
+    It is a QObject living in the GUI thread, like the monitoring controllers, so its
+    handlers are real Qt slots. It answers every request synchronously, with `show_error`
+    or `show_success` on the view.
+
+    Args:
+        view: The AuthView whose `login_requested` / `register_requested` it handles.
+        on_auth_success: Called with the User once they have signed in or signed up.
     """
     def __init__(self, view, on_auth_success):
         super().__init__()

@@ -20,6 +20,18 @@ _HEARING = (("No difficulty", 0), ("Some difficulty", 1), ("A lot of difficulty"
 
 @dataclass(frozen=True)
 class Question:
+    """One question of the health questionnaire, and one input of the risk model.
+
+    Attributes:
+        key: Name of the model feature.
+        text: What the caregiver reads.
+        step: Step of the sign-up form where it is shown.
+        kind: CHOICE (one of the options), CHECK (yes / no box) or NUMBER.
+        options: CHOICE only: (label, value the model uses) pairs.
+        minimum: NUMBER only: smallest accepted value.
+        maximum: NUMBER only: largest accepted value.
+        section: Heading shown above the first question of a group.
+    """
     key: str                                      # name of the model feature
     text: str                                     # what the caregiver reads
     step: str                                     # step of the form where it is shown

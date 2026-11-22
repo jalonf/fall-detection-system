@@ -31,6 +31,11 @@ class FieldMessage(QWidget):
         self.set_error(None)
 
     def set_error(self, message: str | None) -> None:
+        """Shows an error, or the help text when there is none.
+
+        Args:
+            message: The error, or None / an empty string for no error.
+        """
         error = bool(message)
         self._icon.setVisible(error)
         text = message if error else self._help
@@ -39,6 +44,7 @@ class FieldMessage(QWidget):
         self.setVisible(bool(text))
 
     def text(self) -> str:
+        """Returns the text shown, or an empty string when the message is hidden."""
         return self._text.text() if self.isVisibleTo(self.parentWidget()) else ""
 
 
@@ -81,6 +87,11 @@ class FormField(QWidget):
             control.setAccessibleDescription(help_text)
 
     def set_error(self, message: str | None) -> None:
+        """Marks the control invalid and shows a message, or clears the error.
+
+        Args:
+            message: The error; an empty string marks it invalid without a message; None clears it.
+        """
         self._invalid = message is not None
         if hasattr(self.control, "set_invalid"):
             self.control.set_invalid(self._invalid)
@@ -90,4 +101,5 @@ class FormField(QWidget):
         self.control.setAccessibleDescription(message or self._help)
 
     def has_error(self) -> bool:
+        """True while the field is marked invalid."""
         return self._invalid

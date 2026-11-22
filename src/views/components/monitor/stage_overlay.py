@@ -1,6 +1,8 @@
-"""Overlay at the top of the stage: the source bar (40 px, only with an image or while starting) with
-the source's icon and name. The monitoring status is not repeated here: the session card shows it.
-It never takes mouse input."""
+"""Overlay at the top of the video stage: the source bar.
+
+It shows the source's icon and name (40 px, only with an image or while starting). The
+monitoring status is not repeated here: the session card shows it. It never takes mouse input.
+"""
 
 from __future__ import annotations
 
@@ -16,6 +18,7 @@ _PADDING = 12
 
 
 class StageOverlay(QWidget):
+    """Source bar painted over the top of the video (see the module docstring)."""
     def __init__(self, parent: QWidget):
         super().__init__(parent)
         self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
@@ -26,17 +29,29 @@ class StageOverlay(QWidget):
 
     # ------------------------------------------------------------------ API
     def set_source(self, kind: str, label: str) -> None:
+        """Changes the source shown.
+
+        Args:
+            kind: "camera" or "file" (it picks the icon).
+            label: Name of the source.
+        """
         if (kind, label) != (self._kind, self._label):
             self._kind, self._label = kind, label
             self.update(0, 0, self.width(), BAR)
 
     def set_bar(self, visible: bool) -> None:
+        """Shows or hides the bar.
+
+        Args:
+            visible: True with an image or while starting.
+        """
         if visible != self._bar:
             self._bar = visible
             self.update(0, 0, self.width(), BAR)
 
     # ------------------------------------------------------------------ painting
     def resizeEvent(self, event) -> None:
+        """Drops the cached gradient; it is redrawn at the new width."""
         super().resizeEvent(event)
         self._gradient = None
 
@@ -56,6 +71,7 @@ class StageOverlay(QWidget):
         return self._gradient
 
     def paintEvent(self, event) -> None:
+        """Paints the bar when it is visible."""
         painter = QPainter(self)
         if self._bar:
             self._paint_bar(painter)

@@ -1,3 +1,5 @@
+"""Sends the fall-alert e-mail through Gmail (SMTP over TLS)."""
+
 import logging
 import os
 import smtplib

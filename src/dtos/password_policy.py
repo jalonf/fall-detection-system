@@ -16,4 +16,12 @@ def requirements(password: str) -> dict[str, bool]:
 
 
 def too_long(password: str) -> bool:
+    """Tells whether the password goes past bcrypt's 72-byte limit.
+
+    Args:
+        password: The password as typed.
+
+    Returns:
+        True when its UTF-8 encoding is longer than `MAX_BYTES`.
+    """
     return len(password.encode("utf-8")) > MAX_BYTES

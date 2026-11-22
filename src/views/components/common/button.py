@@ -1,5 +1,8 @@
-"""Button: the stylesheet draws the bevel (fill, border, focus ring); the button paints its
-icon and text itself so the 8 px icon gap, the loading spinner and a stable width are exact."""
+"""Button of the design system.
+
+The stylesheet draws the bevel (fill, border, focus ring); the button paints its icon and
+text itself so the 8 px icon gap, the loading spinner and a stable width are exact.
+"""
 
 from __future__ import annotations
 
@@ -34,8 +37,15 @@ _GAP = 8
 
 
 class Button(QPushButton):
-    """Push button with a variant (primary, secondary, ghost, link, danger, on-danger, on-dark,
-    segment) and a size (sm 28, md 36, lg 40). Focus comes from the keyboard only."""
+    """Push button with a variant and a size; focus comes from the keyboard only.
+
+    Args:
+        text: Label.
+        variant: primary, secondary, ghost, link, danger, on-danger, on-dark or segment.
+        size: sm (28 px), md (36 px), lg (40 px), or None for no fixed height.
+        icon: Name of the icon drawn before the text, or None.
+        parent: Parent widget.
+    """
 
     def __init__(self, text: str = "", variant: str = "secondary", size: str | None = "md",
                  icon: str | None = None, parent: QWidget | None = None):
@@ -64,14 +74,25 @@ class Button(QPushButton):
 
     # ------------------------------------------------------------------ API
     def variant(self) -> str:
+        """Returns the current variant."""
         return self._variant
 
     def set_variant(self, variant: str) -> None:
+        """Changes the variant (and the stylesheet's look).
+
+        Args:
+            variant: primary, secondary, ghost, link, danger, on-danger, on-dark or segment.
+        """
         if variant != self._variant:
             self._variant = variant
             set_props(self, variant=variant)
 
     def set_icon_name(self, name: str | None) -> None:
+        """Changes the icon drawn before the text.
+
+        Args:
+            name: Name of the icon, or None for no icon.
+        """
         if name != self._icon_name:
             self._icon_name = name
             self.updateGeometry()
@@ -105,6 +126,7 @@ class Button(QPushButton):
         self.update()
 
     def is_loading(self) -> bool:
+        """True while the spinner is shown."""
         return self._loading
 
     # ------------------------------------------------------------------ geometry
@@ -122,6 +144,7 @@ class Button(QPushButton):
         return text_width + (_ICON + _GAP if has_icon else 0)
 
     def sizeHint(self) -> QSize:
+        """Preferred size: text (or reserved width), icon and padding."""
         padding = 0 if self._variant == "link" else _PADDING.get(self._size or "md", 16)
         if not self.text() and self._icon_name:   # square icon button
             side = _HEIGHT.get(self._size or "md", Size.H_MD)
@@ -131,6 +154,7 @@ class Button(QPushButton):
         return QSize(width, height)
 
     def minimumSizeHint(self) -> QSize:
+        """The button never shrinks below its preferred size."""
         return self.sizeHint()
 
     # ------------------------------------------------------------------ painting
@@ -147,6 +171,7 @@ class Button(QPushButton):
         return _TEXT.get(self._variant, Colors.N900)
 
     def paintEvent(self, event) -> None:
+        """Paints the bevel from the stylesheet, then the icon (or spinner) and the text."""
         painter = QStylePainter(self)
         option = QStyleOptionButton()
         self.initStyleOption(option)
@@ -184,16 +209,19 @@ class Button(QPushButton):
         painter.end()
 
     def enterEvent(self, event) -> None:
+        """Repaints a link button to underline it."""
         super().enterEvent(event)
         if self._variant == "link":
             self.update()
 
     def leaveEvent(self, event) -> None:
+        """Repaints a link button to remove the underline."""
         super().leaveEvent(event)
         if self._variant == "link":
             self.update()
 
     def checkStateSet(self) -> None:
+        """Repaints a checkable button when it is checked from code."""
         super().checkStateSet()
         self.update()
 

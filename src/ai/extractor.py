@@ -1,3 +1,5 @@
+"""3D pose extraction with MediaPipe Pose Landmarker."""
+
 import logging
 import os
 import time
@@ -31,9 +33,15 @@ def _center_on_hips(coords: np.ndarray) -> np.ndarray:
 
 
 class MediaPipeExtractor:
-    """
-    Robust coordinate extractor resistant to FPS fluctuations.
-    Uses real monotonic time to ensure video stream temporal continuity in MediaPipe.
+    """Extracts the 3D pose of one person per frame with MediaPipe.
+
+    MediaPipe's VIDEO mode needs strictly increasing timestamps: they come from the monotonic
+    clock, so dropped frames or FPS changes never break its tracking.
+
+    Args:
+        min_detection_confidence: Minimum confidence to detect (and keep) a person.
+        min_tracking_confidence: Minimum confidence to keep tracking between frames.
+        model_path: The `.task` model (`POSE_LANDMARKER_MODEL_PATH` overrides the default).
     """
 
     def __init__(
@@ -60,8 +68,7 @@ class MediaPipeExtractor:
         logger.info("MediaPipe PoseLandmarker successfully initialized.")
 
     def extract_pose(self, frame_bgr: np.ndarray) -> Skeleton | None:
-        """
-        Processes a BGR frame, calculating a safe monotonic timestamp resistant to frame drops or FPS drops.
+        """Processes a BGR frame, calculating a safe monotonic timestamp resistant to frame drops or FPS drops.
 
         Args:
             frame_bgr (np.ndarray): Raw OpenCV frame (H, W, 3) in BGR format.

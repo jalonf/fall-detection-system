@@ -52,8 +52,16 @@ _SMALL = set(range(1, 11)) | set(range(17, 23)) | set(range(29, 33))   # face, h
 
 
 def paint_background_figure(painter: QPainter, width: float, height: float) -> None:
-    """The faint pose figure: shoulders about a quarter of the panel wide, centred at 80 % of the
-    width with the head near the top, so the legs run off the bottom edge."""
+    """Paints the faint MediaPipe pose figure behind the brand panel's text.
+
+    The shoulders are about a quarter of the panel wide, centred at 80 % of the width with
+    the head near the top, so the legs run off the bottom edge.
+
+    Args:
+        painter: Painter of the panel's background pixmap.
+        width: Panel width.
+        height: Panel height.
+    """
     scale = width / 96.0
     origin_x = width * 0.80 - 50.0 * scale
     origin_y = height * 0.20 - 12.0 * scale
@@ -95,6 +103,7 @@ def _feature(icon: str, title: str, detail: str) -> QHBoxLayout:
 
 
 class BrandPanel(QWidget):
+    """Left half of the sign-in screens: the message, the three features and the credits."""
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
         self.setAttribute(Qt.WidgetAttribute.WA_OpaquePaintEvent)
@@ -128,10 +137,16 @@ class BrandPanel(QWidget):
         layout.addWidget(make_label(Brand.FOOTER, "caption", "on-brand-muted"))
 
     def set_target_width(self, width: int) -> None:
+        """Fixes the panel's width (the sign-in screen gives it 40 % of the window).
+
+        Args:
+            width: Width in pixels.
+        """
         if width != self.width():
             self.setFixedWidth(width)
 
     def sizeHint(self) -> QSize:
+        """Preferred size of the panel."""
         return QSize(520, 720)
 
     def _background_pixmap(self) -> QPixmap:
@@ -151,4 +166,5 @@ class BrandPanel(QWidget):
         return self._background
 
     def paintEvent(self, event) -> None:
+        """Paints the cached background: gradient and pose figure."""
         QPainter(self).drawPixmap(0, 0, self._background_pixmap())

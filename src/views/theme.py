@@ -116,6 +116,14 @@ def mix(first: str, second: str, amount: float) -> QColor:
 # ---------------------------------------------------------------------- typography
 @dataclass(frozen=True)
 class TypeSpec:
+    """One role of the type scale.
+
+    Attributes:
+        px: Font size in pixels.
+        weight: 400 (regular) or 600 (semibold).
+        line: Line height in pixels.
+        tracking: Letter spacing in pixels.
+    """
     px: int
     weight: int
     line: int
@@ -163,10 +171,19 @@ class Type:
 
     @classmethod
     def line_height(cls, role: str) -> int:
+        """Returns the line height of a role.
+
+        Args:
+            role: Type role (see `ROLES`).
+
+        Returns:
+            Line height in pixels.
+        """
         return cls.ROLES[role].line
 
     @classmethod
     def reset_cache(cls) -> None:
+        """Forgets the fonts built so far (after the application font changes)."""
         cls._cache.clear()
 
     @classmethod
@@ -196,6 +213,7 @@ class Space:
 
 
 class Size:
+    """Fixed heights of controls and bars, and icon sizes, in pixels."""
     H_SM = 28           # icon buttons in headers, filter combo
     H_MD = 36           # panel buttons and combos
     H_LG = 40           # form inputs and buttons
@@ -218,6 +236,7 @@ class Radius:
 
 
 class Motion:
+    """Animation durations (ms) and easing curves."""
     FAST = 120
     BASE = 160
     SLOW = 240
@@ -260,8 +279,21 @@ def make_label(text: str = "", role: str = "body", tone: str | None = None, *,
 
 def make_tabular_label(text: str, role: str, tone: str | None = None, *, sample: str = "",
                        parent: QWidget | None = None) -> QLabel:
-    """Label with tabular figures. Its font is set directly (no `type` property) so the `tnum`
-    feature is kept; with a `sample` its width is fixed, so updating it never relayouts."""
+    """Creates a label with tabular figures, for clocks, durations and metrics.
+
+    Its font is set directly (no `type` property) so the `tnum` feature is kept; with a
+    `sample` its width is fixed, so updating it never relayouts.
+
+    Args:
+        text: Initial text.
+        role: Type role (see `Type.ROLES`).
+        tone: Colour tone of the stylesheet, or None.
+        sample: The widest text it will show; fixes the label's width.
+        parent: Parent widget.
+
+    Returns:
+        The label.
+    """
     label = QLabel(text, parent)
     label.setFont(Type.font(role, tabular=True))
     if tone:
@@ -343,6 +375,7 @@ _GLYPH_SVG = (
 
 
 class ThemeManager:
+    """Applies the theme to the application: style, palette, font and stylesheet."""
     STYLESHEET = Path(__file__).with_name("style.qss")
     GLYPH_DIR = Path(tempfile.gettempdir()) / "fallsense-ui"
     _MARKER = re.compile(r"@([A-Z][A-Z0-9_]*)@")
@@ -358,6 +391,7 @@ class ThemeManager:
 
     @staticmethod
     def app_font() -> QFont:
+        """Returns the application font: Segoe UI (Arial as fallback), 13 px."""
         font = QFont()
         font.setFamilies(["Segoe UI", "Arial"])
         font.setPixelSize(13)
@@ -366,6 +400,7 @@ class ThemeManager:
 
     @staticmethod
     def palette() -> QPalette:
+        """Returns the palette built from the colour tokens."""
         palette = QPalette()
         role = QPalette.ColorRole
         roles = {
@@ -398,6 +433,11 @@ class ThemeManager:
 
     @classmethod
     def stylesheet(cls) -> str:
+        """Builds the stylesheet: the type rules and `style.qss` with its tokens filled in.
+
+        Raises:
+            KeyError: If `style.qss` uses a token that does not exist.
+        """
         tokens = cls.tokens()
 
         def substitute(match: re.Match) -> str:

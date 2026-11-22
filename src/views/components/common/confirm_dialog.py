@@ -28,6 +28,15 @@ _BLUR, _DY, _ALPHA = 24, 8, 0.16
 
 
 class ConfirmDialog(QWidget):
+    """Confirmation drawn inside the window over a dimmed background.
+
+    Args:
+        parent: Any widget of the window it covers.
+        title: Question asked.
+        body: Explanation under the title.
+        action: Text of the confirm button.
+        destructive: Red confirm button, and the focus starts on Cancel.
+    """
     def __init__(self, parent: QWidget, title: str, body: str, action: str, *, destructive: bool = False):
         window = parent.window()
         super().__init__(window)
@@ -84,10 +93,12 @@ class ConfirmDialog(QWidget):
 
     @Slot()
     def accept(self) -> None:
+        """Closes the dialog with a confirmation."""
         self._finish(True)
 
     @Slot()
     def reject(self) -> None:
+        """Closes the dialog without confirming."""
         self._finish(False)
 
     @staticmethod
@@ -108,6 +119,7 @@ class ConfirmDialog(QWidget):
 
     # ------------------------------------------------------------------ geometry
     def card_rect(self) -> QRect:
+        """Returns the card's geometry, centred in the window."""
         height = self.card.layout().totalHeightForWidth(WIDTH)
         rect = QRect(0, 0, WIDTH, height)
         rect.moveCenter(self.rect().center())
@@ -118,21 +130,26 @@ class ConfirmDialog(QWidget):
         self.card.setGeometry(self.card_rect())
 
     def eventFilter(self, watched, event) -> bool:
+        """Keeps the overlay covering the window when the window is resized."""
         if watched is self._window and event.type() == QEvent.Type.Resize and self.isVisible():
             self._place()
         return False
 
     # ------------------------------------------------------------------ input: the overlay is modal
     def mousePressEvent(self, event) -> None:
+        """Swallows clicks outside the card: the overlay is modal."""
         event.accept()
 
     def mouseReleaseEvent(self, event) -> None:
+        """Swallows clicks outside the card: the overlay is modal."""
         event.accept()
 
     def wheelEvent(self, event) -> None:
+        """Swallows scrolling: the content behind must not move."""
         event.accept()
 
     def keyPressEvent(self, event) -> None:
+        """Esc cancels; Enter presses the focused button."""
         if event.key() == Qt.Key.Key_Escape:
             self.reject()
         elif event.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
@@ -148,6 +165,7 @@ class ConfirmDialog(QWidget):
 
     # ------------------------------------------------------------------ painting
     def paintEvent(self, event) -> None:
+        """Paints the dimmed background, the card's shadow and the card."""
         painter = QPainter(self)
         painter.fillRect(self.rect(), qcolor(Colors.N900, 0.32))
         card = self.card.geometry()

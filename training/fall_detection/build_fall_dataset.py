@@ -1,3 +1,13 @@
+"""Builds the fall-detection dataset: videos to pose sequences.
+
+Every video of `data/fall_detection/raw/VideoDataset/` (ADL = normal activity, Fall = fall)
+is subsampled to the target FPS and cut into one-second windows of 3D poses (33 x 3 values per
+frame, as the application extracts them); consecutive windows overlap by half. The arrays are
+written to `data/fall_detection/processed/`, one folder per model.
+
+    python -m training.fall_detection.build_fall_dataset
+"""
+
 import os
 
 os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
@@ -23,6 +33,15 @@ logger = logging.getLogger(__name__)
 
 
 def process_dataset(dataset_root: str, output_dir: str, target_fps: int = 30) -> None:
+    """Extracts the pose windows of every video and saves them as NumPy arrays.
+
+    A frame without a person repeats the last pose (zeros before the first one).
+
+    Args:
+        dataset_root: Folder with the ADL/ and Fall/ videos.
+        output_dir: Folder where the arrays are written.
+        target_fps: 30 (30-frame windows) or 15 (15-frame windows).
+    """
     dataset_path = Path(dataset_root)
     out_path = Path(output_dir)
     out_path.mkdir(parents=True, exist_ok=True)

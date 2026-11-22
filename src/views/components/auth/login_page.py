@@ -34,6 +34,12 @@ COLUMN = 480
 
 
 class LoginPage(QWidget):
+    """Sign-in form: e-mail, password, Sign in and Create an account.
+
+    Signals:
+        submitted(str, str): Valid e-mail and password to sign in with.
+        create_account_clicked: The user wants to sign up.
+    """
     submitted = Signal(str, str)
     create_account_clicked = Signal()
 
@@ -107,10 +113,16 @@ class LoginPage(QWidget):
 
     # ------------------------------------------------------------------ API
     def focus_first(self) -> None:
+        """Focuses the password when the e-mail is filled in, otherwise the e-mail."""
         target = self.password if self.email.text() and not self.password.text() else self.email
         target.setFocus(Qt.FocusReason.OtherFocusReason)
 
     def set_busy(self, busy: bool) -> None:
+        """Locks the form while the controller signs in.
+
+        Args:
+            busy: True to lock it (and show the spinner), False to unlock it.
+        """
         self._busy = busy
         self.email.setEnabled(not busy)
         self.password.setEnabled(not busy)
@@ -118,6 +130,7 @@ class LoginPage(QWidget):
         self.submit.set_loading(busy, Login.SUBMITTING)
 
     def is_busy(self) -> bool:
+        """True while a sign-in request is being handled."""
         return self._busy
 
     def show_server_error(self, message: str) -> None:
@@ -130,6 +143,7 @@ class LoginPage(QWidget):
         self.password.selectAll()
 
     def reset(self) -> None:
+        """Unlocks the form and clears the password and the errors; the e-mail is kept."""
         self.set_busy(False)
         self.password.clear()
         self.password.set_revealed(False)
@@ -142,6 +156,7 @@ class LoginPage(QWidget):
 
     # ------------------------------------------------------------------ behaviour
     def keyPressEvent(self, event) -> None:
+        """Enter moves from the e-mail to the password, then submits; Esc does nothing."""
         if event.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
             event.accept()
             if self._busy:

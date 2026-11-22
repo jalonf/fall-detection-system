@@ -1,3 +1,5 @@
+"""Patient risk level from the sign-up health questionnaire (Random Forest)."""
+
 import logging
 from dataclasses import dataclass
 
@@ -12,13 +14,18 @@ logger = logging.getLogger(__name__)
 
 @dataclass(frozen=True)
 class RiskResult:
+    """Result of a risk assessment.
+
+    Attributes:
+        level: "LOW", "MEDIUM" or "HIGH"; it selects the monitoring strategy.
+        probability: Probability (0-1) of an accident at home or during leisure time.
+    """
     level: str           # "LOW", "MEDIUM" or "HIGH": it selects the monitoring strategy
     probability: float   # probability (0-1) that the patient has an accident at home or in leisure time
 
 
 class RiskAssessor:
-    """
-    Estimates the fall risk level of a patient from the sign-up questionnaire.
+    """Estimates the fall risk level of a patient from the sign-up questionnaire.
 
     It uses the Random Forest trained in `training/risk_assessment/train_risk_model.py`. The model file
     also stores the questions the model expects and the probability limits of each level, so

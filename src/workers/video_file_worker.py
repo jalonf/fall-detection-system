@@ -1,3 +1,5 @@
+"""Worker that analyses an uploaded video file."""
+
 import logging
 import os
 
@@ -13,13 +15,20 @@ QUALITY_LABELS = {2160: "4K (UHD)", 1080: "1080p (FHD)", 720: "720p (HD)", 480: 
 
 
 class VideoFileWorker(BaseVideoWorker):
-    """
-    Responsible for loading an uploaded video file, processing frames to extract
-    the skeleton, and running the fall detection pipeline on it.
+    """Runs the fall-detection pipeline on an uploaded video file.
 
-    The file is opened in the worker thread. Since it comes with its own frame rate
-    (unlike the camera, which follows the patient's risk level), the model trained
-    for those FPS is loaded. The thread ends on its own when the file runs out.
+    The file is opened in the worker thread. Since it comes with its own frame rate (unlike
+    the camera, which follows the patient's risk level), the model trained for those FPS is
+    loaded. The thread ends on its own when the file runs out.
+
+    Signals:
+        video_quality_detected(str, int, int): Quality label, width and height of the file.
+
+    Args:
+        video_path: The file to analyse.
+        user: Who receives the alert e-mails, or None (nothing is sent).
+        patient: Whose falls are stored, or None (nothing is stored).
+        parent: Parent object.
     """
 
     video_quality_detected = Signal(str, int, int)

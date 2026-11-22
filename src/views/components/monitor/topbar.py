@@ -1,5 +1,8 @@
-"""Top bar: the screen's title and today's date on the left; the signed-in user on the right, as a
-button that opens the account menu (Sign out)."""
+"""Top bar of the monitoring screens.
+
+The screen's title and today's date on the left; the signed-in user on the right, as a
+button that opens the account menu (Sign out).
+"""
 
 from __future__ import annotations
 
@@ -45,6 +48,14 @@ _IDENTITY_WIDTH = 200
 
 
 def initials(name: str) -> str:
+    """Returns the initials shown in the avatar.
+
+    Args:
+        name: The user's full name.
+
+    Returns:
+        The first letters of the first two words, the first two letters of a single word, or "?".
+    """
     words = [word for word in name.split() if word]
     if not words:
         return "?"
@@ -64,6 +75,7 @@ def _widest_clock_sample() -> str:
 
 
 class Avatar(QWidget):
+    """32 px circle with the user's initials."""
     def __init__(self, name: str, parent: QWidget | None = None):
         super().__init__(parent)
         self._initials = initials(name)
@@ -71,6 +83,7 @@ class Avatar(QWidget):
         self.setAccessibleName(name)
 
     def paintEvent(self, event) -> None:
+        """Paints the circle and the initials."""
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
         painter.setPen(Qt.PenStyle.NoPen)
@@ -132,15 +145,20 @@ class AccountButton(QPushButton):
         self.clicked.connect(self.open_menu)
 
     def sizeHint(self) -> QSize:
+        """Preferred size: its content's width and the fixed height."""
         return QSize(self.layout().sizeHint().width(), _ACCOUNT_HEIGHT)
 
     def minimumSizeHint(self) -> QSize:
+        """The button never shrinks below its preferred size."""
         return self.sizeHint()
 
     @Slot()
     def open_menu(self) -> None:
-        """Shows the menu right under the button, at least as wide as it and right-aligned with it, so
-        a wider menu grows to the left instead of past the window's edge."""
+        """Shows the menu right under the button, right-aligned with it.
+
+        It is at least as wide as the button, so a wider menu grows to the left instead of past
+        the window's edge.
+        """
         self.menu.setMinimumWidth(self.width())
         width = max(self.width(), self.menu.sizeHint().width())
         self.menu.popup(self.mapToGlobal(QPoint(self.width() - width, self.height() + Space.S1)))
@@ -155,6 +173,11 @@ class AccountButton(QPushButton):
 
 
 class Topbar(QWidget):
+    """Top bar: title and date, and the account button.
+
+    Signals:
+        sign_out_clicked: The user chose Sign out in the account menu.
+    """
     sign_out_clicked = Signal()
 
     def __init__(self, section: str, user_name: str, user_role: str, parent: QWidget | None = None):
@@ -197,9 +220,11 @@ class Topbar(QWidget):
         self._clock_timer.start((60 - time.second()) * 1000 - time.msec() + 5)
 
     def sizeHint(self) -> QSize:
+        """Preferred size of the bar."""
         return QSize(1120, Size.TOPBAR)
 
     def paintEvent(self, event) -> None:
+        """Paints the white bar and its bottom border."""
         painter = QPainter(self)
         painter.fillRect(self.rect(), QColor(Colors.N0))
         painter.fillRect(QRect(0, self.height() - 1, self.width(), 1), QColor(Colors.N200))

@@ -1,3 +1,12 @@
+"""Trains and evaluates the Random Forest that sets the patient's risk level.
+
+It reports the cross-validated AUC and the observed event rate per level, saves the
+confusion matrices in `docs/risk_assessment/` and stores the model, its questions and the
+limits of each level in `models/risk_model/risk_random_forest.joblib`.
+
+    python -m training.risk_assessment.train_risk_model
+"""
+
 import logging
 from pathlib import Path
 

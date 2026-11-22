@@ -1,3 +1,5 @@
+"""FramePacket: what the interface shows for one processed frame."""
+
 from dataclasses import dataclass
 
 from PySide6.QtGui import QImage

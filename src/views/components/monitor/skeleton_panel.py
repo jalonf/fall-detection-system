@@ -41,8 +41,10 @@ STOPPED = ("idle", "error", "finished")
 
 
 class SkeletonView(VideoWidget):
-    """Skeleton image on the exact stage colour, so the worker's background blends in. Like the
-    video stage, the background is plain; while empty it only says "No signal"."""
+    """Skeleton image on the exact stage colour, so the worker's background blends in.
+
+    Like the video stage, the background is plain; while empty it only says "No signal".
+    """
 
     def __init__(self, parent: QWidget | None = None):
         super().__init__(Colors.STAGE, radius=Radius.R_MD, corner_color=Colors.N0, parent=parent)
@@ -51,11 +53,13 @@ class SkeletonView(VideoWidget):
         self.setAccessibleName(Pose.SKELETON)
 
     def paint_empty(self, painter: QPainter) -> None:
+        """Paints "No signal" while there is no image."""
         painter.setFont(Type.font("body"))
         painter.setPen(QColor(Colors.S300))
         painter.drawText(self.rect(), int(Qt.AlignmentFlag.AlignCenter), Pose.NO_SIGNAL)
 
     def paint_overlay(self, painter: QPainter) -> None:
+        """Paints the "SKELETON" caption."""
         painter.setFont(Type.font("overline"))
         painter.setPen(QColor(Colors.S300))
         painter.drawText(QRect(10, 10, self.width() - 20, 16),
@@ -79,9 +83,11 @@ class Metric:
 
     @property
     def current(self) -> float | None:
+        """The newest sample, or None."""
         return self.samples[-1] if self.samples else None
 
     def scale(self) -> tuple[float, float]:
+        """Returns the trend's (low, high) range; with no `high`, it follows the largest recent sample."""
         if self.high is not None:
             return self.low, self.high
         values = [value for value in self.samples if value is not None]
@@ -100,15 +106,22 @@ class TelemetryTable(QWidget):
         self._describe()
 
     def sizeHint(self) -> QSize:
+        """Preferred size: one row per metric."""
         return QSize(340, ROW_HEIGHT * len(self.metrics) + 2)
 
     def push(self, values: dict[str, float | None]) -> None:
+        """Adds one sample of every metric and repaints.
+
+        Args:
+            values: Metric key -> value (None leaves a gap in the trend).
+        """
         for metric in self.metrics:
             metric.samples.append(values.get(metric.key))
         self._describe()
         self.update()
 
     def clear(self) -> None:
+        """Removes every sample."""
         for metric in self.metrics:
             metric.samples.clear()
         self._describe()
@@ -131,6 +144,7 @@ class TelemetryTable(QWidget):
         return QRect(inner.left(), top, inner.width(), bottom - top)
 
     def event(self, event) -> bool:
+        """Shows the tooltip of the metric under the pointer."""
         if event.type() == QEvent.Type.ToolTip:
             for index, metric in enumerate(self.metrics):
                 if metric.tooltip and self._row(index).contains(event.pos()):
@@ -143,6 +157,7 @@ class TelemetryTable(QWidget):
 
     # ------------------------------------------------------------------ painting
     def paintEvent(self, event) -> None:
+        """Paints the table: name, value and trend of each metric."""
         painter = QPainter(self)
         painter.fillRect(self.rect(), QColor(Colors.N0))
         painter.setPen(QColor(Colors.N150))
@@ -245,6 +260,7 @@ class TelemetryTable(QWidget):
 
 
 class SkeletonPanel(Panel):
+    """Pose analysis panel: the skeleton image and the telemetry table."""
     def __init__(self, parent: QWidget | None = None):
         super().__init__(Pose.TITLE, subtitle=Pose.SUBTITLE, parent=parent)
         self._state = "idle"
@@ -271,18 +287,33 @@ class SkeletonPanel(Panel):
     # ------------------------------------------------------------------ contract (AdminController)
     @Slot(QImage)
     def update_frame(self, qimage: QImage) -> None:
+        """Shows the skeleton image of the newest frame (ignored while stopped).
+
+        Args:
+            qimage: The skeleton cropped around the person.
+        """
         if self._state in STOPPED:
             return
         self.view.set_image(qimage)
 
     @Slot(dict)
     def update_telemetry(self, data: dict) -> None:
+        """Stores the newest telemetry; the trends sample it at 4 Hz.
+
+        Args:
+            data: inference_ms, confidence and centroid_y.
+        """
         if self._state in STOPPED:
             return
         self._telemetry = data or {}
 
     # ------------------------------------------------------------------ state
     def set_state(self, state: str) -> None:
+        """Follows the monitoring state: sample while live, clear when a run starts or ends.
+
+        Args:
+            state: The monitoring state.
+        """
         previous, self._state = self._state, state
         if state == "live":
             self._timer.start()

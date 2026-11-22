@@ -21,6 +21,13 @@ _PADDING = 8
 
 
 class Badge(QWidget):
+    """Small painted label with a colour variant (neutral, info, success, warning, danger...).
+
+    Args:
+        text: Text, already in upper case.
+        variant: Key of `VARIANTS`.
+        parent: Parent widget.
+    """
     def __init__(self, text: str = "", variant: str = "neutral", parent: QWidget | None = None):
         super().__init__(parent)
         self._text = text
@@ -30,6 +37,12 @@ class Badge(QWidget):
         self.setAccessibleName(text)
 
     def set_badge(self, text: str, variant: str) -> None:
+        """Changes the text and the variant.
+
+        Args:
+            text: New text, in upper case.
+            variant: Key of `VARIANTS`.
+        """
         if (text, variant) == (self._text, self._variant):
             return
         width_changed = text != self._text
@@ -40,16 +53,27 @@ class Badge(QWidget):
         self.update()
 
     def text(self) -> str:
+        """Returns the badge's text."""
         return self._text
 
     @staticmethod
     def width_for(text: str) -> int:
+        """Returns the width a badge needs for a text.
+
+        Args:
+            text: The badge's text.
+
+        Returns:
+            The width in pixels, padding included.
+        """
         return QFontMetrics(Type.font("overline")).horizontalAdvance(text) + 2 * _PADDING
 
     def sizeHint(self) -> QSize:
+        """Preferred size: the text's width and the fixed height."""
         return QSize(self.width_for(self._text), HEIGHT)
 
     def paintEvent(self, event) -> None:
+        """Paints the badge (see `paint`)."""
         painter = QPainter(self)
         self.paint(painter, QRectF(self.rect()), self._text, self._variant)
 

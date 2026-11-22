@@ -1,3 +1,5 @@
+"""RegistrationData: what the sign-up form sends to the controller."""
+
 from dataclasses import dataclass, field
 
 

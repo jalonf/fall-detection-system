@@ -1,3 +1,5 @@
+"""Controller of the administration (testing) screen."""
+
 import logging
 import os
 
@@ -15,12 +17,20 @@ logger = logging.getLogger(__name__)
 
 
 class AdminController(BaseMonitorController):
-    """
-    Controller of the administrators, the application's testers. They have no patient: everything
-    runs in test mode, so falls are shown and logged but never stored or e-mailed.
+    """Controller of the administrators, the application's testers.
 
-    On top of the standard workflow they choose the camera's test profile (the settings and model
-    of a risk level), analyse video files, and see the skeleton view and the telemetry panel.
+    They have no patient: everything runs in test mode, so falls are shown and logged but
+    never stored or e-mailed. On top of the standard workflow they choose the camera's test
+    profile (the settings and model of a risk level), analyse video files, and see the
+    skeleton view and the telemetry panel.
+
+    Args:
+        view: The AdminView it drives.
+        current_user: The signed-in administrator.
+        on_logout_callback: Called when the user signs out.
+
+    Raises:
+        PermissionError: If `current_user` is not an administrator.
     """
 
     SENDS_ALERTS = False
@@ -39,6 +49,11 @@ class AdminController(BaseMonitorController):
 
     @Slot(str)
     def start_video_file(self, file_path):
+        """Starts analysing a video file in test mode, unless a source is already running.
+
+        Args:
+            file_path: The video file chosen in the view.
+        """
         if self.worker is not None:
             logger.warning("Attempted to process video file, but a worker is already active.")
             return

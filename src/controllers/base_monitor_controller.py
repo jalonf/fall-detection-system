@@ -1,3 +1,5 @@
+"""Logic shared by the monitoring controllers (caregivers and administrators)."""
+
 import logging
 
 from PySide6.QtCore import QObject, Slot
@@ -11,21 +13,25 @@ logger = logging.getLogger(__name__)
 
 
 class BaseMonitorController(QObject):
-    """
-    Logic shared by the monitoring controllers: it starts and stops the camera /
-    video-file workers and shows what they report. The workers themselves store the
-    fall event and send the alert e-mail.
+    """Starts and stops the video workers and shows what they report.
 
-    It is a QObject living in the GUI thread, so every worker signal connected to its
-    slots is delivered as a queued call in the GUI thread, never in the worker's thread.
+    The workers themselves store the fall event and send the alert e-mail. It is a QObject
+    living in the GUI thread, so every worker signal connected to its slots is delivered as a
+    queued call in the GUI thread, never in the worker's thread.
 
-    Stopping never blocks the interface: `stop_camera` only asks the worker to stop, and
-    the view is reset when the worker's `finished` signal arrives (the same path covers
-    the end of a video file and a camera that disconnects). Only `shutdown`, used when
-    logging out or closing the window, waits for the worker.
+    Stopping never blocks the interface: `stop_camera` only asks the worker to stop, and the
+    view is reset when the worker's `finished` signal arrives (the same path covers the end of
+    a video file and a camera that disconnects). Only `shutdown`, used when signing out or
+    closing the window, waits for the worker.
 
     Subclasses extend `_show_frame` to show more of each processed frame, and `_camera_worker`
     to change how the camera is monitored.
+
+    Args:
+        view: The monitoring view it drives.
+        current_user: The signed-in user (the alert e-mails go to them).
+        patient: Their patient, or None (then nothing is stored).
+        on_logout_callback: Called when the user signs out.
     """
 
     # The workers store each fall and e-mail the caregiver. False in test mode (administrators).
@@ -50,6 +56,11 @@ class BaseMonitorController(QObject):
     # ------------------------------------------------------------------ start / stop
     @Slot(int)
     def start_camera(self, camera_index):
+        """Starts monitoring a camera, unless a source is already running.
+
+        Args:
+            camera_index: OpenCV index of the camera chosen in the view.
+        """
         if self.worker is not None:
             logger.warning("Attempted to start camera stream, but a worker is already active.")
             return
@@ -99,10 +110,10 @@ class BaseMonitorController(QObject):
 
     # ------------------------------------------------------------------ worker signals
     def _active_sender(self) -> BaseVideoWorker | None:
-        """
-        The running worker when the signal being handled comes from it, otherwise None. Signals
-        still queued from a worker that was already shut down are ignored; if that worker has
-        been destroyed, `sender()` is None, so `self.worker` being None must be checked too.
+        """Returns the running worker when it sent the signal being handled, otherwise None.
+
+        Signals still queued from a worker that was already shut down are ignored; if that worker
+        has been destroyed, `sender()` is None, so `self.worker` being None is checked too.
         Returning the worker (not a bool) lets callers use it without `self.worker` being Optional.
         """
         worker = self.worker

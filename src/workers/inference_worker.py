@@ -1,3 +1,5 @@
+"""Thread that runs the GRU fall model on the latest pose window."""
+
 import logging
 
 import numpy as np
@@ -7,8 +9,7 @@ from PySide6.QtCore import QMutex, QMutexLocker, QThread, QWaitCondition
 logger = logging.getLogger(__name__)
 
 class InferenceWorker(QThread):
-    """
-    Runs the fall model in its own thread.
+    """Runs the fall model in its own thread.
 
     The video thread hands over the newest sequence with `predict` and reads the most
     recent result from `latest` (an `(is_fall, probability)` tuple; assigning it is atomic).
@@ -64,6 +65,7 @@ class InferenceWorker(QThread):
                 logger.error(f"Inference error: {e}")
 
     def stop(self):
+        """Wakes the thread so it exits, and waits for it."""
         with QMutexLocker(self._mutex):
             self._stopping = True
             self._has_work.wakeAll()

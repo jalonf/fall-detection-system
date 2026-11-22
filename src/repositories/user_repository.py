@@ -1,3 +1,5 @@
+"""Database access for user accounts, including password hashing."""
+
 import logging
 
 import bcrypt

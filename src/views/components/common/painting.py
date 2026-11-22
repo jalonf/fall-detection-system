@@ -131,12 +131,19 @@ class IconView(QWidget):
         self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
 
     def set_icon(self, name: str, color: str | None = None) -> None:
+        """Changes the icon and, optionally, its colour.
+
+        Args:
+            name: Name of the icon.
+            color: New colour; None keeps the current one.
+        """
         self._name = name
         if color:
             self._color = color
         self.update()
 
     def paintEvent(self, event) -> None:
+        """Paints the icon rendered for the screen's pixel ratio."""
         painter = QPainter(self)
         painter.drawPixmap(0, 0, icons.icon_pixmap(self._name, self._color, self._size, self.devicePixelRatioF()))
 
@@ -157,6 +164,7 @@ class Divider(QWidget):
             self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
 
     def paintEvent(self, event) -> None:
+        """Paints the line."""
         QPainter(self).fillRect(self.rect(), self._color)
 
 

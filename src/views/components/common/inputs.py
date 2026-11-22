@@ -47,8 +47,16 @@ def make_line_edit(placeholder: str = "", icon: str | None = None, *, clearable:
 
 
 class PasswordEdit(QLineEdit):
-    """Password field with a lock icon and a show / hide action. It takes at most 72 characters
-    (a non-ASCII password can still pass 72 bytes: see `password_policy.too_long`)."""
+    """Password field with a lock icon and a show / hide action.
+
+    It takes at most 72 characters (a non-ASCII password can still pass 72 bytes: see
+    `password_policy.too_long`).
+
+    Args:
+        placeholder: Placeholder text.
+        size: sm, md or lg height.
+        parent: Parent widget.
+    """
 
     def __init__(self, placeholder: str = "", *, size: str = "lg", parent: QWidget | None = None):
         super().__init__(parent)
@@ -64,11 +72,17 @@ class PasswordEdit(QLineEdit):
         self._sync_toggle()
 
     def set_revealed(self, revealed: bool) -> None:
+        """Shows or hides the password's characters.
+
+        Args:
+            revealed: True to show them.
+        """
         self._revealed = revealed
         self.setEchoMode(QLineEdit.EchoMode.Normal if revealed else QLineEdit.EchoMode.Password)
         self._sync_toggle()
 
     def is_revealed(self) -> bool:
+        """True while the characters are shown."""
         return self._revealed
 
     @Slot()
@@ -92,6 +106,7 @@ class CheckBox(QCheckBox):
         self.setMinimumHeight(Type.line_height("body"))
 
     def hitButton(self, pos) -> bool:
+        """The whole row, label included, toggles the box."""
         return self.rect().contains(pos)
 
 
@@ -104,6 +119,7 @@ class RadioButton(QRadioButton):
         self.setMinimumHeight(Type.line_height("body"))
 
     def hitButton(self, pos) -> bool:
+        """The whole row, label included, checks the button."""
         return self.rect().contains(pos)
 
 
@@ -117,9 +133,11 @@ class ComboItemDelegate(QStyledItemDelegate):
         self._combo = combo
 
     def sizeHint(self, option: QStyleOptionViewItem, index: QModelIndex) -> QSize:
+        """Every row of the popup is 32 px tall."""
         return QSize(option.rect.width(), self.ROW)
 
     def paint(self, painter: QPainter, option: QStyleOptionViewItem, index: QModelIndex) -> None:
+        """Paints a popup row: hover fill, and the current item in P50 with a tick."""
         rect = option.rect
         current = index.row() == self._combo.currentIndex()
         hovered = bool(option.state & (QStyle.StateFlag.State_MouseOver | QStyle.StateFlag.State_Selected))

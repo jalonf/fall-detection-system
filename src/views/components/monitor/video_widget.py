@@ -14,6 +14,14 @@ from src.views.theme import Colors
 
 
 class VideoWidget(QWidget):
+    """Draws the latest frame fitted with KeepAspectRatio on the stage colour.
+
+    Args:
+        background: Colour around the image (and of the empty state).
+        radius: Corner radius; corners are painted with `corner_color`.
+        corner_color: Colour outside the rounded corners, or None.
+        parent: Parent widget.
+    """
     def __init__(self, background: str = Colors.STAGE, *, radius: int = 0, corner_color: str | None = None,
                  parent: QWidget | None = None):
         super().__init__(parent)
@@ -29,6 +37,11 @@ class VideoWidget(QWidget):
 
     # ------------------------------------------------------------------ API
     def set_image(self, image: QImage) -> None:
+        """Shows a new frame; the target rectangle is only recomputed when the size changes.
+
+        Args:
+            image: The frame.
+        """
         resized = self._image is None or image.size() != self._image.size()
         self._image = image
         if resized:
@@ -36,22 +49,27 @@ class VideoWidget(QWidget):
         self.update()
 
     def clear(self) -> None:
+        """Removes the image."""
         if self._image is not None:
             self._image = None
             self._update_target()
             self.update()
 
     def has_image(self) -> bool:
+        """True while an image is shown."""
         return self._image is not None
 
     def sizeHint(self) -> QSize:
+        """Preferred size: 16:9."""
         return QSize(640, 360)
 
     def minimumSizeHint(self) -> QSize:
+        """Smallest size of the video."""
         return QSize(160, 90)
 
     # ------------------------------------------------------------------ geometry
     def resizeEvent(self, event) -> None:
+        """Recomputes where the image goes."""
         super().resizeEvent(event)
         self._update_target()
 
@@ -82,6 +100,7 @@ class VideoWidget(QWidget):
         """Hook: drawn over the image or the empty state."""
 
     def paintEvent(self, event) -> None:
+        """Paints the image fitted in the widget (or the empty state) and the overlay."""
         painter = QPainter(self)
         if self._image is None:
             painter.fillRect(self.rect(), self._background)

@@ -17,6 +17,13 @@ KINDS = {
 
 
 class Callout(QWidget):
+    """Inline message box with an icon, used instead of a toast.
+
+    Args:
+        text: Message.
+        kind: "info" or "danger".
+        parent: Parent widget.
+    """
     def __init__(self, text: str = "", kind: str = "info", parent: QWidget | None = None):
         super().__init__(parent)
         self._kind = kind
@@ -34,6 +41,12 @@ class Callout(QWidget):
         self.setAccessibleName(text)
 
     def set_message(self, text: str, kind: str | None = None) -> None:
+        """Changes the message and, optionally, the kind.
+
+        Args:
+            text: The new message.
+            kind: "info" or "danger"; None keeps the current one.
+        """
         if kind and kind != self._kind:
             self._kind = kind
             self._icon.set_icon(KINDS[kind][2], KINDS[kind][3])
@@ -43,9 +56,11 @@ class Callout(QWidget):
         self.update()
 
     def text(self) -> str:
+        """Returns the message shown."""
         return self._label.text()
 
     def paintEvent(self, event) -> None:
+        """Paints the filled box with its border."""
         fill, border = KINDS[self._kind][:2]
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)

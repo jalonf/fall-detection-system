@@ -35,6 +35,13 @@ class _ProfileCombo(Combo):
 
 
 class AdminView(BaseMonitorView):
+    """Monitoring screen of the administrators (testers), in test mode.
+
+    Args:
+        user_name: Name of the signed-in administrator.
+        user_role: Their role, shown under the name.
+        parent: Parent widget.
+    """
     SECTION = Monitor.SECTION_ADMIN
     CAN_ANALYSE_FILES = True
 

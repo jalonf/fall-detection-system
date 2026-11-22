@@ -1,3 +1,5 @@
+"""Skeleton: the pose MediaPipe extracts from one frame."""
+
 from dataclasses import dataclass
 
 import numpy as np

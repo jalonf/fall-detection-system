@@ -39,6 +39,7 @@ from src.workers.strategies import strategy_for
 
 
 class MonitorState(StrEnum):
+    """States of a monitoring run, shown by every component of the screen."""
     IDLE = "idle"
     STARTING = "starting"
     LIVE = "live"
@@ -53,14 +54,29 @@ STOPPED = (MonitorState.IDLE, MonitorState.ERROR, MonitorState.FINISHED)
 
 @dataclass(frozen=True)
 class SourceInfo:
+    """The video source of a run.
+
+    Attributes:
+        kind: "camera" or "file".
+        label: What the interface shows: "Camera 0", "clip.mp4".
+        arg: Camera index or file path, sent again by "Try again".
+    """
     kind: str           # "camera" | "file"
     label: str          # what the interface shows: "Camera 0", "clip.mp4"
     arg: int | str      # camera index or file path, re-sent by "Try again"
 
 
 def camera_profile(risk_level: str | None) -> tuple[str, str]:
-    """Resolution and frame rate the camera worker opens for this risk level, and why (tooltip).
-    Read from the workers' own strategies so the interface always matches what runs."""
+    """Returns the camera settings shown for a risk level, and why.
+
+    They are read from the workers' own strategies, so the interface always matches what runs.
+
+    Args:
+        risk_level: The patient's risk level, or None.
+
+    Returns:
+        The resolution and frame rate ("1280 × 720 · 15 fps") and its tooltip.
+    """
     level = (risk_level or "").strip().upper()
     strategy = strategy_for(level or "LOW")
     spec = Monitor.CAMERA_SPEC.format(width=strategy.width, height=strategy.height, fps=strategy.fps)
@@ -70,6 +86,14 @@ def camera_profile(risk_level: str | None) -> tuple[str, str]:
 
 
 def format_duration(milliseconds: int) -> str:
+    """Formats a duration as HH:MM:SS.
+
+    Args:
+        milliseconds: The duration (negative values count as 0).
+
+    Returns:
+        The text, e.g. "00:01:05".
+    """
     seconds = max(0, milliseconds) // 1000
     return f"{seconds // 3600:02d}:{seconds // 60 % 60:02d}:{seconds % 60:02d}"
 
@@ -78,14 +102,31 @@ SIDE_MIN, SIDE_MAX, SIDE_SHARE = 380, 480, 0.27
 
 
 class _SideColumn(QWidget):
-    """Right column (pose analysis for admins, then the event log). Its width follows the window:
-    27 % of it, between 380 and 480 px."""
+    """Right column: pose analysis for administrators, then the event log.
+
+    Its width follows the window: 27 % of it, between 380 and 480 px.
+    """
 
     def sizeHint(self) -> QSize:
         return QSize(SIDE_MIN, 600)
 
 
 class BaseMonitorView(QWidget):
+    """Monitoring screen shared by MonitorView and AdminView.
+
+    Signals:
+        logout_requested: The user confirmed signing out.
+        start_requested(int): Start the camera with this index.
+        stop_requested: Stop the running source.
+        upload_requested(str): Analyse the video file at this path (administrators).
+
+    Args:
+        user_name: Name of the signed-in user.
+        user_role: Their role, shown under the name.
+        patient_name: Name of their patient, or None.
+        risk_level: The patient's risk level, or None.
+        parent: Parent widget.
+    """
     logout_requested = Signal()
     start_requested = Signal(int)
     stop_requested = Signal()
@@ -198,6 +239,11 @@ class BaseMonitorView(QWidget):
     # ------------------------------------------------------------------ contract
     @Slot(QImage)
     def update_video_frame(self, qimage: QImage) -> None:
+        """Shows a processed frame; the first one of a run switches the state to LIVE.
+
+        Args:
+            qimage: The frame with the person box and skeleton drawn on it.
+        """
         if self._state in STOPPED:
             return       # frames that arrive after the run ended
         if self._state == MonitorState.STARTING:
@@ -212,6 +258,13 @@ class BaseMonitorView(QWidget):
 
     @Slot(bool)
     def set_monitoring_state(self, active: bool) -> None:
+        """Starts a run (STARTING) or ends it (ERROR, FINISHED or IDLE).
+
+        A camera that ends without Stop being pressed is reported as an error.
+
+        Args:
+            active: True when the controller started a source, False when it ended.
+        """
         if active:
             self._run_error = None
             self._stopped_by_user = False
@@ -243,6 +296,7 @@ class BaseMonitorView(QWidget):
 
     @Slot()
     def set_stopping(self) -> None:
+        """Shows that the source is stopping (the user pressed Stop)."""
         if self._state not in RUNNING:
             return
         self._stopped_by_user = True
@@ -251,6 +305,11 @@ class BaseMonitorView(QWidget):
 
     @Slot(str)
     def trigger_fall_alert(self, message: str) -> None:
+        """Raises the fall alert: log entry, red session card, pulse and taskbar flash.
+
+        Args:
+            message: Description for the log, e.g. "Fall detected (87%)".
+        """
         now = QTime.currentTime()
         self._add_event("ALERT", message, now)
         self._alert_count = self._alert_count + 1 if self._alert_active else 1
@@ -272,6 +331,7 @@ class BaseMonitorView(QWidget):
 
     # ------------------------------------------------------------------ state
     def state(self) -> MonitorState:
+        """Returns the current monitoring state."""
         return self._state
 
     def _set_state(self, state: MonitorState) -> None:
@@ -386,12 +446,14 @@ class BaseMonitorView(QWidget):
 
     # ------------------------------------------------------------------ events
     def resizeEvent(self, event) -> None:
+        """Keeps the side column at 27 % of the width, between 380 and 480 px."""
         super().resizeEvent(event)
         width = max(SIDE_MIN, min(SIDE_MAX, round(self.width() * SIDE_SHARE)))
         if width != self.side.width():
             self.side.setFixedWidth(width)
 
     def showEvent(self, event) -> None:
+        """Closes the sign-in toasts and takes the keyboard focus for the shortcuts."""
         super().showEvent(event)
         if not event.spontaneous():
             # The monitoring screen shows no toasts: the sign-in one ("Signed in · Opening your
