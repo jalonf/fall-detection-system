@@ -323,6 +323,10 @@ class ToastHost(QObject):
         if toast is not None and toast in self._toasts:
             toast.dismiss()
 
+    def dismiss_all(self) -> None:
+        for toast in list(self._toasts):
+            toast.dismiss()
+
     def set_top_inset(self, pixels: int) -> None:
         """Stacks the toasts downwards from `pixels` below the top edge, newest first."""
         if (self._anchor, self._inset, self._right) != ("top", pixels, 16):

@@ -37,10 +37,6 @@ from src.views.strings import Monitor
 from src.views.theme import Space
 from src.workers.strategies import strategy_for
 
-# Toasts sit in the bottom-right corner of the video stage, clear of the log and the telemetry:
-# above the panel footer (56) and the body margin (24), right of the side column and the gutter.
-TOAST_BOTTOM_INSET = 24 + 56 + 16
-
 
 class MonitorState(StrEnum):
     IDLE = "idle"
@@ -360,15 +356,17 @@ class BaseMonitorView(QWidget):
         self._signing_out = True
         self.logout_requested.emit()
 
-    def _place_toasts(self) -> None:
-        right = Space.S6 + self.side.width() + Space.S4 + Space.S4
-        ToastHost.for_widget(self).set_bottom_inset(TOAST_BOTTOM_INSET, right=right)
+    # ------------------------------------------------------------------ events
+    def resizeEvent(self, event) -> None:
+        super().resizeEvent(event)
+        width = max(SIDE_MIN, min(SIDE_MAX, round(self.width() * SIDE_SHARE)))
+        if width != self.side.width():
+            self.side.setFixedWidth(width)
 
     def showEvent(self, event) -> None:
         super().showEvent(event)
         if not event.spontaneous():
-            self._place_toasts()
+            # The monitoring screen shows no toasts: the sign-in one ("Signed in · Opening your
+            # dashboard…") has done its job once the dashboard is here.
+            ToastHost.for_widget(self).dismiss_all()
             self.setFocus(Qt.FocusReason.OtherFocusReason)
-
-    def hideEvent(self, event) -> None:
-        super().hideEvent(event)
