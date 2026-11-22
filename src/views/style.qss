@@ -23,6 +23,7 @@ QLabel[tone="secondary"] { color: @N600@; }
 QLabel[tone="tertiary"] { color: @N500@; }
 QLabel[tone="danger"] { color: @R700@; }
 QLabel[tone="link"] { color: @P600@; }
+QLabel[tone="info"] { color: @P700@; }
 QLabel[tone="on-dark"] { color: @S100@; }
 QLabel[tone="on-dark-secondary"] { color: @S300@; }
 QLabel[tone="on-brand"] { color: @N0@; }
