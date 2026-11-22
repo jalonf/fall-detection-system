@@ -10,8 +10,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import ClassVar
 
-from src.views.theme import APP_NAME
-
 EM_DASH = "—"
 
 
@@ -25,20 +23,16 @@ class Common:
 
 
 class Brand:
-    WORDMARK = APP_NAME
-    OVERLINE = "HOME CARE MONITORING"
-    HEADLINE = "Fall detection and risk monitoring for home care"
-    CARD_SOURCE = "CAMERA 0"
-    CARD_LIVE = "LIVE"
-    PARAGRAPH = (
-        "FallSense watches the patient's posture through a camera and alerts the caregiver "
-        "the moment a fall happens."
-    )
+    OVERLINE = "FALL RISK ASSESSMENT AND DETECTION"
+    WORDMARK = ("Fall", "Sense")          # shown as one word, the second part in the accent colour
+    PARAGRAPH = "Continuous, private fall monitoring for older adults, at home or in a care home."
     FEATURES = (
-        ("activity", "Real-time fall alerts", "The caregiver is notified by e-mail within seconds."),
-        ("shield", "Monitoring adapted to risk", "A short health questionnaire sets each patient's risk level."),
-        ("camera", "Processed on this computer", "Video analysis runs locally."),
+        ("activity", "Real-time fall detection",
+         "Every second of movement is classified by a recurrent neural network."),
+        ("eye-off", "Privacy by design", "The face is blurred before any frame is shown, stored or sent."),
+        ("bell", "Immediate caregiver alert", "An e-mail with the capture is sent as soon as a fall is detected."),
     )
+    FOOTER = "Trabajo de Fin de Grado · Universidad de León · 2026 · v1.0"
 
 
 class Login:
@@ -188,16 +182,7 @@ class Log:
         "This removes 1 event from this view. Fall events already stored are not affected."
     )
     CONFIRM_CLEAR_ACTION = "Clear log"
-    TABLE_NAME = "Session events"
-
-
-class Session:
-    TITLE = "Session"
-    SOURCE = "Source"
-    STARTED = "Started"
-    DURATION = "Duration"
-    FALLS = "Falls detected"
-    EVENTS = "Events"
+    TABLE_NAME = "Events"
 
 
 class Pose:

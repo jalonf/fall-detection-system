@@ -120,6 +120,9 @@ class Panel(QWidget):
         if width <= 0 or height <= 0:
             return
         radius = Radius.R_LG - 1
+        if radius <= 0:          # square panels: nothing to clip
+            self.body.clearMask()
+            return
         region = QRegion(0, 0, width, max(0, height - radius))
         for row in range(radius):
             y = height - radius + row

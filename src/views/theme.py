@@ -129,6 +129,7 @@ class Type:
     """Type scale (section 3.3). Labels take a role with `label.setProperty("type", role)`."""
 
     ROLES: ClassVar[dict[str, TypeSpec]] = {
+        "brand": TypeSpec(44, 600, 52, -0.8),   # the FallSense wordmark on the sign-in panel
         "display": TypeSpec(28, 600, 36, -0.2),
         "title-lg": TypeSpec(22, 600, 28, -0.1),
         "title-md": TypeSpec(16, 600, 22),
@@ -216,11 +217,11 @@ class Size:
 
 
 class Radius:
-    """Small radii: square, sober containers with only the corners softened."""
+    """Square containers (monitoring-console look); controls keep a barely softened corner."""
 
     R_SM = 2            # badges, checkboxes, tooltips, pills
-    R_MD = 3            # buttons, inputs, segments, callouts
-    R_LG = 4            # panels, toasts, dialogs
+    R_MD = 2            # buttons, inputs, segments, callouts
+    R_LG = 0            # panels, toasts, dialogs: square
     R_INNER = R_MD - 1  # first / last segment inside a bordered control
 
 
@@ -326,6 +327,9 @@ CONTRAST_PAIRS: tuple[tuple[str, str, str, float], ...] = (
     ("brand headline", C.N0, C.BRAND, 1.0),
     ("brand paragraph", C.P100, C.BRAND, 1.0),
     ("brand details", C.P200, C.BRAND, 1.0),
+    # The sign-in panel's gradient ends lighter than BRAND: check its text there too.
+    ("brand paragraph, panel bottom", C.P100, mix(C.BRAND, C.P800, 0.45).name().upper(), 1.0),
+    ("brand details, panel bottom", C.P200, mix(C.BRAND, C.P800, 0.45).name().upper(), 1.0),
 )
 
 

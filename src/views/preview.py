@@ -486,7 +486,7 @@ def _answer(field) -> None:
 
 
 def perf_steps(size: tuple[int, int], keep: list, report: dict) -> list[tuple[int, Callable[[], None]]]:
-    """Plays 5 s at 30 fps and counts Resize events of the side panels (must stay at 0)."""
+    """Plays 5 s at 30 fps and counts Resize events of the pose and log panels (must stay at 0)."""
 
     class Counter(QObject):
         def __init__(self):
@@ -508,7 +508,7 @@ def perf_steps(size: tuple[int, int], keep: list, report: dict) -> list[tuple[in
         refs["controller"] = FakeMonitorController(view, auto_falls=False)
         refs["view"] = view
         keep.append(_window(view, size))
-        for panel in (view.skeleton_panel, view.session_panel):
+        for panel in (view.skeleton_panel, view.event_log):
             panel.installEventFilter(counter)
 
     def start() -> None:

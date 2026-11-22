@@ -31,13 +31,12 @@ from src.views.components.common.toast import ToastHost
 from src.views.components.monitor.alert_pulse import AlertPulse
 from src.views.components.monitor.context_bar import ContextBar
 from src.views.components.monitor.event_log import EventLogPanel
-from src.views.components.monitor.session_panel import SessionPanel
 from src.views.components.monitor.topbar import Topbar
 from src.views.components.monitor.video_panel import VideoPanel
 from src.views.strings import Monitor, Toasts, toast_rule_for
 from src.views.theme import Space
 
-TOAST_TOP_INSET = 108            # below the top bar (56) and the context bar (40), plus 12
+TOAST_BOTTOM_INSET = 40          # bottom-right, over the oldest rows of the event log
 
 
 class MonitorState(StrEnum):
@@ -66,7 +65,7 @@ def format_duration(milliseconds: int) -> str:
 
 
 class _RightColumn(QWidget):
-    """Session and event log: 380-440 px wide, 400 preferred."""
+    """Holder of the event log: 380-440 px wide, 400 preferred."""
 
     def sizeHint(self) -> QSize:
         return QSize(400, 600)
@@ -93,8 +92,6 @@ class BaseMonitorView(QWidget):
         self._alert_active = False
         self._alert_count = 0
         self._signing_out = False
-        self._falls = 0
-        self._events = 0
         self._elapsed = QElapsedTimer()
         self._frozen_ms: int | None = None
         self._run_started = False
@@ -145,15 +142,13 @@ class BaseMonitorView(QWidget):
         self._build_below_video(left)
         body_layout.addLayout(left, 1)
 
-        # Right: the session summary and the event log, which gets the full remaining height.
+        # Right: the event log, the full height of the body.
         right = _RightColumn()
         right.setMinimumWidth(380)
         right.setMaximumWidth(440)
         right_layout = QVBoxLayout(right)
         right_layout.setContentsMargins(0, 0, 0, 0)
-        right_layout.setSpacing(Space.S4)
-        self.session_panel = SessionPanel()
-        right_layout.addWidget(self.session_panel)
+        right_layout.setSpacing(0)
         self.event_log = EventLogPanel(self._settings)
         right_layout.addWidget(self.event_log, 1)
         body_layout.addWidget(right, 0)
@@ -203,8 +198,6 @@ class BaseMonitorView(QWidget):
             self.video_panel.set_run_error(None)
             self.video_panel.set_source(self._source)
             self.context_bar.set_source(self._source.label if self._source else None)
-            self.session_panel.set_source(self._source.label if self._source else None)
-            self.session_panel.set_started(QTime.currentTime())
             self._set_state(MonitorState.STARTING)
             return
         if self._state not in RUNNING:
@@ -229,8 +222,6 @@ class BaseMonitorView(QWidget):
     @Slot(str)
     def trigger_fall_alert(self, message: str) -> None:
         now = QTime.currentTime()
-        self._falls += 1
-        self.session_panel.set_falls(self._falls)
         self._add_event("ALERT", message, now)
         self._alert_count = self._alert_count + 1 if self._alert_active else 1
         self.context_bar.set_alert(True, self._alert_count)
@@ -298,13 +289,10 @@ class BaseMonitorView(QWidget):
         else:
             text = format_duration(self._elapsed.elapsed())
         self.context_bar.set_duration(text)
-        self.session_panel.set_duration(text)
         self.video_panel.set_duration(text or "")
 
     def _add_event(self, kind: str, message: str, when: QTime | None = None) -> None:
         self.event_log.add_event(kind, message, when)
-        self._events += 1
-        self.session_panel.set_events(self._events)
 
     # ------------------------------------------------------------------ user actions
     def _start(self, source: SourceInfo) -> None:
@@ -373,7 +361,7 @@ class BaseMonitorView(QWidget):
     def showEvent(self, event) -> None:
         super().showEvent(event)
         if not event.spontaneous():
-            ToastHost.for_widget(self).set_top_inset(TOAST_TOP_INSET)
+            ToastHost.for_widget(self).set_bottom_inset(TOAST_BOTTOM_INSET)
             self.setFocus(Qt.FocusReason.OtherFocusReason)
 
     def hideEvent(self, event) -> None:
