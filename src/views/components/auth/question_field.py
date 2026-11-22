@@ -8,6 +8,7 @@ from PySide6.QtWidgets import (
     QButtonGroup,
     QGridLayout,
     QHBoxLayout,
+    QLineEdit,
     QVBoxLayout,
     QWidget,
 )
@@ -78,9 +79,10 @@ class QuestionField(QWidget):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
-        self.options = None
-        self.edit = None
-        self.check = None
+        # Exactly one input is created, depending on the question's kind.
+        self.options: SegmentedControl | RadioGroup | None = None     # CHOICE
+        self.edit: QLineEdit | None = None                            # NUMBER
+        self.check: CheckBox | None = None                            # CHECK
         self.field: FormField | None = None
         self._message: FieldMessage | None = None
 
@@ -114,17 +116,18 @@ class QuestionField(QWidget):
 
     # ------------------------------------------------------------------ API
     def value(self) -> float | None:
+        """Exactly one input exists, chosen by the question's kind in the constructor."""
         q = self.question
-        if q.kind == CHOICE:
+        if self.options is not None:          # CHOICE
             index = self.options.selected()
             return float(q.options[index][1]) if index >= 0 else None
-        if q.kind == NUMBER:
+        if self.edit is not None:             # NUMBER
             text = self.edit.text().strip()
             if not text.lstrip("-").isdigit():
                 return None
             number = int(text)
             return float(number) if q.minimum <= number <= q.maximum else None
-        return 1.0 if self.check.isChecked() else 0.0
+        return 1.0 if self.check is not None and self.check.isChecked() else 0.0   # CHECK
 
     def validate(self) -> bool:
         """Shows the inline error when the question is unanswered; True when it is valid."""
@@ -141,7 +144,7 @@ class QuestionField(QWidget):
         self._error = message is not None
         if self.field is not None:
             self.field.set_error(message)
-        elif self.options is not None:
+        elif self.options is not None and self._message is not None:
             self.options.set_invalid(self._error)
             self._message.set_error(message)
             self.options.setAccessibleDescription(message or "")
@@ -158,7 +161,9 @@ class QuestionField(QWidget):
     def focus_target(self) -> QWidget:
         if self.options is not None:
             return self.options.focus_target()
-        return self.edit if self.edit is not None else self.check
+        if self.edit is not None:
+            return self.edit
+        return self.check if self.check is not None else self
 
     @Slot()
     def _on_changed(self, *_args) -> None:

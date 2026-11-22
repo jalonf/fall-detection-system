@@ -159,6 +159,9 @@ class FakeMonitorController(QObject):
     def start_camera(self, index: int) -> None:
         if self.running:
             return
+        if isinstance(self.view, AdminView):     # same message as AdminController
+            self.view.log_event("INFO", f"Test mode · {self.view.test_profile()} risk profile: "
+                                        "falls are not stored or e-mailed")
         self._begin(f"Starting camera {index}...", is_file=False)
         if index == 2:
             self._pending_failure = f"Could not open camera {index}"
@@ -205,8 +208,9 @@ class FakeMonitorController(QObject):
 
     def fall(self, probability: float) -> None:
         self.view.trigger_fall_alert(f"Fall detected ({probability:.0%})")
-        self.view.log_event("INFO", "Sending notification e-mail...")
-        self.mail_timer.start()
+        if not isinstance(self.view, AdminView):  # administrators run in test mode: no e-mail
+            self.view.log_event("INFO", "Sending notification e-mail...")
+            self.mail_timer.start()
 
     @Slot()
     def mail_sent(self) -> None:
@@ -250,41 +254,32 @@ def forbidden_modules() -> list[str]:
 
 # ---------------------------------------------------------------------- interactive mode
 class PreviewWindow(QMainWindow):
+    """Same flow as `AppCoordinator`, with the fake controllers."""
+
     def __init__(self, admin: bool):
         super().__init__()
-        from src.router.router import ViewRouter
+        from src.navigation.navigator import Navigator, Screen
 
+        self._screen = Screen
         self.setWindowTitle(f"{APP_NAME} preview")
         self.setMinimumSize(1120, 720)
         self.admin = admin
-        self.router = ViewRouter(self)
-        self.auth_view = AuthView()
-        self.auth_controller = FakeAuthController(self.auth_view, self.open_dashboard)
-        self.router.add_view(self.auth_view)
-        self.router.navigate_to(self.auth_view)
-        self.monitor_view: BaseMonitorView | None = None
+        self.navigator = Navigator(self)
+        auth_view = AuthView()
+        self.sign_in = Screen(auth_view, FakeAuthController(auth_view, self.open_dashboard), persistent=True)
+        self.navigator.show(self.sign_in)
 
     @Slot()
     def open_dashboard(self) -> None:
-        cls = AdminView if self.admin else MonitorView
-        self.monitor_view = cls(user_name="Ana García", user_role="Administrator" if self.admin else "Medical Staff",
-                                patient_name="José Martínez", risk_level="MEDIUM")
-        FakeMonitorController(self.monitor_view)
-        self.monitor_view.logout_requested.connect(self.logout)
-        self.router.add_view(self.monitor_view)
-        self.router.navigate_to(self.monitor_view)
-
-    @Slot()
-    def logout(self) -> None:
-        view = self.monitor_view
-
-        def cleanup() -> None:
-            if view is not None:
-                self.router.remove_view(view)
-                view.deleteLater()
-
-        self.monitor_view = None
-        self.router.navigate_to(self.auth_view, on_finish_callback=cleanup)
+        view: BaseMonitorView
+        if self.admin:
+            view = AdminView(user_name="Ana García", user_role="Administrator")
+        else:
+            view = MonitorView(user_name="Ana García", user_role="Medical Staff",
+                               patient_name="José Martínez", risk_level="MEDIUM")
+        controller = FakeMonitorController(view)
+        view.logout_requested.connect(lambda: self.navigator.show(self.sign_in))
+        self.navigator.show(self._screen(view, controller))
 
 
 # ---------------------------------------------------------------------- scripted runs
@@ -351,8 +346,7 @@ def shot_steps(out: Path, size: tuple[int, int], keep: list) -> list[tuple[int, 
     controller_ref: list = [None]
 
     def build_admin() -> None:
-        view = AdminView(user_name="Ana García", user_role="Administrator", patient_name="José Martínez",
-                         risk_level="MEDIUM")
+        view = AdminView(user_name="Ana García", user_role="Administrator")
         controller_ref[0] = FakeMonitorController(view, auto_falls=False)
         view_ref[0] = view
         admin_ref[0] = _window(view, size)
@@ -498,7 +492,7 @@ def perf_steps(size: tuple[int, int], keep: list, report: dict) -> list[tuple[in
     refs: dict = {}
 
     def build() -> None:
-        view = AdminView(user_name="Ana García", user_role="Administrator", patient_name="José", risk_level="HIGH")
+        view = AdminView(user_name="Ana García", user_role="Administrator")
         refs["controller"] = FakeMonitorController(view, auto_falls=False)
         refs["view"] = view
         keep.append(_window(view, size))
@@ -526,7 +520,7 @@ def main() -> int:
     app.setQuitOnLastWindowClosed(not (ARGS.shots or ARGS.perf))
     ThemeManager.setup_theme(app)
     settings = QSettings("FallSense", "FallSense")
-    saved = {key: settings.value(key) for key in ("monitor/log_filter",)}
+    saved = {key: settings.value(key) for key in ("monitor/log_filter", "admin/test_profile")}
 
     problems = run_checks()
     for problem in problems:

@@ -27,20 +27,19 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from src.dtos import password_policy
 from src.dtos.questionnaire import DAILY_LIFE, HEALTH, PROFILE
-from src.dtos.registration_data import USER_ROLES, RegistrationData
+from src.dtos.registration_data import RegistrationData
+from src.dtos.roles import SIGNUP_ROLES
 from src.views.components.auth.login_page import EMAIL_CHARACTERS, EMAIL_PATTERN
+from src.views.components.auth.page_heading import PageHeading
 from src.views.components.auth.password_checklist import PasswordChecklist
 from src.views.components.auth.question_field import COLUMN, HALF, QuestionStep
 from src.views.components.auth.stepper import Stepper
 from src.views.components.common.button import make_button
 from src.views.components.common.callout import Callout
 from src.views.components.common.form_field import FormField
-from src.views.components.common.inputs import (
-    PasswordEdit,
-    make_line_edit,
-    password_too_long,
-)
+from src.views.components.common.inputs import PasswordEdit, make_line_edit
 from src.views.components.common.painting import (
     transparent_scroll_area,
 )
@@ -128,9 +127,7 @@ class RegisterPage(QWidget):
         layout.setContentsMargins(10, 0, 0, 0)
         layout.setSpacing(0)
         outer.addLayout(layout)
-        layout.addWidget(make_label(Register.TITLE, "title-lg"))
-        layout.addSpacing(Space.S2)
-        layout.addWidget(make_label(Register.SUBTITLE, "body", "secondary", wrap=True))
+        layout.addWidget(PageHeading("user-plus", Register.TITLE, Register.SUBTITLE))
         layout.addSpacing(Space.S6)
         self.stepper = Stepper(Register.STEPS)
         self.stepper.step_clicked.connect(self._on_step_clicked)
@@ -178,7 +175,7 @@ class RegisterPage(QWidget):
         self.phone_field = FormField(Register.PHONE, self.phone)
         layout.addLayout(_row(self.name_field, self.phone_field))
         layout.addSpacing(Space.S5)
-        self.role = SegmentedControl(USER_ROLES, accessible_name=Register.ROLE)
+        self.role = SegmentedControl(SIGNUP_ROLES, accessible_name=Register.ROLE)
         self.role_field = FormField(Register.ROLE, self.role)
         layout.addWidget(self.role_field)
         self.name.textChanged.connect(self._clear(self.name_field))
@@ -366,7 +363,7 @@ class RegisterPage(QWidget):
                 fail(self.email_field, Register.EMAIL_INVALID)
             if not all(PasswordChecklist.requirements(self.password.text()).values()):
                 fail(self.password_field, Register.PASSWORD_WEAK)
-            elif password_too_long(self.password.text()):
+            elif password_policy.too_long(self.password.text()):
                 fail(self.password_field, Register.PASSWORD_TOO_LONG)
             if self.confirm.text() != self.password.text() or not self.confirm.text():
                 fail(self.confirm_field, Register.PASSWORD_MISMATCH)
@@ -416,7 +413,7 @@ class RegisterPage(QWidget):
             email=self.email.text().strip(),
             phone=self.phone.text().strip(),
             password=self.password.text(),
-            role=USER_ROLES[self.role.selected()],
+            role=SIGNUP_ROLES[self.role.selected()],
             patient_name=self.patient.text().strip(),
             medical_info=self.notes.toPlainText().strip(),
             risk_answers=answers,

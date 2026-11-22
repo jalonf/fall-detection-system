@@ -181,5 +181,5 @@ class VideoPanel(Panel):
     def _refresh_stage(self) -> None:
         has_image = self.stage.video.has_image()
         self.stage.show_video(has_image)
-        self.stage.overlay.set_bar(has_image or self._state == "starting", self._state == "live")
+        self.stage.overlay.set_bar(has_image or self._state == "starting")
 

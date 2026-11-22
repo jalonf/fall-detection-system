@@ -99,7 +99,10 @@ class Monitor:
     SECTION_MONITORING = "Patient Monitoring"
     SECTION_ADMIN = "Administration Monitoring"
     SIGN_OUT = "Sign out"
-    SIGN_OUT_TIP = "Sign out (Ctrl+Shift+Q)"
+    SIGN_OUT_SHORTCUT = "Ctrl+Shift+Q"
+    ACCOUNT_TIP = "Account"
+    ACCOUNT_NAME = "{name}, {role}. Account menu"
+    ACCOUNT_MENU = "Account menu"
     CLOCK_FORMAT = "ddd d MMM · HH:mm"
 
     PATIENT = "Patient"
@@ -113,7 +116,16 @@ class Monitor:
     CAMERA_SPEC = "{width} × {height} · {fps} fps"
     CAMERA_SPEC_TIP = "Resolution and frame rate set by the patient's {level} risk level"
     CAMERA_SPEC_DEFAULT_TIP = "No patient linked: the camera uses the {level} risk profile"
+    CAMERA_SPEC_TEST_TIP = "Resolution and frame rate of the {level} risk test profile"
     FILE_SPEC = "Analysed at its own frame rate"
+
+    # Administrators (testers): no patient, a test profile instead, and nothing is stored or e-mailed.
+    STRIP_TEST_PROFILE = "TEST PROFILE"
+    TEST_PROFILES: ClassVar[dict[str, str]] = {"LOW": "Low risk", "MEDIUM": "Medium risk", "HIGH": "High risk"}
+    TEST_PROFILE_COMBO = "Test profile"
+    TEST_PROFILE_TIP = "Camera settings and fall model of a risk level. It applies the next time you start the camera."
+    TEST_MODE_BADGE = "TEST MODE"
+    TEST_MODE_TIP = "Falls are shown and logged here, but they are not stored and no e-mail is sent."
 
     STATUS_TEXT: ClassVar[dict[str, str]] = {
         "idle": "Stopped",
@@ -144,8 +156,6 @@ class Monitor:
     STOP_TIP = "Stop monitoring (Ctrl+Enter)"
     STOPPING = "Stopping…"
 
-    OVERLAY_LIVE = "LIVE"
-    OVERLAY_STANDBY = "STANDBY"
 
     PLACEHOLDER: ClassVar[dict[str, tuple[str, str]]] = {
         "idle": ("Monitoring stopped", "Choose a source and press Start monitoring."),

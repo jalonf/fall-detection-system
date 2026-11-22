@@ -348,6 +348,6 @@ class ToastHost(QObject):
             if event.type() == QEvent.Type.Resize:
                 self._reposition()
             elif event.type() == QEvent.Type.ChildAdded and self._toasts:
-                # Something new (e.g. the router's transition overlay) may cover the toasts.
+                # Something new (e.g. the navigator's transition overlay) may cover the toasts.
                 self._raise_timer.start()
         return False

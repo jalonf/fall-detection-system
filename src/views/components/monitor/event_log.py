@@ -288,6 +288,7 @@ class EventLogPanel(Panel):
     def total(self) -> int:
         return self.model.rowCount()
 
+    @Slot()
     def focus_events(self) -> None:
         self.events.setFocus(Qt.FocusReason.ShortcutFocusReason)
         if not self.events.currentIndex().isValid() and self.proxy.rowCount():

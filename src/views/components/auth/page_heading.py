@@ -1,0 +1,57 @@
+"""Heading of the sign-in and sign-up pages: an icon tile next to the title and its subtitle.
+
+The tile (48 px, P50 fill, P600 icon, the controls' barely softened corner) gives each page its own
+mark without adding colour or height. It has no border on purpose: the buttons and inputs of the
+form below are bordered boxes, and a bordered tile would read as one more control to click. It is
+centred on the two lines of text beside it.
+"""
+
+from __future__ import annotations
+
+from PySide6.QtCore import QPointF, QRectF, Qt
+from PySide6.QtGui import QColor, QPainter
+from PySide6.QtWidgets import QHBoxLayout, QVBoxLayout, QWidget
+
+from src.views import icons
+from src.views.theme import Colors, Radius, Space, make_label
+
+TILE = 48
+_ICON = 24
+
+
+class IconTile(QWidget):
+    def __init__(self, icon: str, parent: QWidget | None = None):
+        super().__init__(parent)
+        self._icon = icon
+        self.setFixedSize(TILE, TILE)
+        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+
+    def paintEvent(self, event) -> None:
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setBrush(QColor(Colors.P50))
+        painter.drawRoundedRect(QRectF(self.rect()), Radius.R_MD, Radius.R_MD)
+        offset = (TILE - _ICON) / 2
+        painter.drawPixmap(QPointF(offset, offset), icons.icon_pixmap(self._icon, Colors.P600, _ICON,
+                                                                      self.devicePixelRatioF()))
+
+
+class PageHeading(QWidget):
+    """Icon tile, then the title (title-lg) with the subtitle (body, secondary) under it."""
+
+    def __init__(self, icon: str, title: str, subtitle: str, parent: QWidget | None = None):
+        super().__init__(parent)
+        row = QHBoxLayout(self)
+        row.setContentsMargins(0, 0, 0, 0)
+        row.setSpacing(Space.S4)
+        row.addWidget(IconTile(icon), 0, Qt.AlignmentFlag.AlignVCenter)
+
+        text = QVBoxLayout()
+        text.setContentsMargins(0, 0, 0, 0)
+        text.setSpacing(Space.S1)
+        self.title = make_label(title, "title-lg")
+        self.subtitle = make_label(subtitle, "body", "secondary", wrap=True)
+        text.addWidget(self.title)
+        text.addWidget(self.subtitle)
+        row.addLayout(text, 1)

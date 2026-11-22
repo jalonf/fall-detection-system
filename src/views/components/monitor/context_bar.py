@@ -1,25 +1,31 @@
-"""Context strip under the top bar: patient, camera, status and duration — the main place where the
-monitoring state shows.
+"""Session card at the top of the monitoring screen's body: patient, camera, status and duration —
+the main place where the monitoring state shows.
+
+It is a card like the panels under it (N0 fill, N200 border, square corners), separated from the top
+bar by the body's margin, so it reads as content rather than as part of the header.
 
 Each item is a small overline label with its value underneath: the patient's name with a risk
 badge, the camera with the resolution and frame rate it runs at (set by the patient's risk level),
-the status and the duration. During a fall alert the strip turns R50, its status pulses and an
+the status and the duration. Administrators have no patient: the first item is their test-profile
+selector instead, with a TEST MODE badge. During a fall alert the card turns R50 with an R200 border
+and a 3 px R600 bar on the left (like the alert rows of the event log), its status pulses and an
 Acknowledge button appears on the right.
 """
 
 from __future__ import annotations
 
-from PySide6.QtCore import QRect, QSize, Qt, Signal
-from PySide6.QtGui import QColor, QFontMetrics, QPainter
+from PySide6.QtCore import QRect, QRectF, QSize, Qt, Signal
+from PySide6.QtGui import QColor, QFontMetrics, QPainter, QPainterPath, QPen
 from PySide6.QtWidgets import QHBoxLayout, QLabel, QVBoxLayout, QWidget
 
 from src.views.components.common.badge import Badge
 from src.views.components.common.button import make_button
-from src.views.components.common.painting import Divider
+from src.views.components.common.painting import Divider, crisp
 from src.views.components.common.status_indicator import StatusIndicator
 from src.views.strings import EM_DASH, Monitor
 from src.views.theme import (
     Colors,
+    Radius,
     Size,
     Space,
     Type,
@@ -42,7 +48,8 @@ def _elide(label: QLabel, text: str, role: str, width: int, mode=Qt.TextElideMod
 class ContextBar(QWidget):
     acknowledge_clicked = Signal()
 
-    def __init__(self, patient_name: str | None, risk_level: str | None, parent: QWidget | None = None):
+    def __init__(self, patient_name: str | None, risk_level: str | None, parent: QWidget | None = None, *,
+                 profile_selector: QWidget | None = None):
         super().__init__(parent)
         self.setObjectName("ContextBar")
         self.setFixedHeight(Size.CONTEXT_BAR)
@@ -50,27 +57,39 @@ class ContextBar(QWidget):
         self._state = "idle"
 
         layout = QHBoxLayout(self)
-        layout.setContentsMargins(Space.S6, 0, Space.S6, 1)
+        layout.setContentsMargins(Space.S5, 1, Space.S6, 1)     # inside the 1 px border
         layout.setSpacing(0)
 
-        # Patient: name and risk badge.
-        patient_row = QHBoxLayout()
-        patient_row.setContentsMargins(0, 0, 0, 0)
-        patient_row.setSpacing(Space.S2)
-        self.patient = make_label("", "title-sm")
-        if patient_name:
-            _elide(self.patient, patient_name, "title-sm", _PATIENT_WIDTH)
-        else:
-            self.patient.setText(EM_DASH)
-            set_props(self.patient, tone="tertiary")
-        self.patient.setAccessibleName(Monitor.PATIENT)
-        patient_row.addWidget(self.patient)
-        level = (risk_level or "").strip().upper()
+        self.patient: QLabel | None = None
         self.risk: Badge | None = None
-        if level in RISK_VARIANTS:
-            self.risk = Badge(Monitor.RISK_BADGE.format(level=level), RISK_VARIANTS[level])
-            patient_row.addWidget(self.risk, 0, Qt.AlignmentFlag.AlignVCenter)
-        self._add_item(layout, Monitor.STRIP_PATIENT, patient_row)
+        if profile_selector is not None:
+            # Administrators: the test profile they monitor with, and a badge saying nothing is stored.
+            profile_row = QHBoxLayout()
+            profile_row.setContentsMargins(0, 0, 0, 0)
+            profile_row.setSpacing(Space.S2)
+            profile_row.addWidget(profile_selector)
+            test_badge = Badge(Monitor.TEST_MODE_BADGE, "info")
+            test_badge.setToolTip(Monitor.TEST_MODE_TIP)
+            profile_row.addWidget(test_badge, 0, Qt.AlignmentFlag.AlignVCenter)
+            self._add_item(layout, Monitor.STRIP_TEST_PROFILE, profile_row)
+        else:
+            # Patient: name and risk badge.
+            patient_row = QHBoxLayout()
+            patient_row.setContentsMargins(0, 0, 0, 0)
+            patient_row.setSpacing(Space.S2)
+            self.patient = make_label("", "title-sm")
+            if patient_name:
+                _elide(self.patient, patient_name, "title-sm", _PATIENT_WIDTH)
+            else:
+                self.patient.setText(EM_DASH)
+                set_props(self.patient, tone="tertiary")
+            self.patient.setAccessibleName(Monitor.PATIENT)
+            patient_row.addWidget(self.patient)
+            level = (risk_level or "").strip().upper()
+            if level in RISK_VARIANTS:
+                self.risk = Badge(Monitor.RISK_BADGE.format(level=level), RISK_VARIANTS[level])
+                patient_row.addWidget(self.risk, 0, Qt.AlignmentFlag.AlignVCenter)
+            self._add_item(layout, Monitor.STRIP_PATIENT, patient_row)
 
         # Camera / source: name and its capture settings.
         source_row = QHBoxLayout()
@@ -88,12 +107,16 @@ class ContextBar(QWidget):
 
         self.duration = make_tabular_label(EM_DASH, "body-strong", "tertiary", sample="00:00:00")
         self._add_item(layout, Monitor.STRIP_DURATION, self.duration, divider=True)
-        layout.addStretch(1)
 
+        # Acknowledge, with its own gap: hidden together, so no empty space is left at the right.
+        self._acknowledge_box = QWidget()
+        box = QHBoxLayout(self._acknowledge_box)
+        box.setContentsMargins(Space.S6, 0, 0, 0)
         self.acknowledge = make_button(Monitor.ACKNOWLEDGE, "danger", "md", "check", tooltip=Monitor.ACKNOWLEDGE_TIP)
-        self.acknowledge.hide()
         self.acknowledge.clicked.connect(self.acknowledge_clicked)
-        layout.addWidget(self.acknowledge, 0, Qt.AlignmentFlag.AlignVCenter)
+        box.addWidget(self.acknowledge)
+        self._acknowledge_box.hide()
+        layout.addWidget(self._acknowledge_box, 0, Qt.AlignmentFlag.AlignVCenter)
         self.set_state("idle")
 
     def _add_item(self, layout: QHBoxLayout, label: str, value, *, divider: bool = False) -> QLabel:
@@ -111,9 +134,12 @@ class ContextBar(QWidget):
             column.addWidget(value, 0, Qt.AlignmentFlag.AlignLeft)
             value.setAccessibleName(label.title())
         else:
+            value.addStretch(1)       # the row's content stays packed at the left of its column
             column.addLayout(value)
         column.addStretch(1)
-        layout.addLayout(column)
+        # Every item takes an equal share of the spare width, so the card spans the body like the
+        # panels below and its items are spread evenly instead of leaving a gap at the right.
+        layout.addLayout(column, 1)
         return caption
 
     # ------------------------------------------------------------------ API
@@ -151,7 +177,7 @@ class ContextBar(QWidget):
             self.status.set_status("alert", text)
         else:
             self.status.set_status(self._state, Monitor.STATUS_TEXT[self._state])
-        self.acknowledge.setVisible(active)
+        self._acknowledge_box.setVisible(active)
         if changed:
             self.update()
 
@@ -163,9 +189,20 @@ class ContextBar(QWidget):
 
     # ------------------------------------------------------------------ painting
     def sizeHint(self) -> QSize:
-        return QSize(1120, Size.CONTEXT_BAR)
+        return QSize(self.layout().sizeHint().width(), Size.CONTEXT_BAR)
 
     def paintEvent(self, event) -> None:
+        """A card like `Panel`: fill and a 1 px border; red tones and a left bar during an alert."""
         painter = QPainter(self)
-        painter.fillRect(self.rect(), QColor(Colors.R50 if self._alert else Colors.N0))
-        painter.fillRect(QRect(0, self.height() - 1, self.width(), 1), QColor(Colors.R200 if self._alert else Colors.N200))
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        outline = QPainterPath()
+        outline.addRoundedRect(crisp(QRectF(self.rect())), Radius.R_LG, Radius.R_LG)
+        painter.fillPath(outline, QColor(Colors.R50 if self._alert else Colors.N0))
+        if self._alert:
+            painter.save()
+            painter.setClipPath(outline)
+            painter.fillRect(QRect(0, 0, 3, self.height()), QColor(Colors.R600))
+            painter.restore()
+        painter.setPen(QPen(QColor(Colors.R200 if self._alert else Colors.N200), 1))
+        painter.setBrush(Qt.BrushStyle.NoBrush)
+        painter.drawPath(outline)

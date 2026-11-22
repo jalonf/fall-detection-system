@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
-from PySide6.QtCore import QPointF, QRectF, QSize, Qt
+from PySide6.QtCore import QPointF, QRectF, QSize, Qt, Slot
 from PySide6.QtGui import QColor, QPainter, QPen
 from PySide6.QtWidgets import QSizePolicy, QWidget
 
+from src.dtos import password_policy
 from src.views import icons
 from src.views.strings import Register
 from src.views.theme import Colors, Type
@@ -24,13 +25,10 @@ class PasswordChecklist(QWidget):
 
     @staticmethod
     def requirements(password: str) -> dict[str, bool]:
-        return {
-            "length": len(password) >= 8,
-            "upper": any(char.isupper() for char in password),
-            "number": any(char.isdigit() for char in password),
-            "symbol": any(not char.isalnum() and not char.isspace() for char in password),
-        }
+        """The shared rules (also used by `python -m src.create_admin`)."""
+        return password_policy.requirements(password)
 
+    @Slot(str)
     def set_password(self, password: str) -> None:
         met = self.requirements(password)
         if met != self._met:

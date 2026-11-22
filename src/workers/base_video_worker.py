@@ -126,6 +126,13 @@ class BaseVideoWorker(QThread):
         self.inference_worker.load_model(strategy.model_path)
         self.inference_worker.start()
 
+    def _models(self) -> tuple[MediaPipeExtractor, InferenceWorker]:
+        """The pose extractor and the fall model. They exist from `_setup` on, and every frame is
+        processed after it; asking for them earlier is a programming error."""
+        if self.extractor is None or self.inference_worker is None:
+            raise RuntimeError("The video pipeline was used before _setup() created its models")
+        return self.extractor, self.inference_worker
+
     # ------------------------------------------------------------------ frames
     def take_frame(self) -> FramePacket | None:
         """Called from the GUI thread: returns the newest frame and empties the slot."""
@@ -147,9 +154,10 @@ class BaseVideoWorker(QThread):
     def _process_frame(self, frame) -> None:
         """Runs the whole pipeline for one BGR frame and emits the results."""
         started = time.perf_counter()
-        
+        extractor, inference_worker = self._models()
+
         # 1. Pose. If MediaPipe finds nobody, keep the last pose so the drawing does not flicker.
-        skeleton = self.extractor.extract_pose(frame_bgr=frame)
+        skeleton = extractor.extract_pose(frame_bgr=frame)
         
         if skeleton:
             pose = skeleton.pose
@@ -172,8 +180,8 @@ class BaseVideoWorker(QThread):
         if self.last_pose is not None:
             self.sequence_buffer.append(self.last_pose)
         if len(self.sequence_buffer) == self.seq_len:
-            self.inference_worker.predict(np.expand_dims(np.array(self.sequence_buffer), axis=0))
-        
+            inference_worker.predict(np.expand_dims(np.array(self.sequence_buffer), axis=0))
+
         fall_probability = self._poll_fall()
 
         # 4. Drawing and telemetry. The skeleton panel gets its own image.
@@ -211,7 +219,8 @@ class BaseVideoWorker(QThread):
 
     def _poll_fall(self) -> float | None:
         """Returns the probability when a fall has just started, otherwise None."""
-        result = self.inference_worker.latest
+        _, inference_worker = self._models()
+        result = inference_worker.latest
         if result is None:
             return None
 

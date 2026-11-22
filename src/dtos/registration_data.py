@@ -1,8 +1,5 @@
 from dataclasses import dataclass, field
 
-# Roles that can be chosen when signing up.
-USER_ROLES = ("Family / Caregiver", "Medical Staff", "Administrator")
-
 
 @dataclass
 class RegistrationData:
@@ -11,7 +8,7 @@ class RegistrationData:
     email: str
     phone: str
     password: str
-    role: str
+    role: str                 # one of `roles.SIGNUP_ROLES`
     patient_name: str
     medical_info: str
     # Answers to the health questionnaire (see src/dtos/questionnaire.py); the risk level is calculated from them.

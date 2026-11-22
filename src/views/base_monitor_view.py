@@ -139,19 +139,26 @@ class BaseMonitorView(QWidget):
         self.topbar = Topbar(self.SECTION, user_name, user_role)
         self.topbar.sign_out_clicked.connect(self._request_sign_out)
         layout.addWidget(self.topbar)
-        self.context_bar = ContextBar(patient_name, risk_level)
-        layout.addWidget(self.context_bar)
 
         body = QWidget()
         body.setAutoFillBackground(True)      # N50 canvas (palette Window)
-        body_layout = QHBoxLayout(body)
+        body_layout = QVBoxLayout(body)
         body_layout.setContentsMargins(Space.S6, Space.S4, Space.S6, Space.S6)
         body_layout.setSpacing(Space.S4)
         layout.addWidget(body, 1)
 
+        # Top: the session card (patient, camera, status, duration), a card like the panels below it.
+        self.context_bar = self._make_context_bar(patient_name, risk_level)
+        body_layout.addWidget(self.context_bar)      # full width, aligned with the panels below
+
+        panels = QHBoxLayout()
+        panels.setContentsMargins(0, 0, 0, 0)
+        panels.setSpacing(Space.S4)
+        body_layout.addLayout(panels, 1)
+
         # Left: the video, the full height of the body, so its stage stays close to the image's shape.
         self.video_panel = VideoPanel(can_analyse_files=self.CAN_ANALYSE_FILES)
-        body_layout.addWidget(self.video_panel, 1)
+        panels.addWidget(self.video_panel, 1)
 
         # Right: pose analysis for administrators, then the event log, which takes the rest.
         self.side = _SideColumn()
@@ -162,13 +169,17 @@ class BaseMonitorView(QWidget):
         self._build_side_panels(side_layout)
         self.event_log = EventLogPanel(self._settings)
         side_layout.addWidget(self.event_log, 1)
-        body_layout.addWidget(self.side, 0)
+        panels.addWidget(self.side, 0)
 
         self.video_panel.start_clicked.connect(self._start_camera)
         self.video_panel.stop_clicked.connect(self._request_stop)
         self.video_panel.retry_clicked.connect(self._retry)
         self.video_panel.source_combo.currentIndexChanged.connect(self._refresh_source)
         self.context_bar.acknowledge_clicked.connect(self._acknowledge_alert)
+
+    def _make_context_bar(self, patient_name: str | None, risk_level: str | None) -> ContextBar:
+        """Hook: AdminView shows its test-profile selector instead of the patient."""
+        return ContextBar(patient_name, risk_level)
 
     def _build_side_panels(self, layout: QVBoxLayout) -> None:
         """Hook: AdminView adds the pose analysis panel above the event log."""
@@ -287,6 +298,11 @@ class BaseMonitorView(QWidget):
             self.context_bar.set_source(source.label, Monitor.FILE_SPEC, camera=False)
         else:
             self.context_bar.set_source(source.label, self._camera_spec, self._camera_tip)
+
+    def _set_camera_profile(self, spec: str, tip: str) -> None:
+        """Changes the camera settings shown in the strip (AdminView's test profile)."""
+        self._camera_spec, self._camera_tip = spec, tip
+        self._refresh_source()
 
     def _freeze_duration(self) -> None:
         if self._frozen_ms is None:

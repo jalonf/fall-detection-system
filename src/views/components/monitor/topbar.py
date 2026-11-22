@@ -1,4 +1,5 @@
-"""Top bar: the screen's title and today's date on the left; the user and sign out on the right."""
+"""Top bar: the screen's title and today's date on the left; the signed-in user on the right, as a
+button that opens the account menu (Sign out)."""
 
 from __future__ import annotations
 
@@ -6,6 +7,7 @@ from PySide6.QtCore import (
     QDate,
     QDateTime,
     QLocale,
+    QPoint,
     QRect,
     QSize,
     Qt,
@@ -15,9 +17,17 @@ from PySide6.QtCore import (
     Slot,
 )
 from PySide6.QtGui import QColor, QFontMetrics, QPainter
-from PySide6.QtWidgets import QHBoxLayout, QSizePolicy, QVBoxLayout, QWidget
+from PySide6.QtWidgets import (
+    QHBoxLayout,
+    QMenu,
+    QPushButton,
+    QSizePolicy,
+    QVBoxLayout,
+    QWidget,
+)
 
-from src.views.components.common.button import make_button
+from src.views import icons
+from src.views.components.common.painting import IconView
 from src.views.strings import Monitor
 from src.views.theme import (
     Colors,
@@ -26,9 +36,12 @@ from src.views.theme import (
     Type,
     make_label,
     make_tabular_label,
+    set_props,
 )
 
 _LOCALE = QLocale(QLocale.Language.English)
+_ACCOUNT_HEIGHT = 44
+_IDENTITY_WIDTH = 200
 
 
 def initials(name: str) -> str:
@@ -68,6 +81,79 @@ class Avatar(QWidget):
         painter.drawText(self.rect(), int(Qt.AlignmentFlag.AlignCenter), self._initials)
 
 
+class AccountButton(QPushButton):
+    """The signed-in user (avatar, name, role and a chevron) as one button that opens the account menu.
+
+    The menu opens under the button, as wide as it, and holds "Sign out" (also Ctrl+Shift+Q on the
+    monitoring screen). It works from the keyboard too: Tab to the button, Enter or Space to open it,
+    the arrows to move and Enter to choose.
+    """
+
+    sign_out_requested = Signal()
+
+    def __init__(self, user_name: str, user_role: str, parent: QWidget | None = None):
+        super().__init__(parent)
+        self.setObjectName("AccountButton")
+        self.setFixedHeight(_ACCOUNT_HEIGHT)
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.setFocusPolicy(Qt.FocusPolicy.TabFocus)
+        self.setToolTip(Monitor.ACCOUNT_TIP)
+        self.setAccessibleName(Monitor.ACCOUNT_NAME.format(name=user_name or "", role=user_role or ""))
+
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(6, 0, 10, 0)
+        layout.setSpacing(Space.S2)
+        layout.addWidget(Avatar(user_name or "?"), 0, Qt.AlignmentFlag.AlignVCenter)
+        identity = QVBoxLayout()
+        identity.setContentsMargins(0, 0, 0, 0)
+        identity.setSpacing(0)
+        identity.addStretch(1)
+        for text, role, tone in ((user_name, "body-strong", None), (user_role, "caption", "secondary")):
+            label = make_label("", role, tone)
+            metrics = QFontMetrics(Type.font(role))
+            label.setText(metrics.elidedText(text or "", Qt.TextElideMode.ElideRight, _IDENTITY_WIDTH))
+            label.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
+            identity.addWidget(label)
+        identity.addStretch(1)
+        layout.addLayout(identity)
+        layout.addSpacing(Space.S1)
+        layout.addWidget(IconView("chevron-down", Colors.N500, 16), 0, Qt.AlignmentFlag.AlignVCenter)
+        for child in self.findChildren(QWidget):      # the whole button takes the clicks
+            child.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+
+        self.menu = QMenu(self)
+        self.menu.setAccessibleName(Monitor.ACCOUNT_MENU)
+        # The text after the tab is drawn right-aligned, as the shortcut hint of a menu item.
+        self.sign_out_action = self.menu.addAction(icons.icon("log-out", Colors.N700, 16),
+                                                   f"{Monitor.SIGN_OUT}\t{Monitor.SIGN_OUT_SHORTCUT}")
+        self.sign_out_action.triggered.connect(self.sign_out_requested)
+        self.menu.aboutToShow.connect(self._on_menu_shown)
+        self.menu.aboutToHide.connect(self._on_menu_hidden)
+        self.clicked.connect(self.open_menu)
+
+    def sizeHint(self) -> QSize:
+        return QSize(self.layout().sizeHint().width(), _ACCOUNT_HEIGHT)
+
+    def minimumSizeHint(self) -> QSize:
+        return self.sizeHint()
+
+    @Slot()
+    def open_menu(self) -> None:
+        """Shows the menu right under the button, at least as wide as it and right-aligned with it, so
+        a wider menu grows to the left instead of past the window's edge."""
+        self.menu.setMinimumWidth(self.width())
+        width = max(self.width(), self.menu.sizeHint().width())
+        self.menu.popup(self.mapToGlobal(QPoint(self.width() - width, self.height() + Space.S1)))
+
+    @Slot()
+    def _on_menu_shown(self) -> None:
+        set_props(self, open=True)        # keeps the pressed look while the menu is open
+
+    @Slot()
+    def _on_menu_hidden(self) -> None:
+        set_props(self, open=False)
+
+
 class Topbar(QWidget):
     sign_out_clicked = Signal()
 
@@ -92,29 +178,10 @@ class Topbar(QWidget):
         layout.addLayout(heading)
         layout.addStretch(1)
 
-        layout.addWidget(Avatar(user_name or "?"))
-        layout.addSpacing(Space.S2)
-        identity = QVBoxLayout()
-        identity.setContentsMargins(0, 0, 0, 0)
-        identity.setSpacing(0)
-        name_label = make_label("", "body-strong")
-        role_label = make_label("", "caption", "secondary")
-        for label, text, role in ((name_label, user_name, "body-strong"), (role_label, user_role, "caption")):
-            metrics = QFontMetrics(Type.font(role))
-            label.setText(metrics.elidedText(text or "", Qt.TextElideMode.ElideRight, 200))
-            if metrics.horizontalAdvance(text or "") > 200:
-                label.setToolTip(text)
-            label.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
-        identity.addStretch(1)
-        identity.addWidget(name_label)
-        identity.addWidget(role_label)
-        identity.addStretch(1)
-        layout.addLayout(identity)
-        layout.addSpacing(Space.S4)
-
-        self.sign_out = make_button(Monitor.SIGN_OUT, "secondary", "md", "log-out", tooltip=Monitor.SIGN_OUT_TIP)
-        self.sign_out.clicked.connect(self.sign_out_clicked)
-        layout.addWidget(self.sign_out)
+        # Right: the signed-in user; clicking it opens the account menu (Sign out).
+        self.account = AccountButton(user_name, user_role)
+        self.account.sign_out_requested.connect(self.sign_out_clicked)
+        layout.addWidget(self.account, 0, Qt.AlignmentFlag.AlignVCenter)
 
         self._clock_timer = QTimer(self)
         self._clock_timer.setSingleShot(True)

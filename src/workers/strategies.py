@@ -47,6 +47,7 @@ _STRATEGIES: dict[str, type[MonitoringStrategy]] = {
     "MEDIUM": MediumRiskStrategy,
     "HIGH": HighRiskStrategy,
 }
+RISK_LEVELS = tuple(_STRATEGIES)   # ("LOW", "MEDIUM", "HIGH")
 
 
 def strategy_for(risk_level: str) -> MonitoringStrategy:

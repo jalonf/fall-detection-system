@@ -19,8 +19,11 @@ Developed as a **Bachelor's Thesis (Trabajo de Fin de Grado, TFG)**.
 * **Fall alerts:** the event is stored in the database and an e-mail with a capture of the fall
   is sent through Gmail (SMTP). The capture only lives in memory: it is never written to disk.
 * **User accounts** (login and sign-up) with a patient linked to each caregiver.
-* **Administrator view** with an extra skeleton panel, live telemetry (inference time, pose
-  confidence, hip height) and the option to analyse an uploaded video file.
+* **Administrator (tester) view**: no patient and a **test mode** in which falls are shown and logged
+  but never stored or e-mailed. The tester picks the camera's test profile (the settings and model of a
+  risk level), analyses uploaded video files and sees an extra skeleton panel and live telemetry
+  (inference time, pose confidence, hip height). Administrators cannot sign up from the application;
+  they are created from the command line (see [Running the application](#running-the-application)).
 
 ---
 
@@ -76,18 +79,25 @@ The confusion matrices and training curves are in `docs/high_risk_30fps/` and
 The application follows **Model-View-Controller** on top of PySide6 (Qt):
 
 * **Views** (`src/views/`): the login / sign-up screen (`AuthView`), the caregiver's monitoring
-  screen (`MonitorView`) and the administrator's one (`AdminView`). `ViewRouter` switches
-  between them with a cross-fade.
+  screen (`MonitorView`) and the administrator's one (`AdminView`).
+* **Navigation** (`src/navigation/`, Application Controller / Coordinator pattern): `AppCoordinator`
+  owns the flow (sign-in → the dashboard of the user's role → sign-out) and builds each screen (a view
+  and its controller); controllers only report events and never open screens themselves. `Navigator`
+  shows one screen at a time with a cross-fade and owns their life cycle: it stops the controller of
+  the screen being left (releasing the camera) and destroys its view.
 * **Controllers** (`src/controllers/`): `AuthController` handles login and sign-up.
   `BaseMonitorController` starts and stops the video workers and shows what they report;
-  `MonitorController` and `AdminController` extend it.
+  `MonitorController` and `AdminController` extend it. `AdminController` only accepts administrators
+  and runs everything in test mode (workers without user or patient, so nothing is stored or sent).
 * **Workers** (`src/workers/`): Qt threads that do the heavy work. `VideoWorker` reads the
   camera and `VideoFileWorker` an uploaded file; both share the pipeline in `BaseVideoWorker`.
   The monitoring strategies (Strategy pattern) hold the camera settings and the model of each
   risk level.
 * **Persistence** (`src/database/`, `src/repositories/`): SQLite through the Peewee ORM, with
   the `User`, `Patient` and `FallEvent` models. Repositories are the only classes that query
-  the database.
+  the database. Every account, administrators included, is a `User` row with a role (role-based
+  access): the role decides the screen and the permissions, and the table only accepts the roles
+  defined in `src/dtos/roles.py`. Administrators simply have no `Patient`.
 * **Notifications** (`src/notifications/`): builds and sends the alert e-mail.
 
 ---
@@ -106,14 +116,15 @@ fall-detection-system/
 ├── docs/                   # Evaluation plots of both models and the UML diagram
 ├── src/
 │   ├── main.py             # Entry point: main window, login and role-based navigation
+│   ├── create_admin.py     # Command that creates administrator (tester) accounts
 │   ├── paths.py            # Locations of the models, datasets and database (built from the project root)
 │   ├── ai/                 # MediaPipe pose extractor and risk-level assessor
 │   ├── controllers/        # Auth and monitoring controllers
 │   ├── database/           # SQLite connection and Peewee models
-│   ├── dtos/               # Data passed from the views to the controllers (and the health questionnaire)
+│   ├── dtos/               # Data passed from the views to the controllers, roles, password rules, questionnaire
 │   ├── notifications/      # Alert e-mail (sender and template)
 │   ├── repositories/       # Database access for users, patients and fall events
-│   ├── router/             # Animated navigation between screens
+│   ├── navigation/         # Screen flow (AppCoordinator) and screen changes (Navigator)
 │   ├── views/              # Screens, components, theme and stylesheet
 │   └── workers/            # Video, inference and monitoring-strategy classes
 ├── training/
@@ -184,13 +195,25 @@ python -m src.main
 ```
 
 The database is created on the first run. Sign up, fill in the patient's data and answer the health
-questionnaire (it sets the patient's risk level), and press **Start detection**. The role chosen at sign-up decides the screen:
+questionnaire (it sets the patient's risk level), and press **Start monitoring**. The role decides the screen:
 
-| Role | Screen |
-|------|--------|
-| Family / Caregiver | Monitoring screen |
-| Medical Staff | Monitoring screen |
-| Administrator | Monitoring screen plus the skeleton panel, live telemetry and video upload |
+| Role | How the account is created | Screen |
+|------|----------------------------|--------|
+| Family / Caregiver | Sign-up form | Monitoring screen of their patient |
+| Medical Staff | Sign-up form | Monitoring screen of their patient |
+| Administrator | `python -m src.create_admin` | Test mode: test profiles, video upload, skeleton panel and telemetry |
+
+#### Creating an administrator
+
+Administrators are the application's testers. The sign-up form does not offer that role, so nobody
+can give themselves the administration screen; create the account from the project root instead:
+
+```bash
+python -m src.create_admin
+```
+
+It asks for the name, the e-mail and the password (typed twice, hidden, with the same rules as the
+sign-up form) and creates the account without a patient. Then sign in with it in the application.
 
 ---
 

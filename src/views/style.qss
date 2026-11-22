@@ -92,6 +92,13 @@ QPushButton[variant="segment"][position="first"] { border-top-left-radius: @R_IN
 QPushButton[variant="segment"][position="last"] { border-top-right-radius: @R_INNER@; border-bottom-right-radius: @R_INNER@; }
 QPushButton[variant="segment"][position="only"] { border-radius: @R_INNER@; }
 
+/* Account button of the top bar (avatar, name, role and chevron; it opens the account menu).
+ * The 1 px border is always there, only its colour changes, so the content never moves. */
+QPushButton#AccountButton { background-color: transparent; border: 1px solid transparent; border-radius: @R_MD@; }
+QPushButton#AccountButton:hover { background-color: @N50@; border-color: @N200@; }
+QPushButton#AccountButton:pressed, QPushButton#AccountButton[open="true"] { background-color: @N100@; border-color: @N200@; }
+QPushButton#AccountButton:focus { border-color: @P600@; }
+
 /* ------------------------------------------------------------------ text inputs */
 QLineEdit, QPlainTextEdit {
     background-color: @N0@;

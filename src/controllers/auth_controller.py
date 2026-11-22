@@ -1,21 +1,26 @@
 import logging
 
-from PySide6.QtCore import QTimer
+from PySide6.QtCore import QObject, QTimer, Slot
 
 from src.ai.risk_assessor import RiskAssessor
 from src.database.database_manager import db_connection
-from src.dtos.registration_data import USER_ROLES, RegistrationData
+from src.dtos.registration_data import RegistrationData
+from src.dtos.roles import SIGNUP_ROLES
 from src.repositories.patient_repository import PatientRepository
 from src.repositories.user_repository import UserRepository
 
 logger = logging.getLogger(__name__)
 
-class AuthController:
+class AuthController(QObject):
     """
     Controller responsible for handling authentication-related logic.
     Connects its methods to the signals emitted by the AuthView.
+
+    It is a QObject living in the GUI thread, like the monitoring controllers, so its handlers are
+    real Qt slots.
     """
     def __init__(self, view, on_auth_success):
+        super().__init__()
         self.view = view
         self.on_auth_success = on_auth_success
         
@@ -27,6 +32,7 @@ class AuthController:
         self.patient_repo = PatientRepository()
         self.risk_assessor = RiskAssessor()
 
+    @Slot(str, str)
     def handle_login(self, email, password):
         """Handles user login."""
         logger.info("The controller is about to handle the login process")
@@ -53,12 +59,14 @@ class AuthController:
             logger.exception("The risk level could not be calculated; using HIGH to be safe")
             return "HIGH"
 
+    @Slot(object)      # RegistrationData (a Python object, as in AuthView.register_requested)
     def handle_register(self, data: RegistrationData):
         """Handles new user registration and creates the associated patient."""
         logger.info("The controller is about to handle the registration process for: %s", data.email)
 
-        if data.role not in USER_ROLES:
-            logger.warning("Registration rejected: unknown role %r", data.role)
+        # Administrators are created with `python -m src.create_admin`, never from the sign-up form.
+        if data.role not in SIGNUP_ROLES:
+            logger.warning("Registration rejected: role %r cannot be chosen when signing up", data.role)
             self.view.show_error("Please choose a valid user role.")
             return
 

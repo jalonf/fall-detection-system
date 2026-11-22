@@ -1,4 +1,5 @@
-"""Overlay at the top of the stage: the source bar (40 px, only with an image or while starting).
+"""Overlay at the top of the stage: the source bar (40 px, only with an image or while starting) with
+the source's icon and name. The monitoring status is not repeated here: the session card shows it.
 It never takes mouse input."""
 
 from __future__ import annotations
@@ -8,11 +9,10 @@ from PySide6.QtGui import QColor, QLinearGradient, QPainter, QPixmap
 from PySide6.QtWidgets import QWidget
 
 from src.views import icons
-from src.views.strings import Monitor
-from src.views.theme import Colors, Radius, Type, qcolor
+from src.views.theme import Colors, Type, qcolor
 
 BAR = 40
-_PILL_HEIGHT = 20
+_PADDING = 12
 
 
 class StageOverlay(QWidget):
@@ -22,7 +22,6 @@ class StageOverlay(QWidget):
         self._kind = "camera"
         self._label = ""
         self._bar = False
-        self._live = False
         self._gradient: QPixmap | None = None
 
     # ------------------------------------------------------------------ API
@@ -31,9 +30,9 @@ class StageOverlay(QWidget):
             self._kind, self._label = kind, label
             self.update(0, 0, self.width(), BAR)
 
-    def set_bar(self, visible: bool, live: bool) -> None:
-        if (visible, live) != (self._bar, self._live):
-            self._bar, self._live = visible, live
+    def set_bar(self, visible: bool) -> None:
+        if visible != self._bar:
+            self._bar = visible
             self.update(0, 0, self.width(), BAR)
 
     # ------------------------------------------------------------------ painting
@@ -64,32 +63,16 @@ class StageOverlay(QWidget):
     def _paint_bar(self, painter: QPainter) -> None:
         painter.drawPixmap(0, 0, self._gradient_pixmap())
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-        overline = Type.font("overline")
-        painter.setFont(overline)
+        painter.setFont(Type.font("overline"))
         metrics = painter.fontMetrics()
 
-        # Right: LIVE / STANDBY pill.
-        text = Monitor.OVERLAY_LIVE if self._live else Monitor.OVERLAY_STANDBY
-        pill_width = 8 + 6 + 6 + metrics.horizontalAdvance(text) + 8
-        pill = QRectF(self.width() - 12 - pill_width, (BAR - _PILL_HEIGHT) / 2, pill_width, _PILL_HEIGHT)
-        painter.setPen(Qt.PenStyle.NoPen)
-        painter.setBrush(QColor(0, 0, 0, round(255 * 0.45)))
-        painter.drawRoundedRect(pill, Radius.R_SM, Radius.R_SM)
-        marker = QRectF(pill.left() + 8, pill.center().y() - 3, 6, 6)
-        if self._live:
-            painter.setBrush(QColor(Colors.G500))
-            painter.drawEllipse(marker)
-        else:
-            painter.fillRect(marker, QColor(Colors.N400))
-        painter.setPen(QColor(Colors.N0))
-        painter.drawText(QRectF(marker.right() + 6, pill.top(), pill.right() - marker.right() - 6, pill.height()),
-                         int(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter), text)
-
-        # Left: source icon and name.
+        # Source icon and name.
         icon_name = "film" if self._kind == "file" else "camera"
-        painter.drawPixmap(12, (BAR - 16) // 2, icons.icon_pixmap(icon_name, Colors.S100, 16, self.devicePixelRatioF()))
-        available = int(pill.left() - 12 - 16 - 8 - 16)
-        label = metrics.elidedText(self._label.upper(), Qt.TextElideMode.ElideMiddle, max(0, available))
+        painter.drawPixmap(_PADDING, (BAR - 16) // 2,
+                           icons.icon_pixmap(icon_name, Colors.S100, 16, self.devicePixelRatioF()))
+        text_x = _PADDING + 16 + 8
+        available = max(0, self.width() - text_x - _PADDING)
+        label = metrics.elidedText(self._label.upper(), Qt.TextElideMode.ElideMiddle, available)
         painter.setPen(QColor(Colors.S100))
-        painter.drawText(QRectF(12 + 16 + 8, 0, available, BAR),
+        painter.drawText(QRectF(text_x, 0, available, BAR),
                          int(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter), label)

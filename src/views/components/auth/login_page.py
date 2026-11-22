@@ -19,6 +19,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from src.views.components.auth.page_heading import PageHeading
 from src.views.components.common.button import make_button
 from src.views.components.common.callout import Callout
 from src.views.components.common.form_field import FormField
@@ -55,9 +56,7 @@ class LoginPage(QWidget):
         column = QVBoxLayout(column_widget)
         column.setContentsMargins(0, 0, 0, 0)
         column.setSpacing(0)
-        column.addWidget(make_label(Login.TITLE, "title-lg"))
-        column.addSpacing(Space.S2)
-        column.addWidget(make_label(Login.SUBTITLE, "body", "secondary", wrap=True))
+        column.addWidget(PageHeading("log-in", Login.TITLE, Login.SUBTITLE))
         column.addSpacing(Space.S8)
 
         self.error = Callout("", "danger")

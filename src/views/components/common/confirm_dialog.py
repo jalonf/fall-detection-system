@@ -8,7 +8,7 @@ The overlay eats every click outside the card, keeps keyboard focus on its two b
 
 from __future__ import annotations
 
-from PySide6.QtCore import QEvent, QEventLoop, QRect, QRectF, Qt
+from PySide6.QtCore import QEvent, QEventLoop, QRect, QRectF, Qt, Slot
 from PySide6.QtGui import QColor, QPainter
 from PySide6.QtWidgets import (
     QAbstractButton,
@@ -82,9 +82,11 @@ class ConfirmDialog(QWidget):
         self._loop = None
         return self._accepted
 
+    @Slot()
     def accept(self) -> None:
         self._finish(True)
 
+    @Slot()
     def reject(self) -> None:
         self._finish(False)
 
