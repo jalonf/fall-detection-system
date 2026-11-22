@@ -23,8 +23,8 @@ models/**/*.h5
 .DS_Store
 Thumbs.db
 
-# Database
-app.db
+# Database (also SQLite's -wal / -shm / -journal side files)
+app.db*
 
 # Logs
 app.log
