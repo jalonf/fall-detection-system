@@ -1,6 +1,14 @@
-"""RegistrationData: what the sign-up form sends to the controller."""
+"""RegistrationData: what the sign-up form sends to the controller, and the fields it can reject."""
 
 from dataclasses import dataclass, field
+from enum import Enum
+
+
+class RegistrationField(Enum):
+    """A sign-up field the controller can reject, so the form points at it (`AuthView.show_error`)."""
+
+    EMAIL = "email"   # already in use
+    ROLE = "role"     # not one of the roles offered when signing up
 
 
 @dataclass(frozen=True)

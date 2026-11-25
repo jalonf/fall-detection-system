@@ -17,7 +17,7 @@ import logging
 import re
 import sys
 
-from src.database.database_manager import databaseManager, db_connection
+from src.database.connection import db, init_tables
 from src.database.models.fall_event import FallEvent
 from src.database.models.patient import Patient
 from src.database.models.user import User
@@ -75,7 +75,7 @@ def main(argv: list[str] | None = None) -> int:
     name = _ask("Full name: ", args.name, bool, "Enter a name.")
     email = _ask("E-mail: ", args.email, EMAIL_PATTERN.match, "Enter a valid e-mail address.")
 
-    databaseManager.init_tables([User, Patient, FallEvent])
+    init_tables([User, Patient, FallEvent])
     users = UserRepository()
     try:
         existing = users.get_user_by_email(email)
@@ -91,7 +91,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"\nAdministrator account created for {email}. Sign in with it in the application.")
         return 0
     finally:
-        db_connection.close()
+        db.close()
 
 
 if __name__ == "__main__":

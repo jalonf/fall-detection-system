@@ -5,7 +5,7 @@ import logging
 from PySide6.QtCore import QObject, QTimer, Slot
 
 from src.ai.risk_assessor import RiskAssessor
-from src.database.database_manager import db_connection
+from src.database.connection import db
 from src.domain.roles import SIGNUP_ROLES
 from src.dtos.registration_data import RegistrationData
 from src.repositories.patient_repository import PatientRepository
@@ -83,7 +83,7 @@ class AuthController(QObject):
         risk_level = self._assess_risk(data.risk_answers)
 
         # The user and its patient are saved together: if the patient fails, the user is undone too.
-        with db_connection.atomic() as transaction:
+        with db.atomic() as transaction:
             new_user = self.user_repo.create_user(
                 name=data.name,
                 email=data.email,

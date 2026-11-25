@@ -6,7 +6,7 @@ import sys
 
 from PySide6.QtWidgets import QApplication, QMainWindow
 
-from src.database.database_manager import databaseManager
+from src.database.connection import init_tables
 from src.database.models.fall_event import FallEvent
 from src.database.models.patient import Patient
 from src.database.models.user import User
@@ -30,7 +30,7 @@ class MainWindow(QMainWindow):
         self.coordinator = AppCoordinator(self)
 
     def closeEvent(self, event):
-        """Lets a running worker release the camera before the window (and its thread objects) go away."""
+        """Lets a running video thread release the camera before the window (and its thread objects) go away."""
         self.coordinator.shutdown()
         super().closeEvent(event)
 
@@ -38,7 +38,7 @@ class MainWindow(QMainWindow):
 if __name__ == "__main__":
     logging.basicConfig(
         level=logging.INFO,
-        format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+        format="%(asctime)s [%(levelname)s] [%(threadName)s] %(name)s: %(message)s",   # which thread wrote it
         handlers=[
             logging.StreamHandler(sys.stdout),
             logging.FileHandler("app.log", encoding="utf-8")
@@ -50,7 +50,7 @@ if __name__ == "__main__":
 
     ThemeManager.setup_theme(app)
 
-    databaseManager.init_tables([User, Patient, FallEvent])
+    init_tables([User, Patient, FallEvent])
 
     window = MainWindow()
     window.showMaximized()
