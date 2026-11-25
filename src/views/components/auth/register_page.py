@@ -30,7 +30,7 @@ from PySide6.QtWidgets import (
 from src.domain import password_policy
 from src.domain.questionnaire import DAILY_LIFE, HEALTH, PROFILE
 from src.domain.roles import SIGNUP_ROLES
-from src.dtos.registration_data import RegistrationData
+from src.dtos.registration_data import RegistrationData, RegistrationField
 from src.views.components.auth.login_page import EMAIL_CHARACTERS, EMAIL_PATTERN
 from src.views.components.auth.page_heading import PageHeading
 from src.views.components.auth.password_checklist import PasswordChecklist
@@ -50,6 +50,7 @@ from src.views.theme import Colors, Motion, Space, make_label
 PHONE_PATTERN = re.compile(r"^\+\d{1,3}(?:[\s.-]?\d){6,14}$")
 PHONE_CHARACTERS = r"\+?[\d\s.-]*"
 GUTTER = 18                       # room on each side of the 600 px column for the scroll bar
+MIN_STEP_HEIGHT = 160            # the steps never get shorter than this, even in a small window
 STEPS = len(Register.STEPS)
 
 Error = tuple[QWidget, QWidget]   # (widget to scroll to, widget to focus)
@@ -95,25 +96,30 @@ class RegisterPage(QWidget):
         self._scroll_timer.timeout.connect(self._scroll_to_pending)
         self._scroll_animation: QPropertyAnimation | None = None
 
+        # The column is centred horizontally; vertically, `_fit_height` places it and gives the steps
+        # the height the current one needs, so "Continue" sits right under the fields.
         outer = QHBoxLayout(self)
         outer.setContentsMargins(0, 0, 0, 0)
         outer.addStretch(1)
         column = QWidget()
         column.setFixedWidth(COLUMN + 2 * GUTTER)
-        outer.addWidget(column)
+        outer.addWidget(column, 0, Qt.AlignmentFlag.AlignTop)
         outer.addStretch(1)
 
         layout = QVBoxLayout(column)
-        layout.setContentsMargins(0, Space.S8, 0, 0)
+        layout.setContentsMargins(0, Space.S8, 0, Space.S8)
         layout.setSpacing(0)
-        layout.addWidget(self._build_header())
+        self._column_layout = layout
+        self._header = self._build_header()
+        layout.addWidget(self._header)
         self.pages = QStackedWidget()
         self.scroll_areas: list[QScrollArea] = []
         for page in (self._build_caregiver(), self._build_account(), self._build_patient(),
                      self._build_daily_life(), self._build_health()):
             self.pages.addWidget(self._wrap(page))
-        layout.addWidget(self.pages, 1)
-        layout.addWidget(self._build_footer())
+        layout.addWidget(self.pages)
+        self._footer = self._build_footer()
+        layout.addWidget(self._footer)
 
         self._wire_tab_order()
         self._go(0)
@@ -133,7 +139,8 @@ class RegisterPage(QWidget):
         layout.setContentsMargins(10, 0, 0, 0)
         layout.setSpacing(0)
         outer.addLayout(layout)
-        layout.addWidget(PageHeading("user-plus", Register.TITLE, Register.SUBTITLE))
+        self.heading = PageHeading("user-plus", Register.TITLE, Register.SUBTITLE)
+        layout.addWidget(self.heading)
         layout.addSpacing(Space.S6)
         self.stepper = Stepper(Register.STEPS)
         self.stepper.step_clicked.connect(self._on_step_clicked)
@@ -298,6 +305,33 @@ class RegisterPage(QWidget):
         if not self._busy:
             self.next.setText(Register.CREATE if last else Register.CONTINUE)
         self.step_label.setText(Register.STEP_OF.format(current=index + 1, total=STEPS))
+        self._fit_height()
+
+    def _fit_height(self) -> None:
+        """Places the column and gives the steps the height the current one needs.
+
+        * The column's top centres the tallest step that fits in the window, and it is the same for
+          every step: the title and the stepper stay put while moving between steps. Steps too
+          tall to fit scroll anyway, so they do not push the column to the top.
+        * The steps get the current step's height, at most what is left below, so "Continue" sits
+          right under its fields; a taller step scrolls.
+        """
+        header = self._header.sizeHint().height()
+        footer = self._footer.height()
+        room = self.height() - 2 * Space.S8 - header - footer
+        heights = [area.widget().sizeHint().height() for area in self.scroll_areas]
+        reference = max((h for h in heights if h <= room), default=min(heights))
+        top = max(Space.S8, (self.height() - header - reference - footer) // 2)
+        self._column_layout.setContentsMargins(0, top, 0, Space.S8)
+
+        left = self.height() - top - header - footer - Space.S8
+        self.pages.setFixedHeight(max(MIN_STEP_HEIGHT, min(heights[self._current], left)))
+
+    def resizeEvent(self, event) -> None:
+        """A larger title on wide screens, and the steps refitted to the new height."""
+        super().resizeEvent(event)
+        self.heading.fit_to(self.width())
+        self._fit_height()
 
     @Slot()
     def _on_back(self) -> None:
@@ -385,6 +419,7 @@ class RegisterPage(QWidget):
 
     def _report(self, errors: list[Error]) -> None:
         """Errors are shown inline under each field; scroll to the first one and focus it."""
+        self._fit_height()           # the error lines make the step taller
         self._pending_scroll = errors[0]
         self._scroll_timer.start()   # after the page has been laid out
 
@@ -457,17 +492,21 @@ class RegisterPage(QWidget):
         """True while a sign-up request is being handled."""
         return self._busy
 
-    def show_server_error(self, message: str) -> None:
-        """The controller refused the sign-up: point at the field, or explain it in the callout."""
+    def show_server_error(self, message: str, field: RegistrationField | None = None) -> None:
+        """The controller refused the sign-up: point at the field, or explain it in the callout.
+
+        Args:
+            message: What went wrong; shown in the callout when no field is given.
+            field: The field the controller rejected, or None.
+        """
         self.set_busy(False)
-        lowered = message.lower()
-        if "email" in lowered:
+        if field is RegistrationField.EMAIL:
             self._go(1)
             self.email_field.set_error(Register.EMAIL_IN_USE)
             self._pending_scroll = (self.email_field, self.email)
             self._scroll_timer.start()
             self.email.selectAll()
-        elif "role" in lowered:
+        elif field is RegistrationField.ROLE:
             self._go(0)
             self.role_field.set_error(Register.ROLE_REQUIRED)
             self._pending_scroll = (self.role_field, self.role.focus_target())
@@ -475,6 +514,7 @@ class RegisterPage(QWidget):
         else:
             self.error.set_message(message)
             self.error_box.show()
+            self._fit_height()       # the callout makes the header taller
 
     def reset(self) -> None:
         """Clears every field and error and goes back to the first step."""

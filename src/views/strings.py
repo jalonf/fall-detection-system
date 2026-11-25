@@ -1,13 +1,10 @@
-"""Every text of the interface (English), plus the rules that turn controller messages into toasts.
+"""Every text of the interface (English).
 
 Overline texts are already written in upper case here; the stylesheet never transforms text.
 """
 
 from __future__ import annotations
 
-import re
-from dataclasses import dataclass
-from pathlib import Path
 from typing import ClassVar
 
 EM_DASH = "—"
@@ -222,11 +219,16 @@ class Pose:
     HIP_HEIGHT = "Hip height"
     HIP_HEIGHT_TIP = "Normalised vertical position of the hip centre (0 = top of frame, 1 = bottom)"
     TREND_WINDOW = "Last 30 s"
+    METRICS_EMPTY = "Inference time, confidence and hip height appear here while monitoring."
 
 
 class Toasts:
-    """The only toasts the app shows: signed in, account created (TOAST_RULES) and signed out."""
+    """The only toasts the app shows: signed in, account created and signed out."""
 
+    SIGNED_IN_TITLE = "Signed in"
+    SIGNED_IN = "Opening your dashboard…"
+    ACCOUNT_CREATED_TITLE = "Account created"
+    ACCOUNT_CREATED = "Patient risk level: {level}. Opening your dashboard…"
     SIGNED_OUT_TITLE = "Signed out"
     SIGNED_OUT = "Your session has ended."
     KIND_TITLES: ClassVar[dict[str, str]] = {"success": "Done", "error": "Something went wrong", "warning": "Warning", "info": "Information"}
@@ -245,64 +247,3 @@ def event_count(shown: int, total: int) -> str:
     if shown != total:
         return Log.COUNT_FILTERED.format(shown=shown, total=total)
     return Log.COUNT_ONE if total == 1 else Log.COUNT_MANY.format(n=total)
-
-
-# ---------------------------------------------------------------------- toast rules
-@dataclass(frozen=True)
-class ToastRule:
-    """How a controller message becomes a toast.
-
-    `source` is where the message arrives: "success" (`AuthView.show_success`) or the event type
-    of `log_event` ("INFO" / "ERROR"). `key` is the controller's text, matched by `match`
-    ("equals", "prefix" or "any"). `message` may use {text}, {source} and {level}.
-    """
-
-    source: str
-    key: str
-    match: str
-    kind: str
-    title: str
-    message: str
-
-
-TOAST_RULES: tuple[ToastRule, ...] = (
-    ToastRule("success", "Welcome back", "prefix", "success", "Signed in", "Opening your dashboard…"),
-    ToastRule("success", "Account created", "prefix", "success", "Account created",
-              "Patient risk level: {level}. Opening your dashboard…"),
-)
-
-_RISK_LEVEL = re.compile(r"\b(LOW|MEDIUM|HIGH)\b")
-
-
-def toast_rule_for(source: str, text: str) -> ToastRule | None:
-    """First rule that matches a message, or None when the message only goes to the log."""
-    for rule in TOAST_RULES:
-        if rule.source != source:
-            continue
-        if rule.match == "any":
-            return rule
-        if rule.match == "equals" and text == rule.key:
-            return rule
-        if rule.match == "prefix" and text.startswith(rule.key):
-            return rule
-    return None
-
-
-def risk_level_in(text: str) -> str:
-    """Finds the risk level mentioned in a controller message.
-
-    Args:
-        text: E.g. "Account created! The patient's risk level is HIGH.".
-
-    Returns:
-        "LOW", "MEDIUM" or "HIGH", or an em dash when there is none.
-    """
-    match = _RISK_LEVEL.search(text)
-    return match.group(1) if match else EM_DASH
-
-
-def check_toast_rules() -> list[str]:
-    """Keys of TOAST_RULES that no longer appear in `src/controllers/*.py`. Empty when in sync."""
-    controllers = Path(__file__).resolve().parents[1] / "controllers"
-    source = "\n".join(path.read_text(encoding="utf-8") for path in sorted(controllers.glob("*.py")))
-    return [rule.key for rule in TOAST_RULES if rule.key and rule.key not in source]

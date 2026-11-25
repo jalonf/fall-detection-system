@@ -1,6 +1,6 @@
 """Pose analysis panel (administrators), at the top of the side column.
 
-Top: the skeleton image the worker draws. Below: a telemetry table with one row per metric —
+Top: the skeleton image the video thread draws. Below: a telemetry table with one row per metric —
 its name, the current value and a trend line of the last 30 seconds — so the model's behaviour
 reads at a glance. The hip-height trend is drawn upside down (0 = top of the frame), so a fall
 shows as the line dropping.
@@ -42,7 +42,7 @@ STOPPED = ("idle", "error", "finished")
 
 
 class SkeletonView(VideoWidget):
-    """Skeleton image on the exact stage colour, so the worker's background blends in.
+    """Skeleton image on the exact stage colour, so the video thread's background blends in.
 
     Like the video stage, the background is plain; while empty it only says "No signal".
     """
@@ -96,7 +96,11 @@ class Metric:
 
 
 class TelemetryTable(QWidget):
-    """Bordered table: one row per metric with name, value (and unit) and its trend line."""
+    """Bordered table: one row per metric with name, value (and unit) and its trend line.
+
+    Before the first sample (monitoring stopped) it shows one short message instead of empty
+    rows of dashes and blank trends.
+    """
 
     def __init__(self, metrics: list[Metric], parent: QWidget | None = None):
         super().__init__(parent)
@@ -163,6 +167,12 @@ class TelemetryTable(QWidget):
         painter.fillRect(self.rect(), QColor(Colors.N0))
         painter.setPen(QColor(Colors.N150))
         painter.drawRect(self.rect().adjusted(0, 0, -1, -1))
+        if not any(metric.samples for metric in self.metrics):
+            painter.setFont(Type.font("caption"))
+            painter.setPen(QColor(Colors.N500))
+            painter.drawText(self.rect().adjusted(Space.S6, 0, -Space.S6, 0),
+                             int(Qt.AlignmentFlag.AlignCenter | Qt.TextFlag.TextWordWrap), Pose.METRICS_EMPTY)
+            return
         for index, metric in enumerate(self.metrics):
             row = self._row(index)
             if index:

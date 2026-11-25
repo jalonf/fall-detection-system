@@ -56,6 +56,7 @@ ROW_HEIGHT = 56
 _PADDING = 16
 BADGE_VARIANTS = {"INFO": "neutral", "ERROR": "danger", "ALERT": "danger-solid"}
 SETTINGS_FILTER = "monitor/log_filter"
+_FILTER_CHROME = 48     # popup row: 12 px before the text, 36 after it for the check mark
 _ROOT = QModelIndex()
 
 
@@ -292,7 +293,9 @@ class EventLogPanel(Panel):
         self.events = EventList(self.proxy)
         self.body_layout().addWidget(self.events)
 
-        self.filter_combo = Combo([label for _, label in Log.FILTERS], size="sm", width=132,
+        # Just wide enough for the longest filter in its popup row (bold when current, check mark).
+        widest = max(QFontMetrics(Type.font("body-strong")).horizontalAdvance(label) for _, label in Log.FILTERS)
+        self.filter_combo = Combo([label for _, label in Log.FILTERS], size="sm", width=widest + _FILTER_CHROME,
                                   accessible_name=Log.FILTER_NAME)
         keys = [key for key, _ in Log.FILTERS]
         saved = str(settings.value(SETTINGS_FILTER, "all"))

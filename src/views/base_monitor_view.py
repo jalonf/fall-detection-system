@@ -215,7 +215,6 @@ class BaseMonitorView(QWidget):
         self.video_panel.start_clicked.connect(self._start_camera)
         self.video_panel.stop_clicked.connect(self._request_stop)
         self.video_panel.retry_clicked.connect(self._retry)
-        self.video_panel.source_combo.currentIndexChanged.connect(self._refresh_source)
         self.context_bar.acknowledge_clicked.connect(self._acknowledge_alert)
 
     def _make_context_bar(self, patient_name: str | None, risk_level: str | None) -> ContextBar:
@@ -347,17 +346,16 @@ class BaseMonitorView(QWidget):
         else:
             self._duration_timer.stop()
 
-    @Slot()
-    def _refresh_source(self, *_args) -> None:
-        """The strip shows the running (or last) source; while stopped, the camera picked below."""
+    def _refresh_source(self) -> None:
+        """The strip shows the video file being (or last) analysed, otherwise the camera's settings.
+
+        Which camera is used already shows in the selector under the video, so it is not repeated.
+        """
         source = self._source
-        if source is None or self._state == MonitorState.IDLE:
-            index = self.video_panel.camera_index()
-            source = SourceInfo("camera", Monitor.CAMERA_LABEL.format(index=index), index)
-        if source.kind == "file":
+        if source is not None and source.kind == "file" and self._state != MonitorState.IDLE:
             self.context_bar.set_source(source.label, Monitor.FILE_SPEC, camera=False)
         else:
-            self.context_bar.set_source(source.label, self._camera_spec, self._camera_tip)
+            self.context_bar.set_source(self._camera_spec, tooltip=self._camera_tip)
 
     def _set_camera_profile(self, spec: str, tip: str) -> None:
         """Changes the camera settings shown in the strip (AdminView's test profile)."""

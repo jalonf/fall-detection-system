@@ -19,6 +19,7 @@ from PySide6.QtWidgets import (
     QGraphicsBlurEffect,
     QGraphicsPixmapItem,
     QGraphicsScene,
+    QLabel,
     QScrollArea,
     QSizePolicy,
     QWidget,
@@ -119,16 +120,16 @@ def crisp(rect: QRectF, pen_width: float = 1.0) -> QRectF:
 
 
 # ---------------------------------------------------------------------- small widgets
-class IconView(QWidget):
-    """A painted icon, rendered for the screen it is on."""
+class IconView(QLabel):
+    """An icon in a label, rendered for the screen's pixel ratio."""
 
     def __init__(self, name: str, color: str, size: int = 16, parent: QWidget | None = None):
         super().__init__(parent)
-        self._name = name
         self._color = color
         self._size = size
         self.setFixedSize(size, size)
         self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        self.set_icon(name)
 
     def set_icon(self, name: str, color: str | None = None) -> None:
         """Changes the icon and, optionally, its colour.
@@ -137,24 +138,18 @@ class IconView(QWidget):
             name: Name of the icon.
             color: New colour; None keeps the current one.
         """
-        self._name = name
         if color:
             self._color = color
-        self.update()
-
-    def paintEvent(self, event) -> None:
-        """Paints the icon rendered for the screen's pixel ratio."""
-        painter = QPainter(self)
-        painter.drawPixmap(0, 0, icons.icon_pixmap(self._name, self._color, self._size, self.devicePixelRatioF()))
+        self.setPixmap(icons.icon_pixmap(name, self._color, self._size))
 
 
-class Divider(QWidget):
+class Divider(QFrame):
     """A 1 px line: horizontal (fills the width) or vertical with a fixed length."""
 
     def __init__(self, color: str = Colors.N150, *, vertical: bool = False, length: int = 0,
                  parent: QWidget | None = None):
         super().__init__(parent)
-        self._color = QColor(color)
+        self.setStyleSheet(f"background-color: {color}; border: none;")
         if vertical:
             self.setFixedWidth(1)
             if length:
@@ -162,10 +157,6 @@ class Divider(QWidget):
         else:
             self.setFixedHeight(1)
             self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-
-    def paintEvent(self, event) -> None:
-        """Paints the line."""
-        QPainter(self).fillRect(self.rect(), self._color)
 
 
 def transparent_scroll_area(widget: QWidget, *, horizontal: bool = False) -> QScrollArea:

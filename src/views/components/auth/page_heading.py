@@ -13,10 +13,11 @@ from PySide6.QtGui import QColor, QPainter
 from PySide6.QtWidgets import QHBoxLayout, QVBoxLayout, QWidget
 
 from src.views import icons
-from src.views.theme import Colors, Radius, Space, make_label
+from src.views.theme import Colors, Radius, Space, Type, make_label, set_props
 
 TILE = 48
 _ICON = 24
+WIDE_PAGE = 960   # from this page width on (wide screens), the title is set larger
 
 
 class IconTile(QWidget):
@@ -45,7 +46,7 @@ class IconTile(QWidget):
 
 
 class PageHeading(QWidget):
-    """Icon tile, then the title (title-lg) with the subtitle (body, secondary) under it."""
+    """Icon tile, then the title (title-lg, or display on wide screens) with the subtitle under it."""
 
     def __init__(self, icon: str, title: str, subtitle: str, parent: QWidget | None = None):
         super().__init__(parent)
@@ -62,3 +63,14 @@ class PageHeading(QWidget):
         text.addWidget(self.title)
         text.addWidget(self.subtitle)
         row.addLayout(text, 1)
+
+    def fit_to(self, page_width: int) -> None:
+        """Sets the title one step larger (display) when the page is wide, back otherwise.
+
+        Args:
+            page_width: Width of the page the heading is on.
+        """
+        role = "display" if page_width >= WIDE_PAGE else "title-lg"
+        if self.title.property("type") != role:
+            set_props(self.title, type=role)
+            self.title.setMinimumHeight(Type.line_height(role))

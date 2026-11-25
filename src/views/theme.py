@@ -8,7 +8,6 @@ painted components read the same classes, so the stylesheet and the painted widg
 from __future__ import annotations
 
 import re
-import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 from typing import ClassVar
@@ -304,80 +303,14 @@ def make_tabular_label(text: str, role: str, tone: str | None = None, *, sample:
     return label
 
 
-# ---------------------------------------------------------------------- contrast
-def _channel(value: int) -> float:
-    c = value / 255
-    return c / 12.92 if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4
-
-
-def _luminance(color: QColor) -> float:
-    return 0.2126 * _channel(color.red()) + 0.7152 * _channel(color.green()) + 0.0722 * _channel(color.blue())
-
-
-def contrast_ratio(foreground: str, background: str, alpha: float = 1.0) -> float:
-    """WCAG contrast ratio; `alpha` blends the foreground over the background first."""
-    fg = mix(background, foreground, alpha)
-    first, second = sorted((_luminance(fg), _luminance(QColor(background))), reverse=True)
-    return (first + 0.05) / (second + 0.05)
-
-
 C = Colors
-# Text / background pairs used by the interface: (where, text, background, text opacity).
-CONTRAST_PAIRS: tuple[tuple[str, str, str, float], ...] = (
-    ("main text", C.N900, C.N0, 1.0),
-    ("field labels, messages", C.N700, C.N0, 1.0),
-    ("secondary text", C.N600, C.N0, 1.0),
-    ("tertiary text, placeholders", C.N500, C.N0, 1.0),
-    ("table header", C.N600, C.N50, 1.0),
-    ("tertiary text on the canvas", C.N500, C.N50, 1.0),
-    ("disabled input text", C.N500, C.N100, 1.0),
-    ("ghost button hover", C.N700, C.N100, 1.0),
-    ("primary button", C.N0, C.P600, 1.0),
-    ("links", C.P600, C.N0, 1.0),
-    ("selected / info soft", C.P700, C.P50, 1.0),
-    ("selected row", C.N900, C.P50, 1.0),
-    ("avatar initials", C.P700, C.P100, 1.0),
-    ("success badge", C.G700, C.G50, 1.0),
-    ("warning badge", C.A700, C.A50, 1.0),
-    ("danger badge", C.R700, C.R50, 1.0),
-    ("danger text", C.R700, C.N0, 1.0),
-    ("alert rows", C.N900, C.R50, 1.0),
-    ("alert badge", C.N0, C.R600, 1.0),
-    ("acknowledge button", C.R700, C.N0, 1.0),
-    ("tooltip", C.N0, C.N900, 1.0),
-    ("stage text", C.S100, C.S900, 1.0),
-    ("stage secondary text", C.S300, C.S900, 1.0),
-    ("text on stage containers", C.S100, C.S800, 1.0),
-    ("brand headline", C.N0, C.BRAND, 1.0),
-    ("brand paragraph", C.P100, C.BRAND, 1.0),
-    ("brand details", C.P200, C.BRAND, 1.0),
-    # The sign-in panel's gradient ends lighter than BRAND: check its text there too.
-    ("brand paragraph, panel bottom", C.P100, mix(C.BRAND, C.P800, 0.45).name().upper(), 1.0),
-    ("brand details, panel bottom", C.P200, mix(C.BRAND, C.P800, 0.45).name().upper(), 1.0),
-)
-
-
-def check_contrast(minimum: float = 4.5) -> list[str]:
-    """Declared text pairs below `minimum` (WCAG AA for body text). Empty when all pass."""
-    failures = []
-    for where, foreground, background, alpha in CONTRAST_PAIRS:
-        ratio = contrast_ratio(foreground, background, alpha)
-        if ratio < minimum:
-            failures.append(f"{where}: {foreground} on {background} = {ratio:.2f}:1")
-    return failures
 
 
 # ---------------------------------------------------------------------- theme
-_GLYPH_SVG = (
-    '<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" viewBox="0 0 {size} {size}" '
-    'fill="none" stroke-linecap="round" stroke-linejoin="round">{body}</svg>'
-)
-
-
 class ThemeManager:
     """Applies the theme to the application: style, palette, font and stylesheet."""
     STYLESHEET = Path(__file__).with_name("style.qss")
-    GLYPH_DIR = Path(tempfile.gettempdir()) / "fallsense-ui"
+    ASSETS = Path(__file__).with_name("assets")   # stylesheet glyphs: combo arrow, check mark, radio dot
     _MARKER = re.compile(r"@([A-Z][A-Z0-9_]*)@")
 
     @classmethod
@@ -419,8 +352,12 @@ class ThemeManager:
 
     @classmethod
     def tokens(cls) -> dict[str, str]:
-        """Values of the @TOKEN@ markers: colours, spacing, sizes, radii and glyph URLs."""
-        tokens: dict[str, str] = {}
+        """Values of the @TOKEN@ markers: colours, spacing, sizes, radii and the assets folder.
+
+        Qt resolves relative `url()`s against the working directory, not the stylesheet, so the
+        glyphs are referred to through @ASSETS@, the absolute path of `views/assets/`.
+        """
+        tokens: dict[str, str] = {"ASSETS": cls.ASSETS.as_posix()}
         for name, value in vars(Colors).items():
             if name.isupper() and isinstance(value, str):
                 tokens[name] = value
@@ -428,7 +365,6 @@ class ThemeManager:
             for name, value in vars(source).items():
                 if name.isupper() and isinstance(value, int):
                     tokens[name] = f"{value}px"
-        tokens.update(cls._write_glyphs())
         return tokens
 
     @classmethod
@@ -448,27 +384,3 @@ class ThemeManager:
 
         template = cls.STYLESHEET.read_text(encoding="utf-8")
         return Type.qss() + cls._MARKER.sub(substitute, template)
-
-    @classmethod
-    def _write_glyphs(cls) -> dict[str, str]:
-        """Writes the stylesheet glyphs (combo arrow, check mark, radio dot) as SVG files."""
-        chevron = '<path d="M4.5 6.5 8 10l3.5-3.5" stroke="{c}" stroke-width="1.5"/>'
-        check = '<path d="m3.5 7.2 2.3 2.3 4.7-4.8" stroke="{c}" stroke-width="1.75"/>'
-        dot = '<circle cx="7" cy="7" r="3" fill="{c}"/>'
-        glyphs = {
-            "GLYPH_CHEVRON": (16, chevron.format(c=C.N600)),
-            "GLYPH_CHEVRON_DISABLED": (16, chevron.format(c=C.N400)),
-            "GLYPH_CHECK": (14, check.format(c=C.N0)),
-            "GLYPH_CHECK_DISABLED": (14, check.format(c=C.N400)),
-            "GLYPH_DOT": (14, dot.format(c=C.N0)),
-            "GLYPH_DOT_DISABLED": (14, dot.format(c=C.N400)),
-        }
-        cls.GLYPH_DIR.mkdir(parents=True, exist_ok=True)
-        urls = {}
-        for name, (size, body) in glyphs.items():
-            path = cls.GLYPH_DIR / f"{name.lower()}.svg"
-            content = _GLYPH_SVG.format(size=size, body=body)
-            if not path.exists() or path.read_text(encoding="utf-8") != content:
-                path.write_text(content, encoding="utf-8")
-            urls[name] = f'url("{path.as_posix()}")'
-        return urls

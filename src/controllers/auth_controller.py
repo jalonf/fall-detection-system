@@ -7,7 +7,7 @@ from PySide6.QtCore import QObject, QTimer, Slot
 from src.ai.risk_assessor import RiskAssessor
 from src.database.connection import db
 from src.domain.roles import SIGNUP_ROLES
-from src.dtos.registration_data import RegistrationData
+from src.dtos.registration_data import RegistrationData, RegistrationField
 from src.repositories.patient_repository import PatientRepository
 from src.repositories.user_repository import UserRepository
 
@@ -17,8 +17,8 @@ class AuthController(QObject):
     """Handles sign-in and sign-up for the AuthView.
 
     It is a QObject living in the GUI thread, like the monitoring controllers, so its
-    handlers are real Qt slots. It answers every request synchronously, with `show_error`
-    or `show_success` on the view.
+    handlers are real Qt slots. It answers every request synchronously, with `show_error`,
+    `show_signed_in` or `show_account_created` on the view.
 
     Args:
         view: The AuthView whose `login_requested` / `register_requested` it handles.
@@ -48,7 +48,7 @@ class AuthController(QObject):
 
         if self.user_repo.verify_password(email, password):
             logger.info("User authentication successful")
-            self.view.show_success("Welcome back! Authentication successful.")
+            self.view.show_signed_in()
             
             user = self.user_repo.get_user_by_email(email)
             QTimer.singleShot(1500, lambda: self.on_auth_success(user))
@@ -72,12 +72,12 @@ class AuthController(QObject):
         # Administrators are created with `python -m src.create_admin`, never from the sign-up form.
         if data.role not in SIGNUP_ROLES:
             logger.warning("Registration rejected: role %r cannot be chosen when signing up", data.role)
-            self.view.show_error("Please choose a valid user role.")
+            self.view.show_error("Please choose a valid user role.", RegistrationField.ROLE)
             return
 
         if self.user_repo.get_user_by_email(data.email):
             logger.warning("Registration failed: an account with this email already exists")
-            self.view.show_error("Registration failed. This email is already in use.")
+            self.view.show_error("Registration failed. This email is already in use.", RegistrationField.EMAIL)
             return
 
         risk_level = self._assess_risk(data.risk_answers)
@@ -102,7 +102,7 @@ class AuthController(QObject):
 
         if patient:
             logger.info("User account and associated patient successfully created")
-            self.view.show_success(f"Account created! The patient's risk level is {risk_level}.")
+            self.view.show_account_created(risk_level)
             QTimer.singleShot(1500, lambda: self.on_auth_success(new_user))
         else:
             logger.error("Registration failed: the account could not be saved")

@@ -6,8 +6,9 @@ corners), separated from the top bar by the body's margin, so it reads as conten
 than as part of the header.
 
 Each item is a small overline label with its value underneath: the patient's name with a
-risk badge, the camera with the resolution and frame rate it runs at (set by the patient's
-risk level), the status and the duration. Administrators have no patient: the first item is
+risk badge, the camera's resolution and frame rate (set by the patient's risk level; which
+camera is picked shows once, in the selector under the video) or the video file's name, the
+status and the duration, which only takes the width it needs, at the right. Administrators have no patient: the first item is
 their test-profile selector instead, with a TEST MODE badge. During a fall alert the card
 turns R50 with an R200 border and a 3 px R600 bar on the left (like the alert rows of the
 event log), its status pulses and an Acknowledge button appears on the right.
@@ -103,7 +104,7 @@ class ContextBar(QWidget):
                 patient_row.addWidget(self.risk, 0, Qt.AlignmentFlag.AlignVCenter)
             self._add_item(layout, Monitor.STRIP_PATIENT, patient_row)
 
-        # Camera / source: name and its capture settings.
+        # Camera: its capture settings; video file: its name.
         source_row = QHBoxLayout()
         source_row.setContentsMargins(0, 0, 0, 0)
         source_row.setSpacing(Space.S2)
@@ -118,7 +119,7 @@ class ContextBar(QWidget):
         self._add_item(layout, Monitor.STRIP_STATUS, self.status, divider=True)
 
         self.duration = make_tabular_label(EM_DASH, "body-strong", "tertiary", sample="00:00:00")
-        self._add_item(layout, Monitor.STRIP_DURATION, self.duration, divider=True)
+        self._add_item(layout, Monitor.STRIP_DURATION, self.duration, divider=True, stretch=0)
 
         # Acknowledge, with its own gap: hidden together, so no empty space is left at the right.
         self._acknowledge_box = QWidget()
@@ -131,7 +132,8 @@ class ContextBar(QWidget):
         layout.addWidget(self._acknowledge_box, 0, Qt.AlignmentFlag.AlignVCenter)
         self.set_state("idle")
 
-    def _add_item(self, layout: QHBoxLayout, label: str, value, *, divider: bool = False) -> QLabel:
+    def _add_item(self, layout: QHBoxLayout, label: str, value, *, divider: bool = False,
+                  stretch: int = 1) -> QLabel:
         if divider:
             layout.addSpacing(Space.S6)
             layout.addWidget(Divider(Colors.N150, vertical=True, length=32))
@@ -149,9 +151,9 @@ class ContextBar(QWidget):
             value.addStretch(1)       # the row's content stays packed at the left of its column
             column.addLayout(value)
         column.addStretch(1)
-        # Every item takes an equal share of the spare width, so the card spans the body like the
-        # panels below and its items are spread evenly instead of leaving a gap at the right.
-        layout.addLayout(column, 1)
+        # The items share the spare width evenly, so the card spans the body like the panels below
+        # instead of leaving a gap at the right; a stretch of 0 keeps an item to its own width.
+        layout.addLayout(column, stretch)
         return caption
 
     # ------------------------------------------------------------------ API
@@ -162,7 +164,7 @@ class ContextBar(QWidget):
             self.status.set_status(self._state, Monitor.STATUS_TEXT[self._state])
 
     def set_source(self, label: str | None, detail: str = "", tooltip: str = "", *, camera: bool = True) -> None:
-        """Shows the camera (or video file) and a short detail such as "1280 × 720 · 15 fps"."""
+        """Shows the camera's settings ("1280 × 720 · 15 fps"), or a video file's name and a detail."""
         self.source_label.setText(Monitor.STRIP_CAMERA if camera else Monitor.STRIP_FILE)
         if label:
             _elide(self.source, label, "body-strong", _SOURCE_WIDTH, Qt.TextElideMode.ElideMiddle)

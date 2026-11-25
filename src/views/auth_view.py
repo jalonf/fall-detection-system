@@ -1,9 +1,10 @@
 """Sign-in and sign-up screen.
 
-Contract (used by `main.py` and `AuthController`): `login_requested(email, password)`,
-`register_requested(RegistrationData)`, `show_error(message)` and `show_success(message)`.
-The controller answers each request synchronously, with `show_error` or `show_success`, before the
-signal returns. The same instance is shown again after every logout, so it resets itself when shown again.
+Contract (used by `AuthController`): the view emits `login_requested(email, password)` and
+`register_requested(RegistrationData)`; the controller answers each request synchronously, before
+the signal returns, with one of `show_error(message, field)`, `show_signed_in()` or
+`show_account_created(risk_level)`. The answer is data, never a sentence the view has to parse.
+The same instance is shown again after every logout, so it resets itself when shown again.
 """
 
 from __future__ import annotations
@@ -12,13 +13,13 @@ from PySide6.QtCore import Qt, Signal, Slot
 from PySide6.QtGui import QColor, QPainter
 from PySide6.QtWidgets import QHBoxLayout, QStackedWidget, QVBoxLayout, QWidget
 
-from src.dtos.registration_data import RegistrationData
+from src.dtos.registration_data import RegistrationData, RegistrationField
 from src.views.components.auth.brand_panel import BrandPanel
 from src.views.components.auth.login_page import LoginPage
 from src.views.components.auth.page_transition import PageTransition
 from src.views.components.auth.register_page import RegisterPage
 from src.views.components.common.toast import ToastHost
-from src.views.strings import Common, Toasts, risk_level_in, toast_rule_for
+from src.views.strings import Common, Toasts
 from src.views.theme import Colors
 
 TOAST_TOP_INSET = 16
@@ -69,25 +70,33 @@ class AuthView(QWidget):
         self.register_page.back_to_login_clicked.connect(self._show_login)
 
     # ------------------------------------------------------------------ contract
-    @Slot(str)
-    def show_error(self, message: str) -> None:
-        """Errors are shown inline on the page that caused them (no toast)."""
+    def show_error(self, message: str, field: RegistrationField | None = None) -> None:
+        """The controller refused the request: shown inline on the page that sent it (no toast).
+
+        Args:
+            message: What went wrong, for the user.
+            field: The sign-up field to point at, or None to show `message` in the form.
+        """
         self._answered = True
         if self._pages.currentWidget() is self.register_page:
-            self.register_page.show_server_error(message)
+            self.register_page.show_server_error(message, field)
         else:
             self.login_page.show_server_error(message)
 
-    @Slot(str)
-    def show_success(self, message: str) -> None:
-        """Success keeps the form locked: `main.py` opens the dashboard 1.5 s later."""
+    def show_signed_in(self) -> None:
+        """Sign-in succeeded. The form stays locked while the dashboard opens."""
         self._answered = True
-        rule = toast_rule_for("success", message)
-        toasts = ToastHost.for_widget(self)
-        if rule is None:
-            toasts.success(message)
-            return
-        toasts.notify(rule.kind, rule.message.format(level=risk_level_in(message), text=message), title=rule.title)
+        ToastHost.for_widget(self).success(Toasts.SIGNED_IN, title=Toasts.SIGNED_IN_TITLE)
+
+    def show_account_created(self, risk_level: str) -> None:
+        """Sign-up succeeded. The form stays locked while the dashboard opens.
+
+        Args:
+            risk_level: The patient's risk level ("LOW", "MEDIUM" or "HIGH").
+        """
+        self._answered = True
+        ToastHost.for_widget(self).success(Toasts.ACCOUNT_CREATED.format(level=risk_level),
+                                           title=Toasts.ACCOUNT_CREATED_TITLE)
 
     # ------------------------------------------------------------------ pages
     @Slot(str, str)
@@ -137,9 +146,13 @@ class AuthView(QWidget):
 
     # ------------------------------------------------------------------ events
     def resizeEvent(self, event) -> None:
-        """Keeps the brand panel at 40 % of the width, between 440 and 640 px."""
+        """Keeps the brand panel at 45 % of the width, between 440 and 860 px.
+
+        On wide screens it keeps growing (up to 860 px), so the form area beside it does not turn
+        into a wide empty white space around a small form.
+        """
         super().resizeEvent(event)
-        self._brand.set_target_width(max(440, min(640, round(self.width() * 0.40))))
+        self._brand.set_target_width(max(440, min(860, round(self.width() * 0.45))))
 
     def showEvent(self, event) -> None:
         """Resets the forms after a sign-out and focuses the first field."""

@@ -144,8 +144,8 @@ QComboBox::drop-down {
     width: 20px;
     border: none;
 }
-QComboBox::down-arrow { image: @GLYPH_CHEVRON@; width: 16px; height: 16px; }
-QComboBox::down-arrow:disabled { image: @GLYPH_CHEVRON_DISABLED@; }
+QComboBox::down-arrow { image: url("@ASSETS@/chevron.svg"); width: 16px; height: 16px; }
+QComboBox::down-arrow:disabled { image: url("@ASSETS@/chevron_disabled.svg"); }
 QComboBox QAbstractItemView {
     background-color: @N0@;
     border: 1px solid @N200@;
@@ -169,12 +169,12 @@ QRadioButton::indicator { border-radius: 8px; }
 QCheckBox::indicator:hover, QRadioButton::indicator:hover { border-color: @N600@; }
 QRadioButton[invalid="true"]::indicator { border-color: @R600@; }
 QCheckBox::indicator:focus, QRadioButton::indicator:focus { border: 2px solid @P600@; width: 12px; height: 12px; }
-QCheckBox::indicator:checked { background-color: @P600@; border-color: @P600@; image: @GLYPH_CHECK@; }
-QRadioButton::indicator:checked { background-color: @P600@; border-color: @P600@; image: @GLYPH_DOT@; }
+QCheckBox::indicator:checked { background-color: @P600@; border-color: @P600@; image: url("@ASSETS@/check.svg"); }
+QRadioButton::indicator:checked { background-color: @P600@; border-color: @P600@; image: url("@ASSETS@/dot.svg"); }
 QCheckBox::indicator:checked:focus, QRadioButton::indicator:checked:focus { border-color: @P800@; }
 QCheckBox::indicator:disabled, QRadioButton::indicator:disabled { background-color: @N100@; border-color: @N200@; }
-QCheckBox::indicator:checked:disabled { background-color: @N150@; border-color: @N200@; image: @GLYPH_CHECK_DISABLED@; }
-QRadioButton::indicator:checked:disabled { background-color: @N150@; border-color: @N200@; image: @GLYPH_DOT_DISABLED@; }
+QCheckBox::indicator:checked:disabled { background-color: @N150@; border-color: @N200@; image: url("@ASSETS@/check_disabled.svg"); }
+QRadioButton::indicator:checked:disabled { background-color: @N150@; border-color: @N200@; image: url("@ASSETS@/dot_disabled.svg"); }
 
 /* ------------------------------------------------------------------ menus (no radius: popups are rectangular windows) */
 QMenu {

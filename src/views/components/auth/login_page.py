@@ -1,4 +1,4 @@
-"""Sign-in page: a 480 px column centred in the form area.
+"""Sign-in page: a column centred in the form area, 480 px wide, up to 560 px on wide screens.
 
 It follows the sign-up page's structure (title, subtitle, full-width fields and buttons), with
 "Create an account" as a full-width secondary button under a labelled divider. Errors from the
@@ -30,7 +30,8 @@ from src.views.theme import Colors, Space, make_label
 
 EMAIL_PATTERN = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 EMAIL_CHARACTERS = r"[^\s@]*@?[^\s@]*"
-COLUMN = 480
+COLUMN = 480        # width of the form column on ordinary windows...
+COLUMN_MAX = 560    # ...growing with the page up to this on wide ones (wider fields only look stretched)
 
 
 class LoginPage(QWidget):
@@ -54,6 +55,7 @@ class LoginPage(QWidget):
         row.addStretch(1)
         column_widget = QWidget()
         column_widget.setFixedWidth(COLUMN)
+        self._column_widget = column_widget        # resized with the page, see `resizeEvent`
         row.addWidget(column_widget)
         row.addStretch(1)
         outer.addLayout(row)
@@ -62,7 +64,8 @@ class LoginPage(QWidget):
         column = QVBoxLayout(column_widget)
         column.setContentsMargins(0, 0, 0, 0)
         column.setSpacing(0)
-        column.addWidget(PageHeading("log-in", Login.TITLE, Login.SUBTITLE))
+        self.heading = PageHeading("log-in", Login.TITLE, Login.SUBTITLE)
+        column.addWidget(self.heading)
         column.addSpacing(Space.S8)
 
         self.error = Callout("", "danger")
@@ -155,6 +158,13 @@ class LoginPage(QWidget):
         self._error_box.setVisible(visible)
 
     # ------------------------------------------------------------------ behaviour
+    def resizeEvent(self, event) -> None:
+        """Lets the form grow a little on wide screens: a wider column and a larger title."""
+        super().resizeEvent(event)
+        width = self.width()
+        self._column_widget.setFixedWidth(max(COLUMN, min(COLUMN_MAX, round(width * 0.52))))
+        self.heading.fit_to(width)
+
     def keyPressEvent(self, event) -> None:
         """Enter moves from the e-mail to the password, then submits; Esc does nothing."""
         if event.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
