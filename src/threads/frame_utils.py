@@ -1,4 +1,4 @@
-"""Image helpers for the video workers: drawing, face blur, snapshots and Qt conversion.
+"""Image helpers for the video thread: drawing, face blur and Qt conversion.
 
 All the functions work on BGR NumPy frames (OpenCV format). The drawing ones modify the
 frame they receive instead of returning a copy.
@@ -98,17 +98,11 @@ def draw_skeleton(image, landmarks, color, size: int) -> None:
     )
 
 
-def encode_snapshot(frame) -> bytes | None:
-    """JPEG of the frame, in memory. Nothing is written to disk."""
-    ok, encoded = cv2.imencode(".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, 85])
-    return encoded.tobytes() if ok else None
-
-
 def to_qimage(bgr) -> QImage:
     """Converts a BGR array to a QImage.
 
     Qt reads BGR directly (`Format_BGR888`), so there is no colour conversion. `.copy()`
-    detaches the image from the NumPy buffer, which is freed as soon as the worker moves on
+    detaches the image from the NumPy buffer, which is freed as soon as the video thread moves on
     to the next frame.
 
     Args:

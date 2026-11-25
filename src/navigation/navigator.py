@@ -3,7 +3,7 @@
 A `Screen` is a view and the controller that drives it. `Navigator.show(screen)`:
 
 1. stops the controller of the screen being left (`shutdown()`, e.g. it releases the camera) before
-   anything else, so no worker outlives its screen;
+   anything else, so no thread outlives its screen;
 2. cross-fades from the old view to the new one;
 3. once the fade ends, destroys the old view, unless that screen is `persistent` (the sign-in screen,
    which is reused after every sign-out).

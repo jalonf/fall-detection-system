@@ -6,12 +6,10 @@ import os
 from PySide6.QtCore import Slot
 
 from src.controllers.base_monitor_controller import BaseMonitorController
+from src.domain.monitoring_profiles import MonitoringStrategy, strategy_for
 from src.domain.roles import is_admin
 from src.dtos.frame_packet import FramePacket
-from src.workers.base_video_worker import BaseVideoWorker
-from src.workers.strategies import strategy_for
-from src.workers.video_file_worker import VideoFileWorker
-from src.workers.video_worker import VideoWorker
+from src.threads.video_thread import strategy_for_file
 
 logger = logging.getLogger(__name__)
 
@@ -41,11 +39,11 @@ class AdminController(BaseMonitorController):
         super().__init__(view, current_user, patient=None, on_logout_callback=on_logout_callback)
         self.view.upload_requested.connect(self.start_video_file)
 
-    def _camera_worker(self, camera_index: int) -> BaseVideoWorker:
-        """The camera follows the test profile chosen in the view; no user or patient, so nothing is stored."""
+    def _camera_strategy(self) -> MonitoringStrategy:
+        """The camera follows the test profile chosen in the view; there is no alert thread, so nothing is stored."""
         strategy = strategy_for(self.view.test_profile())
         self.view.log_event("INFO", f"Test mode · {strategy.name} risk profile: falls are not stored or e-mailed")
-        return VideoWorker(camera_index=camera_index, strategy=strategy)
+        return strategy
 
     @Slot(str)
     def start_video_file(self, file_path):
@@ -54,12 +52,12 @@ class AdminController(BaseMonitorController):
         Args:
             file_path: The video file chosen in the view.
         """
-        if self.worker is not None:
-            logger.warning("Attempted to process video file, but a worker is already active.")
+        if self.video_thread is not None:
+            logger.warning("Attempted to process a video file, but a monitoring is already running.")
             return
 
-        # The file's own frame rate picks the model; no user or patient, so nothing is stored or e-mailed.
-        self._start(VideoFileWorker(video_path=file_path), f"Processing video file: {os.path.basename(file_path)}")
+        # The file's own frame rate picks the model; there is no alert thread, so nothing is stored or e-mailed.
+        self._start(file_path, strategy_for_file(file_path), f"Processing video file: {os.path.basename(file_path)}")
 
     def _show_frame(self, packet: FramePacket):
         super()._show_frame(packet)

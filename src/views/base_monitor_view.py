@@ -26,6 +26,7 @@ from PySide6.QtCore import (
 from PySide6.QtGui import QAction, QImage, QKeySequence
 from PySide6.QtWidgets import QApplication, QHBoxLayout, QVBoxLayout, QWidget
 
+from src.domain.monitoring_profiles import strategy_for
 from src.views.components.common.confirm_dialog import ConfirmDialog
 from src.views.components.common.toast import ToastHost
 from src.views.components.monitor.alert_pulse import AlertPulse
@@ -35,7 +36,6 @@ from src.views.components.monitor.topbar import Topbar
 from src.views.components.monitor.video_panel import VideoPanel
 from src.views.strings import Monitor
 from src.views.theme import Space
-from src.workers.strategies import strategy_for
 
 
 class MonitorState(StrEnum):
@@ -69,7 +69,7 @@ class SourceInfo:
 def camera_profile(risk_level: str | None) -> tuple[str, str]:
     """Returns the camera settings shown for a risk level, and why.
 
-    They are read from the workers' own strategies, so the interface always matches what runs.
+    They are read from the same strategies the video threads run with, so the interface always matches.
 
     Args:
         risk_level: The patient's risk level, or None.

@@ -1,6 +1,9 @@
-"""Monitoring strategies (Strategy pattern): camera settings and fall model per risk level."""
+"""Monitoring strategies (Strategy pattern): camera settings and fall model per risk level.
 
-import cv2
+They are domain data shared by the video threads (which open the camera and load the model with
+them), the controllers (which pick one) and the views (which show the camera settings), so
+they live here rather than with any of them.
+"""
 
 from src.paths import FALL_MODELS_DIR
 
@@ -23,14 +26,6 @@ class MonitoringStrategy:
     height: int
     fps: int
     model_path: str
-
-    def configure_camera(self, camera_index: int) -> cv2.VideoCapture:
-        """Opens the camera already configured for this strategy."""
-        cap = cv2.VideoCapture(camera_index)
-        cap.set(cv2.CAP_PROP_FRAME_WIDTH, self.width)
-        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self.height)
-        cap.set(cv2.CAP_PROP_FPS, self.fps)
-        return cap
 
 
 class LowRiskStrategy(MonitoringStrategy):

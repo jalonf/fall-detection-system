@@ -16,12 +16,12 @@ import os
 from PySide6.QtCore import Slot
 from PySide6.QtWidgets import QVBoxLayout, QWidget
 
+from src.domain.monitoring_profiles import RISK_LEVELS, strategy_for
 from src.views.base_monitor_view import RUNNING, BaseMonitorView, SourceInfo
 from src.views.components.common.inputs import Combo
 from src.views.components.monitor.context_bar import ContextBar
 from src.views.components.monitor.skeleton_panel import SkeletonPanel
 from src.views.strings import Monitor
-from src.workers.strategies import RISK_LEVELS, strategy_for
 
 SETTINGS_TEST_PROFILE = "admin/test_profile"
 DEFAULT_TEST_PROFILE = "HIGH"      # the strictest profile, as for a patient whose level is unknown

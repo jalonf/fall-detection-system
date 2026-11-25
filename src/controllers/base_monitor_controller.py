@@ -3,28 +3,39 @@
 import logging
 
 from PySide6.QtCore import QObject, Slot
+from PySide6.QtGui import QImage
 
 from src.database.models.patient import Patient
+from src.domain.monitoring_profiles import MonitoringStrategy, strategy_for
 from src.dtos.frame_packet import FramePacket
-from src.workers.base_video_worker import BaseVideoWorker
-from src.workers.video_worker import VideoWorker
+from src.threads.alert_thread import AlertThread
+from src.threads.fall_detection_thread import FallDetectionThread
+from src.threads.video_thread import VideoThread
 
 logger = logging.getLogger(__name__)
 
 
 class BaseMonitorController(QObject):
-    """Starts and stops the video workers and shows what they report.
+    """Creates, connects and stops the threads of each monitoring, and shows what they report.
 
-    The workers themselves store the fall event and send the alert e-mail. It is a QObject
-    living in the GUI thread, so every worker signal connected to its slots is delivered as a
-    queued call in the GUI thread, never in the worker's thread.
+    Every monitoring ("Start" → "Stop", or the end of a video file) has three threads, all owned
+    by this controller, so none of them creates or stops another:
 
-    Stopping never blocks the interface: `stop_camera` only asks the worker to stop, and the
-    view is reset when the worker's `finished` signal arrives (the same path covers the end of
-    a video file and a camera that disconnects). Only `shutdown`, used when signing out or
-    closing the window, waits for the worker.
+    * `VideoThread`: reads the camera or the video file and processes each frame;
+    * `FallDetectionThread`: receives the poses from the video thread and emits `fall_detected`;
+    * `AlertThread`: stores each fall and e-mails it (not in test mode).
 
-    Subclasses extend `_show_frame` to show more of each processed frame, and `_camera_worker`
+    When the fall detection thread reports a fall, this controller shows it and gives it to the
+    alert thread together with the frame on screen as the capture. This controller is a QObject
+    living in the GUI thread, so every signal of those threads connected to its slots runs here,
+    in the GUI thread.
+
+    Stopping never blocks the interface: `stop_camera` only asks the video thread to stop, and
+    the other threads are closed and the view reset when its `finished` signal arrives (the same
+    path covers the end of a video file and a camera that disconnects). Only `shutdown`, used when
+    signing out or closing the window, waits for it.
+
+    Subclasses extend `_show_frame` to show more of each processed frame, and `_camera_strategy`
     to change how the camera is monitored.
 
     Args:
@@ -34,7 +45,7 @@ class BaseMonitorController(QObject):
         on_logout_callback: Called when the user signs out.
     """
 
-    # The workers store each fall and e-mail the caregiver. False in test mode (administrators).
+    # Each fall is stored and e-mailed to the caregiver. False in test mode (administrators).
     SENDS_ALERTS = True
 
     def __init__(self, view, current_user, patient: Patient | None, on_logout_callback):
@@ -42,9 +53,13 @@ class BaseMonitorController(QObject):
         self.view = view
         self.user = current_user
         self.patient = patient
-        self.worker: BaseVideoWorker | None = None
+        # The threads of the current monitoring (None while not monitoring), created in `_start`.
+        self.video_thread: VideoThread | None = None
+        self.fall_detection_thread: FallDetectionThread | None = None
+        self.alert_thread: AlertThread | None = None
         self._waiting_first_frame = False
         self._closed = False
+        self._last_frame: QImage | None = None   # the frame on screen: the capture of a fall
 
         self.view.start_requested.connect(self.start_camera)
         self.view.stop_requested.connect(self.stop_camera)
@@ -61,71 +76,104 @@ class BaseMonitorController(QObject):
         Args:
             camera_index: OpenCV index of the camera chosen in the view.
         """
-        if self.worker is not None:
-            logger.warning("Attempted to start camera stream, but a worker is already active.")
+        if self.video_thread is not None:
+            logger.warning("Attempted to start the camera, but a monitoring is already running.")
             return
 
-        self._start(self._camera_worker(camera_index), f"Starting camera {camera_index}...")
+        self._start(camera_index, self._camera_strategy(), f"Starting camera {camera_index}...")
 
-    def _camera_worker(self, camera_index: int) -> BaseVideoWorker:
-        """The patient's risk level picks the camera settings; falls are stored and e-mailed."""
-        return VideoWorker(camera_index=camera_index, user=self.user, patient=self.patient)
+    def _camera_strategy(self) -> MonitoringStrategy:
+        """The patient's risk level picks the camera settings and the model."""
+        return strategy_for(getattr(self.patient, "risk_level", None) or "LOW")
 
     @Slot()
     def stop_camera(self):
-        """Asks the worker to stop. Returns at once; `_on_worker_finished` resets the view."""
-        if self.worker is None or self.worker.isInterruptionRequested():
+        """Asks the video thread to stop. Returns at once; `_on_video_thread_finished` does the rest."""
+        if self.video_thread is None or self.video_thread.isInterruptionRequested():
             return
 
-        logger.info("Stopping camera worker...")
-        self.worker.requestInterruption()
+        logger.info("Stopping the video thread...")
+        self.video_thread.requestInterruption()
         self.view.set_stopping()
 
     def shutdown(self):
-        """Stops the worker and waits for it. For logging out and closing the window."""
+        """Stops every thread, waiting for the video thread. For logging out and closing the window.
+
+        Falls already handed to the alert thread are still stored and e-mailed in the background.
+        """
         self._closed = True
-        worker, self.worker = self.worker, None
-        if worker is None:
-            return
+        video_thread, self.video_thread = self.video_thread, None
+        if video_thread is not None:
+            logger.info("Shutting down the video thread...")
+            video_thread.requestInterruption()
+            video_thread.wait()
+        self._stop_other_threads()
 
-        logger.info("Shutting down camera worker...")
-        worker.requestInterruption()
-        worker.wait()
+    def _start(self, source: int | str, strategy: MonitoringStrategy, message: str):
+        """Starts a monitoring: creates its three threads, connects their signals and starts them.
 
-    def _start(self, worker: BaseVideoWorker, message: str):
-        """Connects the worker to the view, starts it and logs `message`."""
-        self.worker = worker
+        Args:
+            source: Camera index (int) or video file path (str).
+            strategy: Camera settings and model of this monitoring.
+            message: What to write in the event log.
+        """
         self._waiting_first_frame = True
-        self._connect_worker(worker)
-        worker.start()
+        self._last_frame = None   # a fall's capture never comes from an earlier monitoring
+
+        # 1. Create the threads: the fall detector, the video thread that feeds it, and the alerts.
+        self.fall_detection_thread = FallDetectionThread(strategy.model_path, strategy.fps)
+        self.video_thread = VideoThread(source, strategy, self.fall_detection_thread)
+        if self.SENDS_ALERTS:
+            self.alert_thread = AlertThread(self.user, self.patient)
+
+        # 2. Connect their signals before starting them, so no signal is lost. This controller
+        #    lives in the GUI thread, so the methods all run there.
+        self.video_thread.frame_available.connect(self._on_frame_available)        # new frame in the mailbox
+        self.video_thread.source_failed.connect(self._on_source_failed)             # camera or model failed
+        self.video_thread.finished.connect(self._on_video_thread_finished)          # the monitoring ended
+        self.fall_detection_thread.fall_detected.connect(self._on_fall)             # a fall has just started
+        if self.alert_thread is not None:
+            self.alert_thread.notification_sent.connect(self._on_notification_sent)   # e-mail result
+
+        # 3. Start them: the fall detector first (it loads its model while MediaPipe loads in the
+        #    video thread). The alert thread starts by itself with the first fall.
+        self.fall_detection_thread.start()
+        self.video_thread.start()
         self.view.set_monitoring_state(True)
         self.view.log_event("INFO", message)
 
-    def _connect_worker(self, worker: BaseVideoWorker):
-        worker.frame_available.connect(self._on_frame_available)
-        worker.source_failed.connect(self._on_source_failed)
-        worker.fall_detected.connect(self._on_fall)
-        worker.notification_sent.connect(self._on_notification_sent)
-        worker.finished.connect(self._on_worker_finished)
+    def _stop_other_threads(self):
+        """Stops the fall detection thread and closes the alert thread, once the video thread has ended.
 
-    # ------------------------------------------------------------------ worker signals
-    def _active_sender(self) -> BaseVideoWorker | None:
-        """Returns the running worker when it sent the signal being handled, otherwise None.
-
-        Signals still queued from a worker that was already shut down are ignored; if that worker
-        has been destroyed, `sender()` is None, so `self.worker` being None is checked too.
-        Returning the worker (not a bool) lets callers use it without `self.worker` being Optional.
+        The video thread waits for the fall model to be loaded before it ends, so stopping the
+        fall detection thread is immediate. The alert thread is closed without waiting: falls it
+        already has are still stored and e-mailed in the background.
         """
-        worker = self.worker
-        return worker if worker is not None and self.sender() is worker else None
+        fall_detection_thread, self.fall_detection_thread = self.fall_detection_thread, None
+        if fall_detection_thread is not None:
+            fall_detection_thread.stop()
+        alert_thread, self.alert_thread = self.alert_thread, None
+        if alert_thread is not None:
+            alert_thread.shutdown()
+
+    # ------------------------------------------------------------------ thread signals
+    def _active_sender(self) -> VideoThread | None:
+        """Returns the running video thread when it sent the signal being handled, otherwise None.
+
+        Signals still queued from a video thread that was already shut down are ignored; if it
+        has been destroyed, `sender()` is None, so `self.video_thread` being None is checked too.
+        Returning the thread (not a bool) lets callers use it without it being Optional.
+        """
+        video_thread = self.video_thread
+        return video_thread if video_thread is not None and self.sender() is video_thread else None
 
     @Slot()
     def _on_frame_available(self):
-        worker = self._active_sender()
-        if worker is None:
+        video_thread = self._active_sender()
+        if video_thread is None:
             return
 
-        packet = worker.take_frame()
+        packet = video_thread.take_frame()
         if packet is None:
             return
         if self._waiting_first_frame:
@@ -135,16 +183,18 @@ class BaseMonitorController(QObject):
 
     def _show_frame(self, packet: FramePacket):
         """Shows one processed frame. Subclasses extend this."""
+        self._last_frame = packet.frame
         self.view.update_video_frame(packet.frame)
 
     @Slot()
-    def _on_worker_finished(self):
-        worker = self._active_sender()
-        if worker is None:
+    def _on_video_thread_finished(self):
+        video_thread = self._active_sender()
+        if video_thread is None:
             return
 
-        worker.wait()   # `finished` is emitted just before the thread ends: let it end
-        self.worker = None
+        video_thread.wait()   # `finished` is emitted just before the thread ends: let it end
+        self.video_thread = None
+        self._stop_other_threads()   # no more poses or falls can come
         self.view.set_monitoring_state(False)
         self.view.log_event("INFO", "Stream disconnected")
         self.view.clear_video()
@@ -156,13 +206,18 @@ class BaseMonitorController(QObject):
 
     @Slot(float)
     def _on_fall(self, probability: float):
-        """The worker reported a fall (it already stored it and is sending the e-mail)."""
-        logger.warning("Fall detected (%.0f%%)", probability * 100)
-        if self._closed:
+        """A fall has just started: show it and, unless in test mode, store it and e-mail it."""
+        # Ignore falls still queued from a monitoring that has already ended.
+        if self._closed or self.fall_detection_thread is None or self.sender() is not self.fall_detection_thread:
             return
+        logger.warning("Fall detected (%.0f%%)", probability * 100)
         self.view.trigger_fall_alert(f"Fall detected ({probability:.0%})")
-        if self.SENDS_ALERTS:
+        if self.alert_thread is None:
+            return
+        if self.alert_thread.handle(probability, self._last_frame):
             self.view.log_event("INFO", "Sending notification e-mail...")
+        else:
+            self.view.log_event("INFO", "Fall stored; no e-mail (one was sent less than a minute ago)")
 
     @Slot(bool)
     def _on_notification_sent(self, ok: bool):

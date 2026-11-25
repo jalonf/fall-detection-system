@@ -1,15 +1,15 @@
-"""FallPrediction: the fall model's output for one window of poses."""
+"""FallPrediction: the fall detection thread's state after the latest window of poses."""
 
 from dataclasses import dataclass
 
 
 @dataclass(frozen=True)
 class FallPrediction:
-    """Output of the fall model for the latest window of poses.
+    """State of the fall detection thread after the latest window of poses.
 
     Attributes:
-        is_fall: True when the probability reaches the decision threshold.
-        probability: Probability (0-1) that the window shows a fall.
+        is_fall: True while a fall is in progress (decided with hysteresis, see `FallDetectionThread`).
+        probability: Probability (0-1) the model gave to the latest window.
     """
 
     is_fall: bool

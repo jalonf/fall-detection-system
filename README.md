@@ -29,19 +29,28 @@ Developed as a **Bachelor's Thesis (Trabajo de Fin de Grado, TFG)**.
 
 ## How it works
 
-For every frame, `BaseVideoWorker` runs this pipeline in its own thread:
+The work is split in three threads besides the interface (all in `src/threads/`), so none of them
+ever waits for another. The monitoring controller creates, connects and stops the three of them at
+every "Start" / "Stop". Each thread is named after its job, and the log shows which one wrote each line:
 
-1. **Pose:** `MediaPipeExtractor` returns the 33 body landmarks in 3D (meters), centred on the
-   midpoint of the hips so the position of the person in the room does not matter, plus the
-   2D landmarks used for drawing.
-2. **Privacy:** the face area is blurred.
-3. **Model:** the pose (33 × 3 = 99 values) is added to a sliding window. When the window is
-   full, `InferenceWorker` runs the GRU model in a separate thread. A probability of 0.5 or
-   more is a fall.
-4. **Drawing and telemetry:** skeleton, bounding box and the administrator's telemetry.
-5. **Fall:** when the prediction changes to "fall", a `FallEvent` is stored and the alert
-   e-mail (with the capture attached from memory) is sent in the background so the video does
-   not stall.
+1. **Video thread** (`VideoThread`, `video-thread`; it reads a camera or a video file), for every frame:
+   * **Pose:** `MediaPipeExtractor` returns the 33 body landmarks in 3D (meters), centred on the
+     midpoint of the hips so the position of the person in the room does not matter, plus the
+     2D landmarks used for drawing.
+   * **Privacy:** the face area is blurred.
+   * **Hand-over:** the pose (33 × 3 = 99 values) goes to the fall detection thread through a queue.
+   * **Drawing and telemetry:** skeleton, bounding box (red during a fall) and the
+     administrator's telemetry; the frame goes to the interface through a one-slot mailbox.
+2. **Fall detection thread** (`FallDetectionThread`, `fall-detection-thread`): loads the GRU while
+   MediaPipe loads in the video thread. It samples the poses at the model's frame rate, so the
+   sliding window always covers one second of real time, and runs the GRU on the newest window.
+   If the model is slower than the frames arrive, the waiting poses are added at once and only the
+   newest window is analysed, so detection never lags behind. A fall starts when the
+   probability reaches 0.6 and ends when it drops below 0.4 (hysteresis), so a probability
+   hovering around the threshold is one fall, not many.
+3. **Alert thread** (`AlertThread`, `alert-thread`): when a fall starts, the controller hands it over; this thread
+   stores the `FallEvent` and e-mails the caregiver with the capture (encoded in memory) attached.
+   Every fall is stored, but at most one e-mail goes out per minute.
 
 ### Risk levels
 
@@ -49,7 +58,7 @@ Each patient has a risk level, calculated at sign-up. The caregiver answers a he
 about the patient (`src/domain/questionnaire.py`: age, mobility, pain, conditions, medication...) and a
 Random Forest (`src/ai/risk_assessor.py`) turns the answers into LOW, MEDIUM or HIGH. If the model cannot
 be used, the patient is registered as HIGH, the strictest level. The level decides how the camera is
-configured and which model is used (`src/workers/strategies.py`):
+configured and which model is used (`src/domain/monitoring_profiles.py`):
 
 | Risk   | Camera | Model window | Model file |
 |--------|--------|--------------|------------|
@@ -86,19 +95,22 @@ The application follows **Model-View-Controller** on top of PySide6 (Qt):
   shows one screen at a time with a cross-fade and owns their life cycle: it stops the controller of
   the screen being left (releasing the camera) and destroys its view.
 * **Controllers** (`src/controllers/`): `AuthController` handles login and sign-up.
-  `BaseMonitorController` starts and stops the video workers and shows what they report;
-  `MonitorController` and `AdminController` extend it. `AdminController` only accepts administrators
-  and runs everything in test mode (workers without user or patient, so nothing is stored or sent).
-* **Workers** (`src/workers/`): Qt threads that do the heavy work. `VideoWorker` reads the
-  camera and `VideoFileWorker` an uploaded file; both share the pipeline in `BaseVideoWorker`.
-  The monitoring strategies (Strategy pattern) hold the camera settings and the model of each
-  risk level.
+  `BaseMonitorController` creates, connects and stops the three threads of each monitoring, shows
+  what they report and hands each fall to the alert thread; `MonitorController` and
+  `AdminController` extend it.
+  `AdminController` only accepts administrators and runs everything in test mode (no alert
+  thread, so nothing is stored or sent).
+* **Threads** (`src/threads/`): the three threads that do the heavy work. `VideoThread` reads the
+  camera or an uploaded file, `FallDetectionThread` runs the model on its poses, and `AlertThread`
+  stores each fall and sends the alert e-mail. The monitoring strategies (Strategy pattern, `src/domain/monitoring_profiles.py`) hold
+  the camera settings and the model of each risk level.
 * **Persistence** (`src/database/`, `src/repositories/`): SQLite through the Peewee ORM, with
   the `User`, `Patient` and `FallEvent` models. Repositories are the only classes that query
   the database. Every account, administrators included, is a `User` row with a role (role-based
   access): the role decides the screen and the permissions, and the table only accepts the roles
   defined in `src/domain/roles.py`. Administrators simply have no `Patient`.
-* **Notifications** (`src/notifications/`): builds and sends the alert e-mail.
+* **Notifications** (`src/notifications/`): `EmailNotifier` and the template build and send the
+  alert e-mail (the `AlertThread` uses them).
 
 ---
 
@@ -113,21 +125,21 @@ fall-detection-system/
 │   ├── fall_detection/     # GRU fall detectors (.keras)
 │   ├── pose/               # MediaPipe pose landmarker models (.task)
 │   └── risk_model/         # Patient risk-level model (Random Forest, .joblib)
-├── docs/                   # Evaluation plots of both models and the UML diagram
+├── docs/                   # Evaluation plots of both models
 ├── src/
 │   ├── main.py             # Entry point: main window, login and role-based navigation
 │   ├── create_admin.py     # Command that creates administrator (tester) accounts
 │   ├── paths.py            # Locations of the models, datasets and database (built from the project root)
-│   ├── ai/                 # MediaPipe pose extractor and risk-level assessor
+│   ├── ai/                 # MediaPipe pose extractor, GRU fall model and risk-level assessor
 │   ├── controllers/        # Auth and monitoring controllers
 │   ├── database/           # SQLite connection and Peewee models
-│   ├── domain/             # Domain rules: user roles, password policy and the health questionnaire
+│   ├── domain/             # Domain rules: roles, password policy, questionnaire, monitoring strategies
 │   ├── dtos/               # Data transfer objects between layers (immutable dataclasses)
 │   ├── notifications/      # Alert e-mail (sender and template)
 │   ├── repositories/       # Database access for users, patients and fall events
 │   ├── navigation/         # Screen flow (AppCoordinator) and screen changes (Navigator)
-│   ├── views/              # Screens, components, theme and stylesheet
-│   └── workers/            # Video, inference and monitoring-strategy classes
+│   ├── threads/            # VideoThread (camera / file), FallDetectionThread, AlertThread
+│   └── views/              # Screens, components, theme and stylesheet
 ├── training/
 │   ├── fall_detection/
 │   │   ├── build_fall_dataset.py       # Videos → pose sequences (.npy)
