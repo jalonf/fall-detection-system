@@ -4,7 +4,8 @@ import logging
 from collections.abc import Callable
 
 import numpy as np
-import tensorflow as tf
+
+from src.ai import preload
 
 logger = logging.getLogger(__name__)
 
@@ -38,6 +39,11 @@ def load_fall_model(model_path: str, seq_len: int) -> Callable[[np.ndarray], flo
         FallModelError: If the file cannot be loaded or the model does not take those windows
             and return one probability.
     """
+    # TensorFlow takes seconds to import: `preload` loads it in the background after the window
+    # appears, never when the application starts. This waits for it (in the fall detection thread).
+    preload.wait()
+    import tensorflow as tf
+
     try:
         model = tf.keras.models.load_model(model_path, compile=False)
     except Exception as err:   # Keras raises many types (OSError, ValueError, ImportError...)

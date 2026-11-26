@@ -5,19 +5,26 @@ frame they receive instead of returning a copy.
 """
 
 import logging
+from functools import cache
 from typing import Any
 
 import cv2
 import numpy as np
-from mediapipe.framework.formats import landmark_pb2
-from mediapipe.python.solutions import drawing_utils, pose
 from PySide6.QtGui import QImage
 
 logger = logging.getLogger(__name__)
 
-pb2: Any = landmark_pb2
-mp_drawing: Any = drawing_utils
-mp_pose: Any = pose
+
+@cache
+def _mediapipe_drawing() -> tuple[Any, Any, Any]:
+    """MediaPipe's landmark protos, drawing helpers and pose connections.
+
+    Imported the first time a skeleton is drawn (in the video thread, after the extractor has waited for
+    `preload`), never when the application starts.
+    """
+    from mediapipe.framework.formats import landmark_pb2
+    from mediapipe.python.solutions import drawing_utils, pose
+    return landmark_pb2, drawing_utils, pose
 
 # BGR colours
 FALL_COLOR = (0, 0, 255)
@@ -87,6 +94,7 @@ def draw_person_box(frame, box, is_fall: bool) -> None:
 
 def draw_skeleton(image, landmarks, color, size: int) -> None:
     """Draws the pose connections in white and the joints in `color` (`size` = line/dot size)."""
+    pb2, mp_drawing, mp_pose = _mediapipe_drawing()
     landmark_list = pb2.NormalizedLandmarkList(landmark=[
         pb2.NormalizedLandmark(x=lm.x, y=lm.y, z=lm.z, visibility=lm.visibility)
         for lm in landmarks

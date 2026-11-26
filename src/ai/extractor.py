@@ -5,18 +5,10 @@ import os
 import time
 
 import cv2
-import mediapipe as mp
 import numpy as np
 from dotenv import load_dotenv
-from mediapipe.tasks.python.core.base_options import BaseOptions
-from mediapipe.tasks.python.vision.core.vision_task_running_mode import (
-    VisionTaskRunningMode as RunningMode,
-)
-from mediapipe.tasks.python.vision.pose_landmarker import (
-    PoseLandmarker,
-    PoseLandmarkerOptions,
-)
 
+from src.ai import preload
 from src.dtos.skeleton import Skeleton
 from src.paths import POSE_MODEL
 
@@ -51,7 +43,20 @@ class MediaPipeExtractor:
         model_path: str = os.getenv("POSE_LANDMARKER_MODEL_PATH", str(POSE_MODEL)),
     ):
         logger.info("Initializing robust MediaPipeExtractor with model path: %s", model_path)
-        
+        # MediaPipe takes seconds to import: `preload` loads it in the background after the window
+        # appears, never when the application starts. This waits for it (in the video thread).
+        preload.wait()
+        import mediapipe as mp
+        from mediapipe.tasks.python.core.base_options import BaseOptions
+        from mediapipe.tasks.python.vision.core.vision_task_running_mode import (
+            VisionTaskRunningMode as RunningMode,
+        )
+        from mediapipe.tasks.python.vision.pose_landmarker import (
+            PoseLandmarker,
+            PoseLandmarkerOptions,
+        )
+
+        self._mp = mp
         options = PoseLandmarkerOptions(
             base_options=BaseOptions(model_asset_path=model_path),
             running_mode=RunningMode.VIDEO,
@@ -79,7 +84,7 @@ class MediaPipeExtractor:
         """
         # 1. Ensure memory continuity and color conversion
         frame_rgb = np.ascontiguousarray(cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB))
-        mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=frame_rgb)
+        mp_image = self._mp.Image(image_format=self._mp.ImageFormat.SRGB, data=frame_rgb)
 
         # 2. Generate a secure, strictly increasing timestamp resilient to variable FPS
         current_ms = int(time.monotonic() * 1000)

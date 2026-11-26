@@ -7,7 +7,6 @@ import threading
 from collections.abc import Callable
 
 import numpy as np
-import tensorflow as tf
 from PySide6.QtCore import QThread, Signal
 
 from src.ai.fall_model import POSE_VALUES, FallModelError, load_fall_model
@@ -118,6 +117,7 @@ class FallDetectionThread(QThread):
         finally:
             self._ready.set()                            # the video thread can go on either way
         predict = self._predict
+        import tensorflow as tf  # already loaded by `load_fall_model`, in this thread
 
         errors = 0
         while True:
