@@ -42,10 +42,6 @@ class PasswordChecklist(QWidget):
             self._describe()
             self.update()
 
-    def is_satisfied(self) -> bool:
-        """True when every requirement is met."""
-        return all(self._met.values())
-
     def _describe(self) -> None:
         parts = [f"{label}: {'met' if self._met[key] else 'missing'}" for key, label in Register.CHECKLIST]
         self.setAccessibleDescription("; ".join(parts))

@@ -85,7 +85,6 @@ class Toast(QWidget):
         self._fade = QPropertyAnimation(self, b"opacity", self)
         self._slide = QPropertyAnimation(self, b"offset_y", self)
         for animation in (self._fade, self._slide):
-            animation.setDuration(Motion.BASE)
             self._animation.addAnimation(animation)
         self._animation.finished.connect(self._on_animation_finished)
 
@@ -144,7 +143,7 @@ class Toast(QWidget):
         """Shows the toast with a fade and starts its timer."""
         self.show()
         self.raise_()
-        self._run(1.0, 0.0, Motion.OUT)
+        self._run(1.0, 0.0, Motion.OUT, Motion.BASE)
         self._start_timer(self._duration)
         # No QAccessible "Alert" event here: on Windows Qt plays the system "Asterisk" sound for it.
         # Screen readers still get the toast (and its accessible name) when it is shown.
@@ -164,15 +163,17 @@ class Toast(QWidget):
             return
         self._closing = True
         self._timer.stop()
-        self._run(0.0, -8.0, Motion.IN)
+        self._run(0.0, -4.0, Motion.IN, Motion.FAST)
 
     def is_closing(self) -> bool:
         """True once it has started fading out."""
         return self._closing
 
-    def _run(self, opacity: float, offset: float, curve) -> None:
+    def _run(self, opacity: float, offset: float, curve, duration: int) -> None:
+        """Animates the opacity and the vertical offset from where they are now (so nothing jumps)."""
         self._animation.stop()
         for animation, start, end in ((self._fade, self._opacity, opacity), (self._slide, self._offset, offset)):
+            animation.setDuration(duration)
             animation.setStartValue(start)
             animation.setEndValue(end)
             animation.setEasingCurve(QEasingCurve(curve))
@@ -371,7 +372,7 @@ class ToastHost(QObject):
     @Slot()
     def _on_closed(self) -> None:
         toast = self.sender()
-        if toast in self._toasts:
+        if isinstance(toast, Toast) and toast in self._toasts:
             self._toasts.remove(toast)
         self._reposition()
 
@@ -394,6 +395,6 @@ class ToastHost(QObject):
             if event.type() == QEvent.Type.Resize:
                 self._reposition()
             elif event.type() == QEvent.Type.ChildAdded and self._toasts:
-                # Something new (e.g. the navigator's transition overlay) may cover the toasts.
+                # Something new (e.g. a confirmation dialog's overlay) may cover the toasts.
                 self._raise_timer.start()
         return False

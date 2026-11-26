@@ -64,7 +64,7 @@ _SVG = (
 def app_dpr() -> float:
     """Device pixel ratio of the primary screen (1.0 before the application exists)."""
     app = QGuiApplication.instance()
-    return app.devicePixelRatio() if app is not None else 1.0
+    return app.devicePixelRatio() if isinstance(app, QGuiApplication) else 1.0
 
 
 @lru_cache(maxsize=512)
@@ -99,6 +99,50 @@ def _icon(name: str, color: str, size: int, disabled: str, dpr: float) -> QIcon:
 def icon(name: str, color: str, size: int = 16, *, disabled: str = Colors.N400) -> QIcon:
     """QIcon with a normal and a disabled (N400) pixmap."""
     return _icon(name, color, size, disabled, round(app_dpr(), 2))
+
+
+# ---------------------------------------------------------------------- the application's logo
+# A pose skeleton (head, torso, arms and legs, as MediaPipe draws it) leaning towards the ground, on a
+# P600 square. Drawn on a 48-unit grid; the strokes are thick enough to stay legible at 16 px.
+_LOGO = (
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">'
+    '<rect width="48" height="48" rx="11" fill="{square}"/>'
+    '<g fill="none" stroke="{figure}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">'
+    '<path d="M28 18L20 29M28 18L36 22M28 18L21 15M20 29L27 35M20 29L13 33"/></g>'
+    '<path d="M9 39.5H39" stroke="{ground}" stroke-width="2.6" stroke-linecap="round"/>'
+    '<circle cx="32" cy="12" r="4" fill="{figure}"/>'
+    '</svg>'
+)
+_APP_ICON_SIZES = (16, 20, 24, 32, 40, 48, 64, 128, 256)
+
+
+@lru_cache(maxsize=16)
+def _render_logo(size: int, dpr: float) -> QPixmap:
+    svg = _LOGO.format(square=Colors.P600, figure=Colors.N0, ground=Colors.P200).encode("utf-8")
+    renderer = QSvgRenderer(QByteArray(svg))
+    side = max(1, round(size * dpr))
+    image = QImage(side, side, QImage.Format.Format_ARGB32_Premultiplied)
+    image.fill(Qt.GlobalColor.transparent)
+    painter = QPainter(image)
+    painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+    renderer.render(painter, QRectF(0, 0, side, side))
+    painter.end()
+    pixmap = QPixmap.fromImage(image)
+    pixmap.setDevicePixelRatio(dpr)
+    return pixmap
+
+
+def logo_pixmap(size: int, dpr: float | None = None) -> QPixmap:
+    """The application's logo at `size` logical pixels, rendered for `dpr` (the primary screen's when omitted)."""
+    return _render_logo(size, round(dpr if dpr is not None else app_dpr(), 2))
+
+
+def app_icon() -> QIcon:
+    """The logo as the window's and the taskbar's icon, in every size Windows asks for."""
+    result = QIcon()
+    for size in _APP_ICON_SIZES:
+        result.addPixmap(_render_logo(size, 1.0))
+    return result
 
 
 SPINNER_FRAMES = 12

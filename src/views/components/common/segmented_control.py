@@ -79,16 +79,6 @@ class SegmentedControl(QWidget):
         """Returns the index of the checked segment, or -1."""
         return self._group.checkedId()
 
-    def set_selected(self, index: int) -> None:
-        """Checks a segment from code.
-
-        Args:
-            index: Index of the segment.
-        """
-        button = self._group.button(index)
-        if button is not None:
-            button.setChecked(True)
-
     def clear(self) -> None:
         """Unchecks every segment."""
         self._group.setExclusive(False)

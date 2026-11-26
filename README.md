@@ -13,12 +13,13 @@ Developed as a **Bachelor's Thesis (Trabajo de Fin de Grado, TFG)**.
 ## Features
 
 * **Live monitoring** from a webcam, with the person's skeleton and bounding box drawn on the video.
-* **Three detection modes** chosen from the patient's risk level, which is calculated at sign-up from a
-  short health questionnaire (see [Risk levels](#risk-levels)).
+* **Three detection modes** chosen from the patient's risk level, which is calculated when the patient
+  is added, from a short health questionnaire (see [Risk levels](#risk-levels)).
 * **Privacy:** the face is blurred before anything is displayed, stored or sent.
 * **Fall alerts:** the event is stored in the database and an e-mail with a capture of the fall
   is sent through Gmail (SMTP). The capture only lives in memory: it is never written to disk.
-* **User accounts** (login and sign-up) with a patient linked to each caregiver.
+* **User accounts** (login and sign-up) and **patient management**: each caregiver adds, lists and
+  deletes the people they look after (Patients tab) and picks which one to monitor (Live view tab).
 * **Administrator (tester) view**: no patient and a **test mode** in which falls are shown and logged
   but never stored or e-mailed. The tester picks the camera's test profile (the settings and model of a
   risk level), analyses uploaded video files and sees an extra skeleton panel and live telemetry
@@ -54,8 +55,8 @@ every "Start" / "Stop". Each thread is named after its job, and the log shows wh
 
 ### Risk levels
 
-Each patient has a risk level, calculated at sign-up. The caregiver answers a health questionnaire
-about the patient (`src/domain/questionnaire.py`: age, mobility, pain, conditions, medication...) and a
+Each patient has a risk level, calculated when the caregiver adds them. The caregiver answers a health
+questionnaire about the patient (`src/domain/questionnaire.py`: age, mobility, pain, conditions, medication...) and a
 Random Forest (`src/ai/risk_assessor.py`) turns the answers into LOW, MEDIUM or HIGH. If the model cannot
 be used, the patient is registered as HIGH, the strictest level. The level decides how the camera is
 configured and which model is used (`src/domain/monitoring_profiles.py`):
@@ -87,17 +88,28 @@ The confusion matrices and training curves are in `docs/high_risk_30fps/` and
 
 The application follows **Model-View-Controller** on top of PySide6 (Qt):
 
-* **Views** (`src/views/`): the login / sign-up screen (`AuthView`), the caregiver's monitoring
-  screen (`MonitorView`) and the administrator's one (`AdminView`).
+* **Views** (`src/views/`): the login / sign-up screen (`AuthView`) and one dashboard per role
+  (`dashboard_view.py`). A dashboard is a shell: the top bar (the application's mark, the tabs, the
+  date and the account menu) over sibling pages that do not know about each other. The caregiver's
+  (`CaregiverDashboardView`) has a Live view page (`MonitorView`) and a Patients page
+  (`PatientsPage`), and applies the rules that link them (the patient list fills the monitoring
+  selector, Patients is locked while monitoring runs); the administrator's (`AdminDashboardView`) has
+  only its monitoring page (`AdminView`), titled "Detection testing". Sign-in and sign-up are single
+  pages built the same way; the new patient form is one page of section cards generated from the
+  questionnaire (`src/domain/questionnaire.py`), with a fixed bar that shows how much is answered.
+  Every colour, size and animation timing comes from the design tokens in `src/views/theme.py`.
 * **Navigation** (`src/navigation/`, Application Controller / Coordinator pattern): `AppCoordinator`
   owns the flow (sign-in → the dashboard of the user's role → sign-out) and builds each screen (a view
-  and its controller); controllers only report events and never open screens themselves. `Navigator`
-  shows one screen at a time with a cross-fade and owns their life cycle: it stops the controller of
-  the screen being left (releasing the camera) and destroys its view.
-* **Controllers** (`src/controllers/`): `AuthController` handles login and sign-up.
+  and one controller per page); views and controllers only report events and never open screens
+  themselves. `Navigator` shows one screen at a time with a cross-fade and owns their life cycle: it
+  stops the controllers of the screen being left (releasing the camera) and destroys its view.
+* **Controllers** (`src/controllers/`): `AuthController` handles login and sign-up (the account
+  only). `PatientsController` lists, adds (calculating the risk level) and deletes the caregiver's
+  patients.
   `BaseMonitorController` creates, connects and stops the three threads of each monitoring, shows
   what they report and hands each fall to the alert thread; `MonitorController` and
-  `AdminController` extend it.
+  `AdminController` extend it. `MonitorController` monitors the patient chosen in the view and owns
+  the `PatientsController`.
   `AdminController` only accepts administrators and runs everything in test mode (no alert
   thread, so nothing is stored or sent).
 * **Threads** (`src/threads/`): the three threads that do the heavy work. `VideoThread` reads the
@@ -207,13 +219,15 @@ From the project root:
 python -m src.main
 ```
 
-The database is created on the first run. Sign up, fill in the patient's data and answer the health
-questionnaire (it sets the patient's risk level), and press **Start monitoring**. The role decides the screen:
+The database is created on the first run. Sign up (the caregiver's account), add a patient in the
+**Patients** tab answering the health questionnaire (it sets the patient's risk level), choose them in
+the **Live view** tab and press **Start monitoring**. Monitoring stays locked until there is at least
+one patient. The role decides the screen:
 
 | Role | How the account is created | Screen |
 |------|----------------------------|--------|
-| Family / Caregiver | Sign-up form | Monitoring screen of their patient |
-| Medical Staff | Sign-up form | Monitoring screen of their patient |
+| Family / Caregiver | Sign-up form | Live view and Patients tabs (any number of patients) |
+| Medical Staff | Sign-up form | Live view and Patients tabs (any number of patients) |
 | Administrator | `python -m src.create_admin` | Test mode: test profiles, video upload, skeleton panel and telemetry |
 
 #### Creating an administrator

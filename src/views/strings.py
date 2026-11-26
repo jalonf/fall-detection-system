@@ -22,7 +22,6 @@ class Common:
 
 class Brand:
     """Brand panel of the sign-in screens."""
-    OVERLINE = "FALL RISK ASSESSMENT AND DETECTION"
     HEADLINE = "Continuous, private fall monitoring"
     PARAGRAPH = "For older adults, at home or in a care home."
     FEATURES = (
@@ -31,7 +30,7 @@ class Brand:
         ("eye-off", "Privacy by design", "The face is blurred before any frame is shown, stored or sent."),
         ("bell", "Immediate caregiver alert", "An e-mail with the capture is sent as soon as a fall is detected."),
     )
-    FOOTER = "Trabajo de Fin de Grado · Universidad de León · 2026 · v1.0"
+    FOOTER = "Trabajo de Fin de Grado · Universidad de León · 2026"
 
 
 class Login:
@@ -50,17 +49,21 @@ class Login:
     PASSWORD_REQUIRED = "Enter your password."
 
 
+class Form:
+    """Questions of the health questionnaire."""
+    CHOICE_REQUIRED = "Choose an answer."
+    NUMBER_RANGE = "Enter a whole number between {minimum} and {maximum}."
+    NUMBER_PLACEHOLDER = "{minimum}–{maximum}"
+
+
 class Register:
-    """Sign-up page."""
-    BACK_TO_SIGN_IN = "Back to sign in"
+    """Sign-up page: the caregiver's account only (patients are added afterwards)."""
     TITLE = "Create an account"
-    SUBTITLE = "Five short steps. The health questions set the patient's risk level."
-    STEPS = ("Caregiver", "Account", "Patient", "Daily life", "Health")
-    BACK = "Back"
-    CONTINUE = "Continue"
+    SUBTITLE = "Your account as a caregiver. You add the people you look after next."
     CREATE = "Create account"
     CREATING = "Creating account…"
-    STEP_OF = "Step {current} of {total}"
+    HAVE_ACCOUNT = "Already have an account?"
+    SIGN_IN = "Sign in"
 
     FULL_NAME = "Full name"
     PHONE = "Phone"
@@ -77,29 +80,75 @@ class Register:
         ("number", "A number"),
         ("symbol", "A symbol"),
     )
-    PATIENT_NAME = "Patient full name"
-    MEDICAL_NOTES = "Medical notes"
-    MEDICAL_NOTES_PLACEHOLDER = "e.g. vertigo, reduced mobility"
-    RISK_CALLOUT = "The patient's risk level is calculated from these answers when the account is created."
 
-    NAME_REQUIRED = "Enter the caregiver's full name."
-    PHONE_INVALID = "Enter a phone number with country code, e.g. +34 600 000 000."
+    NAME_REQUIRED = "Enter your full name."
+    PHONE_INVALID = "Enter a phone number with country code, e.g. +34 600 000 000."
     ROLE_REQUIRED = "Choose a role."
     EMAIL_INVALID = "Enter a valid email address."
     EMAIL_IN_USE = "This email is already in use."
     PASSWORD_WEAK = "Password doesn't meet all the requirements."
     PASSWORD_TOO_LONG = "Password is too long: use at most 72 characters (fewer with accents or emoji)."
     PASSWORD_MISMATCH = "Passwords don't match."
+
+
+class PatientForm:
+    """New patient form: who they are and the health questionnaire that sets their risk level."""
+    BACK_TO_PATIENTS = "Patients"
+    TITLE = "New patient"
+    SUBTITLE = ("Answer every question about the person you look after. The answers set their risk level, "
+                "which decides how closely the camera watches them.")
+    CANCEL = "Cancel"
+    ADD = "Add patient"
+    ADDING = "Adding patient…"
+    PATIENT_NAME = "Full name"
     PATIENT_REQUIRED = "Enter the patient's full name."
-    CHOICE_REQUIRED = "Choose an answer."
-    NUMBER_RANGE = "Enter a whole number between {minimum} and {maximum}."
-    NUMBER_PLACEHOLDER = "{minimum}–{maximum}"
+    MEDICAL_NOTES = "Medical notes"
+    MEDICAL_NOTES_PLACEHOLDER = "e.g. vertigo, reduced mobility"
+    PROGRESS = "{answered} of {total} answered"
+    MISSING_ONE = "1 answer is missing"
+    MISSING_MANY = "{n} answers are missing"
+    SECTION_PROGRESS = "{answered} of {total}"
+    SECTION_MISSING = "{n} missing"
+    SECTION_DONE = "Complete"
+    SECTION_OPTIONAL = "Tick all that apply"
+    DISCARD_TITLE = "Discard this patient?"
+    DISCARD_BODY = "The answers entered so far will be lost."
+    DISCARD_ACTION = "Discard"
+
+
+class Patients:
+    """Patients page: the caregiver's patients, add and delete."""
+    TITLE = "Patients"
+    SUBTITLE = "The people you look after. Each one's risk level sets how the camera monitors them."
+    COUNT_ONE = "1 patient"
+    COUNT_MANY = "{n} patients"
+    ADD = "Add patient"
+    COLUMNS = ("NAME", "RISK", "FALLS", "LAST FALL", "ADDED")
+    NO_FALLS = "No falls"
+    DATE_FORMAT = "d MMM yyyy"
+    DATE_TIME_FORMAT = "d MMM yyyy · HH:mm"
+    DELETE_TIP = "Delete {name}"
+    EMPTY_TITLE = "Add the person you look after"
+    EMPTY_TEXT = "Monitoring starts once a patient is added. Their health answers set how the camera is used."
+    CONFIRM_DELETE_TITLE = "Delete {name}?"
+    CONFIRM_DELETE_BODY = "Their fall history ({falls}) is deleted with them. This cannot be undone."
+    FALLS_NONE = "no stored falls"
+    FALLS_ONE = "1 stored fall"
+    FALLS_MANY = "{n} stored falls"
+    CONFIRM_DELETE_ACTION = "Delete patient"
+    ADDED_TITLE = "Patient added"
+    ADDED = "{name} · risk level {level}."
+    DELETED_TITLE = "Patient deleted"
+    DELETED = "{name} and their fall history were deleted."
 
 
 class Monitor:
-    """Monitoring screens: top bar, session card, video panel and alerts."""
-    SECTION_MONITORING = "Patient Monitoring"
-    SECTION_ADMIN = "Administration Monitoring"
+    """Dashboards: top bar, session card, video panel and alerts."""
+    TAB_MONITORING = "Live view"
+    TAB_PATIENTS = "Patients"
+    TAB_MONITORING_LOCKED = "Add a patient first"
+    TAB_PATIENTS_LOCKED = "Stop monitoring to manage patients"
+    ADMIN_TITLE = "Detection testing"      # the administrators' single page
     SIGN_OUT = "Sign out"
     SIGN_OUT_SHORTCUT = "Ctrl+Shift+Q"
     ACCOUNT_TIP = "Account"
@@ -107,7 +156,6 @@ class Monitor:
     ACCOUNT_MENU = "Account menu"
     CLOCK_FORMAT = "ddd d MMM · HH:mm"
 
-    PATIENT = "Patient"
     CAMERA = "Camera"
     STRIP_PATIENT = "PATIENT"
     STRIP_CAMERA = "CAMERA"
@@ -117,7 +165,9 @@ class Monitor:
     RISK_BADGE = "{level} RISK"
     CAMERA_SPEC = "{width} × {height} · {fps} fps"
     CAMERA_SPEC_TIP = "Resolution and frame rate set by the patient's {level} risk level"
-    CAMERA_SPEC_DEFAULT_TIP = "No patient linked: the camera uses the {level} risk profile"
+    CAMERA_SPEC_DEFAULT_TIP = "No patient selected: the camera uses the {level} risk profile"
+    PATIENT_COMBO = "Patient"
+    PATIENT_COMBO_TIP = "Patient being monitored. Their risk level sets the camera settings and the fall model."
     CAMERA_SPEC_TEST_TIP = "Resolution and frame rate of the {level} risk test profile"
     FILE_SPEC = "Analysed at its own frame rate"
 
@@ -223,12 +273,12 @@ class Pose:
 
 
 class Toasts:
-    """The only toasts the app shows: signed in, account created and signed out."""
+    """Toasts of the sign-in screen: signed in, account created and signed out."""
 
     SIGNED_IN_TITLE = "Signed in"
     SIGNED_IN = "Opening your dashboard…"
     ACCOUNT_CREATED_TITLE = "Account created"
-    ACCOUNT_CREATED = "Patient risk level: {level}. Opening your dashboard…"
+    ACCOUNT_CREATED = "Next, add the person you look after."
     SIGNED_OUT_TITLE = "Signed out"
     SIGNED_OUT = "Your session has ended."
     KIND_TITLES: ClassVar[dict[str, str]] = {"success": "Done", "error": "Something went wrong", "warning": "Warning", "info": "Information"}

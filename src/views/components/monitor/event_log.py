@@ -15,6 +15,7 @@ from PySide6.QtCore import (
     QAbstractTableModel,
     QDateTime,
     QModelIndex,
+    QPersistentModelIndex,
     QRect,
     QRectF,
     QSettings,
@@ -79,15 +80,15 @@ class EventLogModel(QAbstractTableModel):
         super().__init__(parent)
         self._rows: list[LogEntry] = []      # newest first
 
-    def rowCount(self, parent=_ROOT) -> int:
+    def rowCount(self, parent: QModelIndex | QPersistentModelIndex = _ROOT) -> int:
         """Returns the number of events (it is a flat list)."""
         return 0 if parent.isValid() else len(self._rows)
 
-    def columnCount(self, parent=_ROOT) -> int:
+    def columnCount(self, parent: QModelIndex | QPersistentModelIndex = _ROOT) -> int:
         """Returns the number of columns: time, type and description."""
         return 0 if parent.isValid() else len(Log.COLUMNS)
 
-    def data(self, index, role=Qt.ItemDataRole.DisplayRole):
+    def data(self, index: QModelIndex | QPersistentModelIndex, role: int = Qt.ItemDataRole.DisplayRole):
         """Returns an event's time, type or description for the display and custom roles."""
         if not index.isValid():
             return None
@@ -104,7 +105,7 @@ class EventLogModel(QAbstractTableModel):
             return f"{entry.time.toString('HH:mm:ss')}, {entry.kind}, {entry.message}"
         return None
 
-    def headerData(self, section, orientation, role=Qt.ItemDataRole.DisplayRole):
+    def headerData(self, section: int, orientation: Qt.Orientation, role: int = Qt.ItemDataRole.DisplayRole):
         """Returns the column titles."""
         if orientation == Qt.Orientation.Horizontal and role == Qt.ItemDataRole.DisplayRole:
             return Log.COLUMNS[section]
@@ -133,10 +134,6 @@ class EventLogModel(QAbstractTableModel):
         self._rows.clear()
         self.endResetModel()
 
-    def entries(self) -> list[LogEntry]:
-        """Returns a copy of the events, newest first."""
-        return list(self._rows)
-
 
 class EventFilterProxy(QSortFilterProxyModel):
     """Shows all the events, or only those of one type."""
@@ -157,10 +154,6 @@ class EventFilterProxy(QSortFilterProxyModel):
         if key in self.FILTERS and key != self._key:
             self._key = key
             self.invalidateRowsFilter()
-
-    def filter_key(self) -> str:
-        """Returns the current filter's key."""
-        return self._key
 
     def filterAcceptsRow(self, source_row: int, source_parent) -> bool:
         """Accepts the events whose type the filter shows."""

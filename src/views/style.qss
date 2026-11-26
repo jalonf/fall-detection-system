@@ -22,10 +22,8 @@ QLabel[tone="body"] { color: @N700@; }
 QLabel[tone="secondary"] { color: @N600@; }
 QLabel[tone="tertiary"] { color: @N500@; }
 QLabel[tone="danger"] { color: @R700@; }
-QLabel[tone="link"] { color: @P600@; }
+QLabel[tone="success"] { color: @G700@; }
 QLabel[tone="info"] { color: @P700@; }
-QLabel[tone="on-dark"] { color: @S100@; }
-QLabel[tone="on-dark-secondary"] { color: @S300@; }
 QLabel[tone="on-brand"] { color: @N0@; }
 QLabel[tone="on-brand-soft"] { color: @P100@; }
 QLabel[tone="on-brand-muted"] { color: @P200@; }
@@ -68,11 +66,6 @@ QPushButton[variant="danger"]:hover { background-color: @R50@; }
 QPushButton[variant="danger"]:pressed { background-color: @R50@; border-color: @R600@; }
 QPushButton[variant="danger"]:disabled { background-color: @N0@; border-color: @N200@; }
 QPushButton[variant="danger"]:focus { border: 2px solid @P600@; }
-
-QPushButton[variant="on-danger"] { background-color: @N0@; border: 1px solid @N0@; }
-QPushButton[variant="on-danger"]:hover { background-color: @R50@; border-color: @R50@; }
-QPushButton[variant="on-danger"]:pressed { background-color: @R200@; border-color: @R200@; }
-QPushButton[variant="on-danger"]:focus { border: 2px solid @P200@; }
 
 QPushButton[variant="on-dark"] { background-color: transparent; border: 1px solid @S700@; }
 QPushButton[variant="on-dark"]:hover { background-color: @S800@; }

@@ -45,7 +45,9 @@ class FieldMessage(QWidget):
 
     def text(self) -> str:
         """Returns the text shown, or an empty string when the message is hidden."""
-        return self._text.text() if self.isVisibleTo(self.parentWidget()) else ""
+        parent = self.parentWidget()
+        shown = self.isVisibleTo(parent) if parent is not None else not self.isHidden()
+        return self._text.text() if shown else ""
 
 
 class FormField(QWidget):
@@ -93,8 +95,9 @@ class FormField(QWidget):
             message: The error; an empty string marks it invalid without a message; None clears it.
         """
         self._invalid = message is not None
-        if hasattr(self.control, "set_invalid"):
-            self.control.set_invalid(self._invalid)
+        set_invalid = getattr(self.control, "set_invalid", None)     # the inputs that paint their own border
+        if callable(set_invalid):
+            set_invalid(self._invalid)
         else:
             set_props(self.control, invalid=self._invalid)
         self._message.set_error(message or None)

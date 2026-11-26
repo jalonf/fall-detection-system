@@ -5,13 +5,16 @@ state shows. It is a card like the panels under it (N0 fill, N200 border, square
 corners), separated from the top bar by the body's margin, so it reads as content rather
 than as part of the header.
 
-Each item is a small overline label with its value underneath: the patient's name with a
-risk badge, the camera's resolution and frame rate (set by the patient's risk level; which
-camera is picked shows once, in the selector under the video) or the video file's name, the
-status and the duration, which only takes the width it needs, at the right. Administrators have no patient: the first item is
-their test-profile selector instead, with a TEST MODE badge. During a fall alert the card
-turns R50 with an R200 border and a 3 px R600 bar on the left (like the alert rows of the
-event log), its status pulses and an Acknowledge button appears on the right.
+Each item is a small overline label with its value underneath, every value on a row of the same
+height so the labels line up. The items are packed from the left, separated by thin dividers. The
+first one is a selector with a badge next to it: caregivers pick the patient being monitored (with
+their risk badge); administrators, who have no patients, pick a test profile (with a TEST MODE
+badge). Then the camera's resolution and frame rate (set by that risk level; which camera is picked
+shows once, in the selector under the video) or the video file's name, the status and the duration.
+
+During a fall alert the card turns R50 with an R200 border and a 3 px R600 bar on the left (like
+the alert rows of the event log), its status pulses and an Acknowledge button appears at the right
+end, in space that was already empty, so no item moves.
 """
 
 from __future__ import annotations
@@ -36,8 +39,6 @@ from src.views.theme import (
     set_props,
 )
 
-RISK_VARIANTS = {"LOW": "success", "MEDIUM": "warning", "HIGH": "danger"}
-_PATIENT_WIDTH = 260
 _SOURCE_WIDTH = 200
 
 
@@ -54,55 +55,32 @@ class ContextBar(QWidget):
         acknowledge_clicked: The user acknowledged the fall alert.
 
     Args:
-        patient_name: Name of the patient, or None.
-        risk_level: Their risk level, or None.
+        caption: Overline of the first item ("PATIENT" or "TEST PROFILE").
+        selector: The combo of the first item.
+        badge: The badge next to it (risk level or TEST MODE).
         parent: Parent widget.
-        profile_selector: Administrators: their test-profile selector, shown instead of the patient.
     """
     acknowledge_clicked = Signal()
 
-    def __init__(self, patient_name: str | None, risk_level: str | None, parent: QWidget | None = None, *,
-                 profile_selector: QWidget | None = None):
+    def __init__(self, caption: str, selector: QWidget, badge: Badge, parent: QWidget | None = None):
         super().__init__(parent)
         self.setObjectName("ContextBar")
         self.setFixedHeight(Size.CONTEXT_BAR)
         self._alert = False
         self._state = "idle"
 
-        layout = QHBoxLayout(self)
-        layout.setContentsMargins(Space.S5, 1, Space.S6, 1)     # inside the 1 px border
+        layout = self._layout = QHBoxLayout(self)
+        layout.setContentsMargins(Space.S5, 1, Space.S4, 1)     # inside the 1 px border
         layout.setSpacing(0)
 
-        self.patient: QLabel | None = None
-        self.risk: Badge | None = None
-        if profile_selector is not None:
-            # Administrators: the test profile they monitor with, and a badge saying nothing is stored.
-            profile_row = QHBoxLayout()
-            profile_row.setContentsMargins(0, 0, 0, 0)
-            profile_row.setSpacing(Space.S2)
-            profile_row.addWidget(profile_selector)
-            test_badge = Badge(Monitor.TEST_MODE_BADGE, "info")
-            test_badge.setToolTip(Monitor.TEST_MODE_TIP)
-            profile_row.addWidget(test_badge, 0, Qt.AlignmentFlag.AlignVCenter)
-            self._add_item(layout, Monitor.STRIP_TEST_PROFILE, profile_row)
-        else:
-            # Patient: name and risk badge.
-            patient_row = QHBoxLayout()
-            patient_row.setContentsMargins(0, 0, 0, 0)
-            patient_row.setSpacing(Space.S2)
-            self.patient = make_label("", "title-sm")
-            if patient_name:
-                _elide(self.patient, patient_name, "title-sm", _PATIENT_WIDTH)
-            else:
-                self.patient.setText(EM_DASH)
-                set_props(self.patient, tone="tertiary")
-            self.patient.setAccessibleName(Monitor.PATIENT)
-            patient_row.addWidget(self.patient)
-            level = (risk_level or "").strip().upper()
-            if level in RISK_VARIANTS:
-                self.risk = Badge(Monitor.RISK_BADGE.format(level=level), RISK_VARIANTS[level])
-                patient_row.addWidget(self.risk, 0, Qt.AlignmentFlag.AlignVCenter)
-            self._add_item(layout, Monitor.STRIP_PATIENT, patient_row)
+        # The patient (or test profile) being monitored, and its badge.
+        selector_row = QHBoxLayout()
+        selector_row.setContentsMargins(0, 0, 0, 0)
+        selector_row.setSpacing(Space.S2)
+        selector_row.addWidget(selector)
+        self.badge = badge
+        selector_row.addWidget(badge, 0, Qt.AlignmentFlag.AlignVCenter)
+        self._add_item(layout, caption, selector_row)
 
         # Camera: its capture settings; video file: its name.
         source_row = QHBoxLayout()
@@ -119,41 +97,43 @@ class ContextBar(QWidget):
         self._add_item(layout, Monitor.STRIP_STATUS, self.status, divider=True)
 
         self.duration = make_tabular_label(EM_DASH, "body-strong", "tertiary", sample="00:00:00")
-        self._add_item(layout, Monitor.STRIP_DURATION, self.duration, divider=True, stretch=0)
+        self._add_item(layout, Monitor.STRIP_DURATION, self.duration, divider=True)
+        layout.addStretch(1)
 
-        # Acknowledge, with its own gap: hidden together, so no empty space is left at the right.
-        self._acknowledge_box = QWidget()
-        box = QHBoxLayout(self._acknowledge_box)
-        box.setContentsMargins(Space.S6, 0, 0, 0)
+        # Acknowledge, at the right end: it takes empty space, so nothing moves when it appears.
         self.acknowledge = make_button(Monitor.ACKNOWLEDGE, "danger", "md", "check", tooltip=Monitor.ACKNOWLEDGE_TIP)
         self.acknowledge.clicked.connect(self.acknowledge_clicked)
-        box.addWidget(self.acknowledge)
-        self._acknowledge_box.hide()
-        layout.addWidget(self._acknowledge_box, 0, Qt.AlignmentFlag.AlignVCenter)
+        policy = self.acknowledge.sizePolicy()
+        policy.setRetainSizeWhenHidden(True)
+        self.acknowledge.setSizePolicy(policy)
+        self.acknowledge.hide()
+        layout.addWidget(self.acknowledge, 0, Qt.AlignmentFlag.AlignVCenter)
         self.set_state("idle")
 
-    def _add_item(self, layout: QHBoxLayout, label: str, value, *, divider: bool = False,
-                  stretch: int = 1) -> QLabel:
+    def _add_item(self, layout: QHBoxLayout, label: str, value, *, divider: bool = False) -> QLabel:
         if divider:
             layout.addSpacing(Space.S6)
-            layout.addWidget(Divider(Colors.N150, vertical=True, length=32))
+            layout.addWidget(Divider(Colors.N150, vertical=True, length=32), 0, Qt.AlignmentFlag.AlignVCenter)
             layout.addSpacing(Space.S6)
         column = QVBoxLayout()
         column.setContentsMargins(0, 0, 0, 0)
-        column.setSpacing(Space.S1)
+        column.setSpacing(2)
         column.addStretch(1)
         caption = make_label(label, "overline", "tertiary")
         column.addWidget(caption)
+        # Every value sits on a row as tall as the selector, so the captions above them line up.
+        row = QWidget()
+        row.setFixedHeight(Size.H_SM)
+        row_layout = value if isinstance(value, QHBoxLayout) else QHBoxLayout()
         if isinstance(value, QWidget):
-            column.addWidget(value, 0, Qt.AlignmentFlag.AlignLeft)
+            row_layout.addWidget(value, 0, Qt.AlignmentFlag.AlignVCenter)
             value.setAccessibleName(label.title())
-        else:
-            value.addStretch(1)       # the row's content stays packed at the left of its column
-            column.addLayout(value)
+        row_layout.setContentsMargins(0, 0, 0, 0)
+        row_layout.addStretch(1)
+        row.setLayout(row_layout)
+        column.addWidget(row)
         column.addStretch(1)
-        # The items share the spare width evenly, so the card spans the body like the panels below
-        # instead of leaving a gap at the right; a stretch of 0 keeps an item to its own width.
-        layout.addLayout(column, stretch)
+        layout.addLayout(column)
         return caption
 
     # ------------------------------------------------------------------ API
@@ -168,7 +148,7 @@ class ContextBar(QWidget):
         self.source_label.setText(Monitor.STRIP_CAMERA if camera else Monitor.STRIP_FILE)
         if label:
             _elide(self.source, label, "body-strong", _SOURCE_WIDTH, Qt.TextElideMode.ElideMiddle)
-            set_props(self.source, tone="primary")
+            set_props(self.source, tone="")
         else:
             self.source.setText(EM_DASH)
             set_props(self.source, tone="tertiary")
@@ -185,7 +165,7 @@ class ContextBar(QWidget):
         """
         if text != self.duration.text():
             self.duration.setText(text or EM_DASH)
-            set_props(self.duration, tone="primary" if text else "tertiary")
+            set_props(self.duration, tone="" if text else "tertiary")
 
     def set_alert(self, active: bool, count: int = 1) -> None:
         """Shows the fall alert (with the number of falls since the last acknowledgement) or clears it."""
@@ -196,7 +176,7 @@ class ContextBar(QWidget):
             self.status.set_status("alert", text)
         else:
             self.status.set_status(self._state, Monitor.STATUS_TEXT[self._state])
-        self._acknowledge_box.setVisible(active)
+        self.acknowledge.setVisible(active)
         if changed:
             self.update()
 
@@ -208,14 +188,10 @@ class ContextBar(QWidget):
         """
         self.status.set_pulse_phase(phase)
 
-    def status_text(self) -> str:
-        """Returns the status text shown."""
-        return self.status.text()
-
     # ------------------------------------------------------------------ painting
     def sizeHint(self) -> QSize:
         """Preferred size: its content's width and the fixed height."""
-        return QSize(self.layout().sizeHint().width(), Size.CONTEXT_BAR)
+        return QSize(self._layout.sizeHint().width(), Size.CONTEXT_BAR)
 
     def paintEvent(self, event) -> None:
         """A card like `Panel`: fill and a 1 px border; red tones and a left bar during an alert."""

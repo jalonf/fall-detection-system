@@ -1,20 +1,40 @@
-"""Badge: 20 px tall, overline text, painted."""
+"""Badge: 20 px tall, overline text on a tinted fill with a border of the same hue, painted.
+
+The border keeps a badge readable on any surface, including the red card of a fall alert.
+"""
 
 from __future__ import annotations
 
 from PySide6.QtCore import QRectF, QSize, Qt
-from PySide6.QtGui import QColor, QFontMetrics, QPainter
+from PySide6.QtGui import QColor, QFontMetrics, QPainter, QPen
 from PySide6.QtWidgets import QSizePolicy, QWidget
 
+from src.views.components.common.painting import crisp
+from src.views.strings import Monitor
 from src.views.theme import Colors, Radius, Type
 
-VARIANTS = {
-    "neutral": (Colors.N100, Colors.N700),
-    "info": (Colors.P50, Colors.P700),
-    "success": (Colors.G50, Colors.G700),
-    "warning": (Colors.A50, Colors.A700),
-    "danger": (Colors.R50, Colors.R700),
-    "danger-solid": (Colors.R600, Colors.N0),
+RISK_VARIANTS = {"LOW": "success", "MEDIUM": "warning", "HIGH": "danger"}
+
+
+def risk_badge(level: str) -> tuple[str, str]:
+    """Text and variant of a patient's risk badge.
+
+    Args:
+        level: "LOW", "MEDIUM" or "HIGH".
+
+    Returns:
+        ("HIGH RISK", "danger"), for example; an unknown level is neutral.
+    """
+    return Monitor.RISK_BADGE.format(level=level), RISK_VARIANTS.get(level, "neutral")
+
+
+VARIANTS = {    # fill, border, text
+    "neutral": (Colors.N100, Colors.N200, Colors.N700),
+    "info": (Colors.P50, Colors.P200, Colors.P700),
+    "success": (Colors.G50, Colors.G200, Colors.G700),
+    "warning": (Colors.A50, Colors.A200, Colors.A700),
+    "danger": (Colors.R50, Colors.R200, Colors.R700),
+    "danger-solid": (Colors.R600, Colors.R600, Colors.N0),
 }
 HEIGHT = 20
 _PADDING = 8
@@ -80,12 +100,12 @@ class Badge(QWidget):
     @staticmethod
     def paint(painter: QPainter, rect: QRectF, text: str, variant: str) -> None:
         """Paints a badge in `rect` (used by Badge and by the event log delegate)."""
-        background, foreground = VARIANTS[variant]
+        background, border, foreground = VARIANTS[variant]
         painter.save()
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setPen(QPen(QColor(border), 1))
         painter.setBrush(QColor(background))
-        painter.drawRoundedRect(rect, Radius.R_SM, Radius.R_SM)
+        painter.drawRoundedRect(crisp(rect), Radius.R_SM, Radius.R_SM)
         painter.setFont(Type.font("overline"))
         painter.setPen(QColor(foreground))
         painter.drawText(rect, int(Qt.AlignmentFlag.AlignCenter), text)

@@ -171,3 +171,31 @@ def transparent_scroll_area(widget: QWidget, *, horizontal: bool = False) -> QSc
     area.viewport().setAutoFillBackground(False)
     widget.setAutoFillBackground(False)
     return area
+
+
+# ---------------------------------------------------------------------- surfaces
+class Surface(QWidget):
+    """A plain surface painted in one colour, optionally inside a 1 px border.
+
+    Opaque, so snapshots of it (page transitions) are too. The border is filled, not stroked: a
+    1 px pen on the edge loses a side at fractional scale factors.
+
+    Args:
+        color: The surface colour.
+        border: The border colour, or None.
+        parent: Parent widget.
+    """
+
+    def __init__(self, color: str, border: str | None = None, parent: QWidget | None = None):
+        super().__init__(parent)
+        self._color = QColor(color)
+        self._border = QColor(border) if border else None
+
+    def paintEvent(self, event) -> None:
+        """Paints the border, if any, and the surface inside it."""
+        painter = QPainter(self)
+        if self._border is None:
+            painter.fillRect(self.rect(), self._color)
+            return
+        painter.fillRect(self.rect(), self._border)
+        painter.fillRect(self.rect().adjusted(1, 1, -1, -1), self._color)

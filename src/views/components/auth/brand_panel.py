@@ -1,27 +1,31 @@
 """Brand panel of the sign-in screens.
 
-Composition: a message block in the app's own type scale (overline, headline, lead), the three
-things the app does, and the project credit at the bottom. Behind it, cropped
-by the right and bottom edges, a large and faint MediaPipe Pose figure (33 landmarks and their
-connections) gives the screen its character. The figure is cleared, with a soft edge, behind the
-text (only where there are words), so no line ever runs under a word. Everything is painted on the panel's own background.
+One block, centred vertically like the form beside it: the logo and the application's name, the
+headline and one supporting line, then what the application does as a compact list. The project
+credit sits at the bottom. The panel says the same on sign-in and sign-up.
+
+Behind it, cropped by the right edge, a large and faint MediaPipe Pose figure (33 landmarks and their
+connections) gives the screen its character. The figure fades out towards the text, so it is whole
+wherever it shows and never runs under a word; on narrow panels little of it shows, on wide ones most
+of it. Everything is painted on the panel's own background and cached.
 """
 
 from __future__ import annotations
 
-from PySide6.QtCore import QPoint, QPointF, QRect, QRectF, QSize, Qt
-from PySide6.QtGui import QColor, QFontMetrics, QLinearGradient, QPainter, QPen, QPixmap
-from PySide6.QtWidgets import QHBoxLayout, QLabel, QSizePolicy, QVBoxLayout, QWidget
+from PySide6.QtCore import QPointF, QRectF, QSize, Qt
+from PySide6.QtGui import QColor, QLinearGradient, QPainter, QPen, QPixmap
+from PySide6.QtWidgets import QHBoxLayout, QSizePolicy, QVBoxLayout, QWidget
 
+from src.views import icons
 from src.views.components.common.painting import IconView
 from src.views.strings import Brand
-from src.views.theme import Colors, Space, make_label, mix, qcolor
+from src.views.theme import APP_NAME, Colors, Space, make_label, mix, qcolor
 
 _PADDING_X = 48
 _PADDING_Y = 40
 _TEXT_WIDTH = 440
-_FEATHER = 14          # soft edge of the area cleared behind each line of text
-_FEATHER_STEPS = 7
+_LOGO = 32
+_FADE = 160            # the figure goes from invisible to full strength over this width, right of the text
 
 # A relaxed standing pose in a 100 x 160 box, facing the viewer (the person's left is on the right).
 POSE_LANDMARKS: tuple[tuple[float, float], ...] = (
@@ -54,62 +58,84 @@ POSE_CONNECTIONS: tuple[tuple[int, int], ...] = (
 _SMALL = set(range(1, 11)) | set(range(17, 23)) | set(range(29, 33))   # face, hands and feet
 
 
-def paint_background_figure(painter: QPainter, width: float, height: float) -> None:
-    """Paints the faint MediaPipe pose figure behind the brand panel's text.
+def paint_background_figure(painter: QPainter, width: float, height: float, text_right: float) -> None:
+    """Paints the faint MediaPipe pose figure of the brand panel.
 
-    The shoulders are about a quarter of the panel wide, centred at 80 % of the width with
-    the head near the top, so the legs run off the bottom edge.
+    The figure is about as tall as the panel, with the head near the top, standing right of the text
+    column (or cropped by the panel's right edge when there is little room there).
 
     Args:
-        painter: Painter of the panel's background pixmap.
+        painter: Painter of the figure's transparent layer.
         width: Panel width.
         height: Panel height.
+        text_right: Right edge of the text column.
     """
-    scale = width / 96.0
-    origin_x = width * 0.80 - 50.0 * scale
-    origin_y = height * 0.20 - 12.0 * scale
+    scale = height / 150.0
+    centre_x = max(width * 0.80, text_right + _FADE * 0.9)
+    origin_x = centre_x - 50.0 * scale
+    origin_y = height * 0.08 - 9.0 * scale
     points = [QPointF(origin_x + x * scale, origin_y + y * scale) for x, y in POSE_LANDMARKS]
 
     painter.save()
     painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-    line = QPen(qcolor(Colors.P200, 0.17), 1.5)
+    line = QPen(qcolor(Colors.P200, 0.20), 1.5)
     line.setCapStyle(Qt.PenCapStyle.RoundCap)
-    thin = QPen(qcolor(Colors.P200, 0.14), 1.0)
+    thin = QPen(qcolor(Colors.P200, 0.16), 1.0)
     for start, end in POSE_CONNECTIONS:
         painter.setPen(thin if start in _SMALL and end in _SMALL else line)
         painter.drawLine(points[start], points[end])
     painter.setBrush(Qt.BrushStyle.NoBrush)
     for index, point in enumerate(points):
         small = index in _SMALL
-        painter.setPen(QPen(qcolor(Colors.P200, 0.24 if small else 0.30), 1.0 if small else 1.5))
+        painter.setPen(QPen(qcolor(Colors.P200, 0.26 if small else 0.34), 1.0 if small else 1.5))
         radius = 2.0 if small else 3.5
         painter.drawEllipse(point, radius, radius)
     painter.restore()
 
 
-def clear_behind(painter: QPainter, rect: QRectF) -> None:
-    """Erases what the painter's layer holds inside `rect`, fading out over `_FEATHER` px around it.
-
-    Each ring erases about a third of what is left, so the edge goes from faint to fully cleared.
+def fade_towards_text(painter: QPainter, width: float, height: float, text_right: float) -> None:
+    """Fades the layer out towards the text: invisible left of `text_right`, full strength `_FADE` px later.
 
     Args:
-        painter: Painter of a transparent layer.
-        rect: Area to clear.
+        painter: Painter of the figure's layer.
+        width: Panel width.
+        height: Panel height.
+        text_right: Right edge of the text column.
     """
+    mask = QLinearGradient(text_right, 0, text_right + _FADE, 0)
+    mask.setColorAt(0.0, QColor(0, 0, 0, 0))
+    mask.setColorAt(1.0, QColor(0, 0, 0, 255))
     painter.save()
-    painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-    painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_DestinationOut)
-    painter.setPen(Qt.PenStyle.NoPen)
-    painter.setBrush(QColor(0, 0, 0, 90))
-    for step in range(_FEATHER_STEPS):
-        grow = _FEATHER * (_FEATHER_STEPS - step) / _FEATHER_STEPS
-        painter.drawRoundedRect(rect.adjusted(-grow, -grow, grow, grow), grow, grow)
-    painter.setBrush(QColor(0, 0, 0, 255))
-    painter.drawRect(rect)
+    painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_DestinationIn)
+    painter.fillRect(QRectF(0, 0, width, height), mask)
     painter.restore()
 
 
+class _Logo(QWidget):
+    """The application's logo, 32 px."""
+
+    def __init__(self, parent: QWidget | None = None):
+        super().__init__(parent)
+        self.setFixedSize(_LOGO, _LOGO)
+
+    def paintEvent(self, event) -> None:
+        """Paints the logo, rendered for the screen's pixel ratio."""
+        QPainter(self).drawPixmap(0, 0, icons.logo_pixmap(_LOGO, self.devicePixelRatioF()))
+
+
+def _brand() -> QHBoxLayout:
+    """The logo and the application's name."""
+    row = QHBoxLayout()
+    row.setContentsMargins(0, 0, 0, 0)
+    row.setSpacing(Space.S3)
+    row.addWidget(_Logo())
+    row.addWidget(make_label(APP_NAME, "title-md", "on-brand"))
+    row.addStretch(1)
+    return row
+
+
 def _feature(icon: str, title: str, detail: str) -> QHBoxLayout:
+    """One feature: its icon, a title and one line of detail."""
     row = QHBoxLayout()
     row.setContentsMargins(0, 0, 0, 0)
     row.setSpacing(Space.S4)
@@ -120,7 +146,7 @@ def _feature(icon: str, title: str, detail: str) -> QHBoxLayout:
     row.addLayout(icon_box)
     text = QVBoxLayout()
     text.setContentsMargins(0, 0, 0, 0)
-    text.setSpacing(Space.S1)
+    text.setSpacing(2)
     text.addWidget(make_label(title, "title-sm", "on-brand"))
     text.addWidget(make_label(detail, "body", "on-brand-muted", wrap=True))
     row.addLayout(text, 1)
@@ -128,7 +154,7 @@ def _feature(icon: str, title: str, detail: str) -> QHBoxLayout:
 
 
 class BrandPanel(QWidget):
-    """Left half of the sign-in screens: the message, the three features and the credits."""
+    """Left half of the sign-in screens: the brand, the message, the features and the credit."""
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
         self.setAttribute(Qt.WidgetAttribute.WA_OpaquePaintEvent)
@@ -140,21 +166,19 @@ class BrandPanel(QWidget):
         layout.setSpacing(0)
         layout.addStretch(2)
 
-        content = QWidget()
+        content = self._content = QWidget()
         content.setMaximumWidth(_TEXT_WIDTH)
         content.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
         column = QVBoxLayout(content)
         column.setContentsMargins(0, 0, 0, 0)
         column.setSpacing(0)
-        column.addWidget(make_label(Brand.OVERLINE, "overline", "on-brand-muted"))
-        column.addSpacing(Space.S3)
+        column.addLayout(_brand())
+        column.addSpacing(Space.S10)
         column.addWidget(make_label(Brand.HEADLINE, "display", "on-brand", wrap=True))
         column.addSpacing(Space.S3)
         column.addWidget(make_label(Brand.PARAGRAPH, "lead", "on-brand-soft", wrap=True))
-        column.addSpacing(Space.S10)
-        for index, (icon, title, detail) in enumerate(Brand.FEATURES):
-            if index:
-                column.addSpacing(Space.S6)
+        for icon, title, detail in Brand.FEATURES:
+            column.addSpacing(Space.S6)
             column.addLayout(_feature(icon, title, detail))
         layout.addWidget(content)      # fills the width up to its maximum, so wrapped text gets its full height
 
@@ -174,10 +198,14 @@ class BrandPanel(QWidget):
         """Preferred size of the panel."""
         return QSize(520, 720)
 
+    def _text_right(self) -> int:
+        """Right edge of the text column, in panel coordinates."""
+        return self._content.geometry().right() + 1
+
     def _background_pixmap(self) -> QPixmap:
         dpr = self.devicePixelRatioF()
-        text_areas = self._text_areas()
-        key = (self.width(), self.height(), dpr, *(area.getRect() for area in text_areas))
+        text_right = self._text_right()
+        key = (self.width(), self.height(), dpr, text_right)
         if self._background is None or self._background_key != key:
             pixmap = QPixmap(max(1, round(self.width() * dpr)), max(1, round(self.height() * dpr)))
             pixmap.setDevicePixelRatio(dpr)
@@ -186,35 +214,19 @@ class BrandPanel(QWidget):
             depth.setColorAt(0.0, mix(Colors.BRAND, Colors.S900, 0.35))
             depth.setColorAt(1.0, mix(Colors.BRAND, Colors.P800, 0.45))
             painter.fillRect(QRectF(0, 0, self.width(), self.height()), depth)
-            painter.drawPixmap(0, 0, self._figure_layer(dpr, text_areas))
+            painter.drawPixmap(0, 0, self._figure_layer(dpr, text_right))
             painter.end()
             self._background, self._background_key = pixmap, key
         return self._background
 
-    def _text_areas(self) -> tuple[QRect, ...]:
-        """Where the words and icons are, in panel coordinates (not the labels' full width)."""
-        areas = []
-        for label in self.findChildren(QLabel):
-            if not label.isVisible():
-                continue
-            box = label.contentsRect()
-            if label.text():
-                flags = int(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
-                if label.wordWrap():
-                    flags |= int(Qt.TextFlag.TextWordWrap)
-                box = QFontMetrics(label.font()).boundingRect(box, flags, label.text())
-            areas.append(box.translated(label.mapTo(self, QPoint(0, 0))))
-        return tuple(areas)
-
-    def _figure_layer(self, dpr: float, text_areas: tuple[QRect, ...]) -> QPixmap:
-        """The pose figure on a transparent layer, cleared behind the text."""
+    def _figure_layer(self, dpr: float, text_right: int) -> QPixmap:
+        """The pose figure on a transparent layer, faded out towards the text."""
         layer = QPixmap(max(1, round(self.width() * dpr)), max(1, round(self.height() * dpr)))
         layer.setDevicePixelRatio(dpr)
         layer.fill(Qt.GlobalColor.transparent)
         painter = QPainter(layer)
-        paint_background_figure(painter, self.width(), self.height())
-        for area in text_areas:
-            clear_behind(painter, QRectF(area))
+        paint_background_figure(painter, self.width(), self.height(), text_right)
+        fade_towards_text(painter, self.width(), self.height(), text_right)
         painter.end()
         return layer
 

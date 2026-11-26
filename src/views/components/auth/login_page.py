@@ -1,7 +1,7 @@
 """Sign-in page: a column centred in the form area, 480 px wide, up to 560 px on wide screens.
 
-It follows the sign-up page's structure (title, subtitle, full-width fields and buttons), with
-"Create an account" as a full-width secondary button under a labelled divider. Errors from the
+The sign-up page is built the same way (heading, full-width fields, the primary button, then a
+labelled divider over a full-width secondary button that switches to the other page). Errors from the
 controller show inline in a danger callout above the fields; there are no error toasts.
 """
 
@@ -32,6 +32,16 @@ EMAIL_PATTERN = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 EMAIL_CHARACTERS = r"[^\s@]*@?[^\s@]*"
 COLUMN = 480        # width of the form column on ordinary windows...
 COLUMN_MAX = 560    # ...growing with the page up to this on wide ones (wider fields only look stretched)
+
+
+def labelled_divider(text: str) -> QHBoxLayout:
+    """A rule with a short caption in its middle, between the primary and the secondary button."""
+    divider = QHBoxLayout()
+    divider.setSpacing(Space.S3)
+    divider.addWidget(Divider(Colors.N200), 1, Qt.AlignmentFlag.AlignVCenter)
+    divider.addWidget(make_label(text, "caption", "tertiary"))
+    divider.addWidget(Divider(Colors.N200), 1, Qt.AlignmentFlag.AlignVCenter)
+    return divider
 
 
 class LoginPage(QWidget):
@@ -92,12 +102,7 @@ class LoginPage(QWidget):
         column.addWidget(self.submit)
         column.addSpacing(Space.S6)
 
-        divider = QHBoxLayout()
-        divider.setSpacing(Space.S3)
-        divider.addWidget(Divider(Colors.N200), 1, Qt.AlignmentFlag.AlignVCenter)
-        divider.addWidget(make_label(Login.NEW_HERE, "caption", "tertiary"))
-        divider.addWidget(Divider(Colors.N200), 1, Qt.AlignmentFlag.AlignVCenter)
-        column.addLayout(divider)
+        column.addLayout(labelled_divider(Login.NEW_HERE))
         column.addSpacing(Space.S6)
 
         self.create_link = make_button(Login.CREATE_ACCOUNT, "secondary", "lg")

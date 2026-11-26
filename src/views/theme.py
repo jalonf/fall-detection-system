@@ -235,15 +235,21 @@ class Radius:
 
 
 class Motion:
-    """Animation durations (ms) and easing curves."""
-    FAST = 120
-    BASE = 160
-    SLOW = 240
-    PULSE = 1200
+    """Animation durations (ms) and easing curves.
+
+    Things that appear decelerate (`OUT`) and things that leave accelerate (`IN`), and leaving is
+    shorter than appearing. A cross-fade, where nothing moves, follows `FADE`, which is symmetrical,
+    so neither page is gone or there too early. Nothing ever blocks the user: a running transition
+    is finished at once when the next one starts.
+    """
+    FAST = 150          # small things leave: toasts, the confirmation dialog
+    BASE = 200          # small things appear; scrolling to a field
+    SLOW = 280          # pages and form sections slide
+    PAGE = 360          # whole screens cross-fade (sign-in and dashboard)
+    PULSE = 1200        # one beat of the fall-alert pulse
     OUT = QEasingCurve.Type.OutCubic
     IN = QEasingCurve.Type.InCubic
-    IN_OUT = QEasingCurve.Type.InOutCubic
-    SINE = QEasingCurve.Type.InOutSine
+    FADE = QEasingCurve.Type.InOutSine
 
 
 # ---------------------------------------------------------------------- widget helpers

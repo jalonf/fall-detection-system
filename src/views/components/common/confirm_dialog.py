@@ -4,12 +4,25 @@ It is drawn inside the window (a child overlay), not as a separate modal window:
 the main window at the OS level and Windows then plays its "ding" whenever the user clicks it.
 The overlay eats every click outside the card, keeps keyboard focus on its two buttons, and
 `exec()` / `ask()` still wait for the answer. Esc cancels; Enter presses the focused button.
+
+It fades in (the dimming and a snapshot of the card, which rises a few pixels) and fades out a
+little faster. The answer never waits for the fade: `exec()` returns as soon as a button is pressed.
 """
 
 from __future__ import annotations
 
-from PySide6.QtCore import QEvent, QEventLoop, QRect, QRectF, Qt, Slot
-from PySide6.QtGui import QColor, QPainter
+from PySide6.QtCore import (
+    Property,
+    QEasingCurve,
+    QEvent,
+    QEventLoop,
+    QPropertyAnimation,
+    QRect,
+    QRectF,
+    Qt,
+    Slot,
+)
+from PySide6.QtGui import QColor, QPainter, QPixmap
 from PySide6.QtWidgets import (
     QAbstractButton,
     QApplication,
@@ -21,10 +34,12 @@ from PySide6.QtWidgets import (
 from src.views.components.common.button import Button
 from src.views.components.common.painting import shadow_pixmap
 from src.views.strings import Common
-from src.views.theme import Colors, Radius, Space, make_label, qcolor
+from src.views.theme import Colors, Motion, Radius, Space, make_label, qcolor
 
 WIDTH = 420
 _BLUR, _DY, _ALPHA = 24, 8, 0.16
+_DIM = 0.32          # opacity of the dimming once fully shown
+_RISE = 8            # the card rises this far while it fades in
 
 
 class ConfirmDialog(QWidget):
@@ -50,7 +65,7 @@ class ConfirmDialog(QWidget):
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
 
         self.card = QWidget(self)
-        layout = QVBoxLayout(self.card)
+        layout = self._card_layout = QVBoxLayout(self.card)
         layout.setContentsMargins(Space.S6, Space.S6, Space.S6, Space.S6)
         layout.setSpacing(0)
         self.title_label = make_label(title, "title-md", wrap=True)
@@ -72,16 +87,33 @@ class ConfirmDialog(QWidget):
         self.cancel_button.clicked.connect(self.reject)
         self.action_button.clicked.connect(self.accept)
         self._initial_focus = self.cancel_button if destructive else self.action_button
+        self._delete_when_closed = False
+        self._snapshot = QPixmap()
+        self._shown = 0.0
+        self._fade = QPropertyAnimation(self, b"shown", self)
+        self._fade.finished.connect(self._on_fade_finished)
         window.installEventFilter(self)
+
+    def _get_shown(self) -> float:
+        return self._shown
+
+    def _set_shown(self, value: float) -> None:
+        self._shown = value
+        self.update()
+
+    shown = Property(float, _get_shown, _set_shown)
 
     # ------------------------------------------------------------------ API
     def open(self) -> None:
-        """Shows the overlay without waiting (`exec` waits for the answer)."""
+        """Fades the overlay in without waiting (`exec` waits for the answer)."""
         self._previous_focus = QApplication.focusWidget()
         self._place()
+        self._snapshot = self.card.grab()
+        self.card.hide()                 # the snapshot stands in for it while it fades in
         self.show()
         self.raise_()
-        self._initial_focus.setFocus(Qt.FocusReason.OtherFocusReason)
+        self.setFocus(Qt.FocusReason.OtherFocusReason)
+        self._animate(1.0, Motion.BASE, Motion.OUT)
 
     def exec(self) -> bool:
         """Shows the overlay and waits; True when the user confirms."""
@@ -103,24 +135,48 @@ class ConfirmDialog(QWidget):
 
     @staticmethod
     def ask(parent: QWidget, title: str, body: str, action: str, *, destructive: bool = False) -> bool:
-        """Asks for confirmation and returns the answer."""
+        """Asks for confirmation and returns the answer (the dialog deletes itself once faded out)."""
         dialog = ConfirmDialog(parent, title, body, action, destructive=destructive)
-        accepted = dialog.exec()
-        dialog.deleteLater()
-        return accepted
+        dialog._delete_when_closed = True
+        return dialog.exec()
 
     def _finish(self, accepted: bool) -> None:
+        if not self.isVisible() or self.testAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents):
+            return               # already answered: it is fading out
         self._accepted = accepted
-        self.hide()
+        self._snapshot = self.card.grab()
+        self.card.hide()
+        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)   # the window is usable at once
         if self._previous_focus is not None and self._previous_focus.isVisible():
             self._previous_focus.setFocus(Qt.FocusReason.OtherFocusReason)
+        self._animate(0.0, Motion.FAST, Motion.IN)
         if self._loop is not None:
             self._loop.quit()
+
+    def _animate(self, end: float, duration: int, curve) -> None:
+        self._fade.stop()
+        self._fade.setDuration(duration)
+        self._fade.setEasingCurve(QEasingCurve(curve))
+        self._fade.setStartValue(self._shown)
+        self._fade.setEndValue(end)
+        self._fade.start()
+
+    @Slot()
+    def _on_fade_finished(self) -> None:
+        if self._shown >= 1.0:           # faded in: the real card takes over, with the focus
+            self.card.show()
+            self._snapshot = QPixmap()
+            self._initial_focus.setFocus(Qt.FocusReason.OtherFocusReason)
+            return
+        self.hide()
+        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, False)
+        if self._delete_when_closed:
+            self.deleteLater()
 
     # ------------------------------------------------------------------ geometry
     def card_rect(self) -> QRect:
         """Returns the card's geometry, centred in the window."""
-        height = self.card.layout().totalHeightForWidth(WIDTH)
+        height = self._card_layout.totalHeightForWidth(WIDTH)
         rect = QRect(0, 0, WIDTH, height)
         rect.moveCenter(self.rect().center())
         return rect
@@ -128,6 +184,7 @@ class ConfirmDialog(QWidget):
     def _place(self) -> None:
         self.setGeometry(self._window.rect())
         self.card.setGeometry(self.card_rect())
+        self._card_layout.activate()     # laid out before the first snapshot, while still hidden
 
     def eventFilter(self, watched, event) -> bool:
         """Keeps the overlay covering the window when the window is resized."""
@@ -165,13 +222,17 @@ class ConfirmDialog(QWidget):
 
     # ------------------------------------------------------------------ painting
     def paintEvent(self, event) -> None:
-        """Paints the dimmed background, the card's shadow and the card."""
+        """Paints the dimmed background, the card's shadow and the card (its snapshot while fading)."""
         painter = QPainter(self)
-        painter.fillRect(self.rect(), qcolor(Colors.N900, 0.32))
-        card = self.card.geometry()
+        shown = self._shown
+        painter.fillRect(self.rect(), qcolor(Colors.N900, _DIM * shown))
+        card = self.card.geometry().translated(0, round(_RISE * (1.0 - shown)))
         dpr = round(self.devicePixelRatioF(), 2)
+        painter.setOpacity(shown)
         painter.drawPixmap(card.left() - _BLUR, card.top() - _BLUR,
                            shadow_pixmap(card.width(), card.height(), Radius.R_LG, _BLUR, _DY, _ALPHA, dpr))
         painter.setPen(QColor(Colors.N200))
         painter.setBrush(QColor(Colors.N0))
         painter.drawRect(QRectF(card).adjusted(0.5, 0.5, -0.5, -0.5))
+        if not self._snapshot.isNull():
+            painter.drawPixmap(card.topLeft(), self._snapshot)

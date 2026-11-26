@@ -30,6 +30,7 @@ from PySide6.QtWidgets import QSizePolicy, QToolTip, QWidget
 from src.dtos.telemetry import Telemetry
 from src.views.components.common.panel import Panel
 from src.views.components.monitor.video_widget import VideoWidget
+from src.views.monitor_state import STOPPED
 from src.views.strings import EM_DASH, Pose
 from src.views.theme import Colors, Radius, Space, Type, make_label, qcolor
 
@@ -38,7 +39,6 @@ ROW_HEIGHT = 38
 HISTORY = 120                 # samples kept: 30 s at 4 Hz
 _LABEL_WIDTH = 92
 _VALUE_WIDTH = 80
-STOPPED = ("idle", "error", "finished")
 
 
 class SkeletonView(VideoWidget):
@@ -344,6 +344,7 @@ class SkeletonPanel(Panel):
             # Each metric's key is the name of a Telemetry field.
             raw = getattr(data, metric.key) if data is not None else None
             values[metric.key] = float(raw) if raw is not None else None
-        if values.get("confidence") is not None:
-            values["confidence"] = max(0.0, min(1.0, values["confidence"]))
+        confidence = values.get("confidence")
+        if confidence is not None:
+            values["confidence"] = max(0.0, min(1.0, confidence))
         self.table.push(values)

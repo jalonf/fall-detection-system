@@ -20,12 +20,17 @@ _MAX_TEXT = 360
 class EmptyState(QWidget):
     """Centred icon (or spinner), title, text and optional action, for areas with no content.
 
+    Args:
+        on_dark: Drawn on the dark video stage.
+        primary_action: The action is the only way forward (a primary button, not a secondary one).
+        parent: Parent widget.
+
     Signals:
         action_clicked: The action button was pressed.
     """
     action_clicked = Signal()
 
-    def __init__(self, *, on_dark: bool = False, parent: QWidget | None = None):
+    def __init__(self, *, on_dark: bool = False, primary_action: bool = False, parent: QWidget | None = None):
         super().__init__(parent)
         self._on_dark = on_dark
         self._icon: str | None = None
@@ -35,7 +40,8 @@ class EmptyState(QWidget):
         self._text = ""
         self._angle = 0.0
         self._rotation = make_rotation(self, self._on_angle)
-        self._action = Button("", "on-dark" if on_dark else "secondary", "md", parent=self)
+        variant = "on-dark" if on_dark else "primary" if primary_action else "secondary"
+        self._action = Button("", variant, "md", parent=self)
         self._action.hide()
         self._action.clicked.connect(self.action_clicked)
         if on_dark:

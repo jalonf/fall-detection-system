@@ -1,29 +1,23 @@
-"""Panel: N0 surface, N200 border, small radius, a 48 px N50 header band and an optional 56 px footer."""
+"""Panel: square N0 surface, N200 border, a 48 px N50 header band and an optional 56 px footer."""
 
 from __future__ import annotations
 
-import math
-
-from PySide6.QtCore import QEvent, QRect, QRectF, Qt
-from PySide6.QtGui import QColor, QPainter, QPainterPath, QPen, QRegion
+from PySide6.QtCore import QRect, Qt
+from PySide6.QtGui import QColor, QPainter
 from PySide6.QtWidgets import QHBoxLayout, QLabel, QVBoxLayout, QWidget
 
-from src.views.components.common.painting import crisp
-from src.views.theme import Colors, Radius, Size, Space, make_label
+from src.views.theme import Colors, Size, Space, make_label
 
 
 class Panel(QWidget):
     """Container with a title, an optional subtitle / counter and an actions slot on the right.
 
-    The body has 16 px of padding, or none when `flush` (video stage, tables). A flush body that
-    reaches the bottom corners is masked to the rounded border.
+    The body has 16 px of padding, or none when `flush` (video stage, tables).
     """
 
     def __init__(self, title: str, *, subtitle: str = "", flush: bool = False, footer: bool = False,
                  parent: QWidget | None = None):
         super().__init__(parent)
-        self._flush = flush
-        self._has_footer = footer
 
         outer = QVBoxLayout(self)
         outer.setContentsMargins(1, 1, 1, 1)
@@ -53,8 +47,6 @@ class Panel(QWidget):
         self._body_layout.setContentsMargins(padding, 0 if flush else Space.S4, padding, padding)
         self._body_layout.setSpacing(0)
         outer.addWidget(self.body, 1)
-        if flush and not footer:
-            self.body.installEventFilter(self)
 
         self.footer: QWidget | None = None
         self._footer_layout: QHBoxLayout | None = None
@@ -68,13 +60,6 @@ class Panel(QWidget):
             outer.addWidget(self.footer)
 
     # ------------------------------------------------------------------ API
-    def set_title(self, title: str) -> None:
-        """Changes the title in the header.
-
-        Args:
-            title: The new title.
-        """
-        self.title_label.setText(title)
 
     def set_subtitle(self, text: str) -> None:
         """Changes the text next to the title.
@@ -104,49 +89,13 @@ class Panel(QWidget):
 
     # ------------------------------------------------------------------ painting
     def paintEvent(self, event) -> None:
-        """Paints the surface, the header band and the borders."""
+        """Paints the surface, the header band and the borders (filled, so they stay crisp at any scale)."""
         painter = QPainter(self)
-        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-        frame = crisp(QRectF(self.rect()))
-        outline = QPainterPath()
-        outline.addRoundedRect(frame, Radius.R_LG, Radius.R_LG)
-        painter.fillPath(outline, QColor(Colors.N0))
-
-        # Header band: a sober N50 strip with an N200 rule underneath.
+        rect = self.rect()
+        painter.fillRect(rect, QColor(Colors.N200))
+        painter.fillRect(rect.adjusted(1, 1, -1, -1), QColor(Colors.N0))
         header_bottom = self.header.geometry().bottom() + 1
-        painter.save()
-        painter.setClipPath(outline)
-        painter.fillRect(QRectF(0, 0, self.width(), header_bottom), QColor(Colors.N50))
-        painter.restore()
-
-        painter.setPen(QPen(QColor(Colors.N200), 1))
-        painter.setBrush(Qt.BrushStyle.NoBrush)
-        painter.drawPath(outline)
-        painter.setRenderHint(QPainter.RenderHint.Antialiasing, False)
-        painter.fillRect(QRect(1, header_bottom, self.width() - 2, 1), QColor(Colors.N200))
+        painter.fillRect(QRect(1, 1, rect.width() - 2, header_bottom - 1), QColor(Colors.N50))
+        painter.fillRect(QRect(1, header_bottom, rect.width() - 2, 1), QColor(Colors.N200))
         if self.footer is not None:
-            painter.fillRect(QRect(1, self.footer.geometry().top() - 1, self.width() - 2, 1), QColor(Colors.N150))
-
-    def eventFilter(self, watched, event) -> bool:
-        """Re-masks a flush body to the rounded corners when it is resized."""
-        if watched is self.body and event.type() == QEvent.Type.Resize:
-            self._mask_body()
-        return False
-
-    def _mask_body(self) -> None:
-        """Clips the flush body to the inside of the rounded bottom corners."""
-        width, height = self.body.width(), self.body.height()
-        if width <= 0 or height <= 0:
-            return
-        radius = Radius.R_LG - 1
-        if radius <= 0:          # square panels: nothing to clip
-            self.body.clearMask()
-            return
-        region = QRegion(0, 0, width, max(0, height - radius))
-        for row in range(radius):
-            y = height - radius + row
-            dy = row + 0.5
-            inset = radius - math.sqrt(max(0.0, radius * radius - dy * dy))
-            inset = math.ceil(inset)
-            region += QRegion(inset, y, max(0, width - 2 * inset), 1)
-        self.body.setMask(region)
+            painter.fillRect(QRect(1, self.footer.geometry().top() - 1, rect.width() - 2, 1), QColor(Colors.N150))

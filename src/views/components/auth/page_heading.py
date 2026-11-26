@@ -1,4 +1,4 @@
-"""Heading of the sign-in and sign-up pages: an icon tile next to the title and its subtitle.
+"""Heading of the sign-in and sign-up pages: an icon tile, then the title and its subtitle.
 
 The tile (48 px, P50 fill, P600 icon, the controls' barely softened corner) gives each page its own
 mark without adding colour or height. It has no border on purpose: the buttons and inputs of the
@@ -46,7 +46,14 @@ class IconTile(QWidget):
 
 
 class PageHeading(QWidget):
-    """Icon tile, then the title (title-lg, or display on wide screens) with the subtitle under it."""
+    """Icon tile, then the title (title-lg, or display on wide screens) with the subtitle under it.
+
+    Args:
+        icon: Name of the tile's icon.
+        title: The page's title.
+        subtitle: One line under it.
+        parent: Parent widget.
+    """
 
     def __init__(self, icon: str, title: str, subtitle: str, parent: QWidget | None = None):
         super().__init__(parent)

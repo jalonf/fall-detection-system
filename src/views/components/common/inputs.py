@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from PySide6.QtCore import QModelIndex, QRect, QSize, Qt, Slot
+from PySide6.QtCore import QModelIndex, QPersistentModelIndex, QRect, QSize, Qt, Slot
 from PySide6.QtGui import QAction, QColor, QPainter
 from PySide6.QtWidgets import (
     QCheckBox,
@@ -81,10 +81,6 @@ class PasswordEdit(QLineEdit):
         self.setEchoMode(QLineEdit.EchoMode.Normal if revealed else QLineEdit.EchoMode.Password)
         self._sync_toggle()
 
-    def is_revealed(self) -> bool:
-        """True while the characters are shown."""
-        return self._revealed
-
     @Slot()
     def _on_toggle(self) -> None:
         self.set_revealed(not self._revealed)
@@ -132,11 +128,12 @@ class ComboItemDelegate(QStyledItemDelegate):
         super().__init__(combo)
         self._combo = combo
 
-    def sizeHint(self, option: QStyleOptionViewItem, index: QModelIndex) -> QSize:
+    def sizeHint(self, option: QStyleOptionViewItem, index: QModelIndex | QPersistentModelIndex) -> QSize:
         """Every row of the popup is 32 px tall."""
         return QSize(option.rect.width(), self.ROW)
 
-    def paint(self, painter: QPainter, option: QStyleOptionViewItem, index: QModelIndex) -> None:
+    def paint(self, painter: QPainter, option: QStyleOptionViewItem,
+              index: QModelIndex | QPersistentModelIndex) -> None:
         """Paints a popup row: hover fill, and the current item in P50 with a tick."""
         rect = option.rect
         current = index.row() == self._combo.currentIndex()

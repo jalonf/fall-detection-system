@@ -26,7 +26,6 @@ _TEXT = {
     "ghost": Colors.N700,
     "link": Colors.P600,
     "danger": Colors.R700,
-    "on-danger": Colors.R700,
     "on-dark": Colors.S100,
     "segment": Colors.N900,
 }
@@ -41,7 +40,7 @@ class Button(QPushButton):
 
     Args:
         text: Label.
-        variant: primary, secondary, ghost, link, danger, on-danger, on-dark or segment.
+        variant: primary, secondary, ghost, link, danger, on-dark or segment.
         size: sm (28 px), md (36 px), lg (40 px), or None for no fixed height.
         icon: Name of the icon drawn before the text, or None.
         parent: Parent widget.
@@ -81,7 +80,7 @@ class Button(QPushButton):
         """Changes the variant (and the stylesheet's look).
 
         Args:
-            variant: primary, secondary, ghost, link, danger, on-danger, on-dark or segment.
+            variant: primary, secondary, ghost, link, danger, on-dark or segment.
         """
         if variant != self._variant:
             self._variant = variant
@@ -124,10 +123,6 @@ class Button(QPushButton):
             self.setText(self._idle_text)
             self.setEnabled(True)
         self.update()
-
-    def is_loading(self) -> bool:
-        """True while the spinner is shown."""
-        return self._loading
 
     # ------------------------------------------------------------------ geometry
     def _font(self):
@@ -197,7 +192,7 @@ class Button(QPushButton):
             icon_rect = QRect(round(x), (rect.height() - _ICON) // 2, _ICON, _ICON)
             if self._loading and self._frames:
                 self._frames[self._frame].paint(painter, icon_rect)
-            else:
+            elif self._icon_name:
                 pixmap = icons.icon_pixmap(self._icon_name, color, _ICON, self.devicePixelRatioF())
                 painter.drawPixmap(icon_rect.topLeft(), pixmap)
             x += _ICON + _GAP

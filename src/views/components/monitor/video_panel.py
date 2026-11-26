@@ -15,11 +15,9 @@ from src.views.components.common.panel import Panel
 from src.views.components.monitor.stage_overlay import BAR, StageOverlay
 from src.views.components.monitor.stage_placeholder import StagePlaceholder
 from src.views.components.monitor.video_widget import VideoWidget
+from src.views.monitor_state import RUNNING, STOPPED
 from src.views.strings import Monitor
 from src.views.theme import Space, make_label
-
-RUNNING = ("starting", "live", "stopping")
-STOPPED = ("idle", "error", "finished")
 
 
 class Stage(QWidget):

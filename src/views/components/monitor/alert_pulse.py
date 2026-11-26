@@ -33,10 +33,6 @@ class AlertPulse(QObject):
         self._animation.stop()
         self.phase_changed.emit(0.0)
 
-    def is_active(self) -> bool:
-        """True while the pulse is running."""
-        return self._animation.state() == QVariantAnimation.State.Running
-
     @Slot("QVariant")
     def _on_value(self, value) -> None:
         self.phase_changed.emit(0.5 - 0.5 * math.cos(2 * math.pi * float(value)))
