@@ -33,9 +33,3 @@ class FallRepository:
             fall_event.save()
         except Exception as e:  # noqa: BLE001
             logger.error("Could not update the notification flag of the fall event: %s", e)
-
-    def get_falls_by_patient(self, patient_id):
-        """Retrieves all fall event records associated with a specific patient."""
-        logger.debug("Querying fall events for patient ID: %s", patient_id)
-        falls = list(FallEvent.select().where(FallEvent.patient_id == patient_id).order_by(FallEvent.timestamp.desc()))
-        return falls

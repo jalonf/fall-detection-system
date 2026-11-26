@@ -23,9 +23,8 @@ class AdminController(BaseMonitorController):
     skeleton view and the telemetry panel.
 
     Args:
-        view: The AdminView it drives.
+        view: The AdminView (monitoring page) it drives.
         current_user: The signed-in administrator.
-        on_logout_callback: Called when the user signs out.
 
     Raises:
         PermissionError: If `current_user` is not an administrator.
@@ -33,10 +32,10 @@ class AdminController(BaseMonitorController):
 
     SENDS_ALERTS = False
 
-    def __init__(self, view, current_user, on_logout_callback):
+    def __init__(self, view, current_user):
         if not is_admin(current_user):
             raise PermissionError("The administration screen is only for administrators")
-        super().__init__(view, current_user, patient=None, on_logout_callback=on_logout_callback)
+        super().__init__(view, current_user, patient=None)
         self.view.upload_requested.connect(self.start_video_file)
 
     def _camera_strategy(self) -> MonitoringStrategy:
@@ -61,5 +60,4 @@ class AdminController(BaseMonitorController):
 
     def _show_frame(self, packet: FramePacket):
         super()._show_frame(packet)
-        self.view.skeleton_panel.update_frame(packet.skeleton)
-        self.view.skeleton_panel.update_telemetry(packet.telemetry)
+        self.view.show_pose(packet.skeleton, packet.telemetry)

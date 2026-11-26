@@ -2,13 +2,10 @@
 
 import logging
 
-from PySide6.QtCore import QObject, QTimer, Slot
+from PySide6.QtCore import QObject, Slot
 
-from src.ai.risk_assessor import RiskAssessor
-from src.database.connection import db
 from src.domain.roles import SIGNUP_ROLES
 from src.dtos.registration_data import RegistrationData, RegistrationField
-from src.repositories.patient_repository import PatientRepository
 from src.repositories.user_repository import UserRepository
 
 logger = logging.getLogger(__name__)
@@ -22,7 +19,8 @@ class AuthController(QObject):
 
     Args:
         view: The AuthView whose `login_requested` / `register_requested` it handles.
-        on_auth_success: Called with the User once they have signed in or signed up.
+        on_auth_success: Called with the User once they have signed in or signed up (the
+            coordinator decides when the next screen opens).
     """
     def __init__(self, view, on_auth_success):
         super().__init__()
@@ -34,8 +32,6 @@ class AuthController(QObject):
         self.view.register_requested.connect(self.handle_register)
 
         self.user_repo = UserRepository()
-        self.patient_repo = PatientRepository()
-        self.risk_assessor = RiskAssessor()
 
     @Slot(str, str)
     def handle_login(self, email, password):
@@ -46,27 +42,18 @@ class AuthController(QObject):
             self.view.show_error("Please fill in all required fields.")
             return
 
-        if self.user_repo.verify_password(email, password):
+        user = self.user_repo.authenticate(email, password)
+        if user is not None:
             logger.info("User authentication successful")
             self.view.show_signed_in()
-            
-            user = self.user_repo.get_user_by_email(email)
-            QTimer.singleShot(1500, lambda: self.on_auth_success(user))
+            self.on_auth_success(user)
         else:
             logger.warning("Authentication failed: invalid credentials provided")
             self.view.show_error("Invalid email or password. Please try again.")
 
-    def _assess_risk(self, answers: dict[str, float]) -> str:
-        """Risk level of the patient. If it cannot be calculated, the strictest monitoring is used."""
-        try:
-            return self.risk_assessor.assess(answers).level
-        except Exception:   # whatever the cause (missing model, bad answers), registration goes on
-            logger.exception("The risk level could not be calculated; using HIGH to be safe")
-            return "HIGH"
-
     @Slot(object)      # RegistrationData (a Python object, as in AuthView.register_requested)
     def handle_register(self, data: RegistrationData):
-        """Handles new user registration and creates the associated patient."""
+        """Creates the caregiver's account. Their patients are added afterwards, on the Patients page."""
         logger.info("The controller is about to handle the registration process for: %s", data.email)
 
         # Administrators are created with `python -m src.create_admin`, never from the sign-up form.
@@ -80,30 +67,18 @@ class AuthController(QObject):
             self.view.show_error("Registration failed. This email is already in use.", RegistrationField.EMAIL)
             return
 
-        risk_level = self._assess_risk(data.risk_answers)
+        new_user = self.user_repo.create_user(
+            name=data.name,
+            email=data.email,
+            phone=data.phone,
+            password=data.password,
+            role=data.role
+        )
 
-        # The user and its patient are saved together: if the patient fails, the user is undone too.
-        with db.atomic() as transaction:
-            new_user = self.user_repo.create_user(
-                name=data.name,
-                email=data.email,
-                phone=data.phone,
-                password=data.password,
-                role=data.role
-            )
-            patient = new_user and self.patient_repo.create_patient(
-                user=new_user,
-                name=data.patient_name,
-                medical_notes=data.medical_info,
-                risk_level=risk_level
-            )
-            if not patient:
-                transaction.rollback()
-
-        if patient:
-            logger.info("User account and associated patient successfully created")
-            self.view.show_account_created(risk_level)
-            QTimer.singleShot(1500, lambda: self.on_auth_success(new_user))
+        if new_user:
+            logger.info("User account successfully created")
+            self.view.show_account_created()
+            self.on_auth_success(new_user)
         else:
             logger.error("Registration failed: the account could not be saved")
             self.view.show_error("Registration failed. Please try again.")

@@ -41,22 +41,20 @@ class UserRepository:
             logger.debug("No user found with email: %s", email)
         return user
 
-    def verify_password(self, email, plain_password):
-        """Verifies if the entered password matches the hashed one."""
+    def authenticate(self, email, plain_password):
+        """Returns the user whose e-mail and password these are, or None (one query).
+
+        Args:
+            email: The e-mail typed in.
+            plain_password: The password typed in.
+        """
         logger.debug("Verifying password for email: %s", email)
         user = self.get_user_by_email(email)
-        if not user:
+        if user is None:
             logger.warning("Password verification failed: user not found for email %s", email)
-            return False
-            
-        is_valid = bcrypt.checkpw(
-            plain_password.encode('utf-8'), 
-            user.password.encode('utf-8')
-        )
-        
-        if is_valid:
-            logger.debug("Password verification successful for email: %s", email)
-        else:
+            return None
+        if not bcrypt.checkpw(plain_password.encode("utf-8"), user.password.encode("utf-8")):
             logger.warning("Password verification failed: incorrect password for email %s", email)
-            
-        return is_valid
+            return None
+        logger.debug("Password verification successful for email: %s", email)
+        return user

@@ -38,17 +38,19 @@ class BaseMonitorController(QObject):
     Subclasses extend `_show_frame` to show more of each processed frame, and `_camera_strategy`
     to change how the camera is monitored.
 
+    Signing out is not handled here: the dashboard around the monitoring page reports it to the
+    coordinator, which stops this controller (`shutdown`) before leaving the screen.
+
     Args:
-        view: The monitoring view it drives.
+        view: The monitoring page it drives.
         current_user: The signed-in user (the alert e-mails go to them).
         patient: Their patient, or None (then nothing is stored).
-        on_logout_callback: Called when the user signs out.
     """
 
     # Each fall is stored and e-mailed to the caregiver. False in test mode (administrators).
     SENDS_ALERTS = True
 
-    def __init__(self, view, current_user, patient: Patient | None, on_logout_callback):
+    def __init__(self, view, current_user, patient: Patient | None):
         super().__init__()
         self.view = view
         self.user = current_user
@@ -63,7 +65,6 @@ class BaseMonitorController(QObject):
 
         self.view.start_requested.connect(self.start_camera)
         self.view.stop_requested.connect(self.stop_camera)
-        self.view.logout_requested.connect(on_logout_callback)
 
         user_name = getattr(self.user, "name", "Unknown")
         logger.info("%s initialized for user: %s", type(self).__name__, user_name)
