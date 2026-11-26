@@ -1,26 +1,33 @@
-"""Administration screen, for the application's testers.
+"""Monitoring page of the administration screen, for the application's testers.
 
 Administrators have no patient. In the context strip, where the patient would be, they choose a test
 profile: the camera settings and fall model of a risk level. Everything runs in test mode
 (`AdminController`): falls are shown and logged, but never stored or e-mailed. The screen also analyses
 video files and shows the pose analysis panel (`skeleton_panel`, fed directly by `AdminController`).
+The top bar around it belongs to the dashboard (`AdminDashboardView`).
 
-Contract, on top of BaseMonitorView's: `test_profile()` returns the chosen risk level ("LOW", "MEDIUM"
-or "HIGH"); the controller reads it when the camera starts.
+Contract, on top of BaseMonitorView's: the signal `upload_requested(str)` (a video file to analyse),
+`test_profile()`, the chosen risk level ("LOW", "MEDIUM" or "HIGH") the controller reads when the
+camera starts, and `show_pose(skeleton, telemetry)` for every processed frame.
 """
 
 from __future__ import annotations
 
 import os
 
-from PySide6.QtCore import Slot
-from PySide6.QtWidgets import QVBoxLayout, QWidget
+from PySide6.QtCore import Signal, Slot
+from PySide6.QtGui import QImage
+from PySide6.QtWidgets import QVBoxLayout
 
 from src.domain.monitoring_profiles import RISK_LEVELS, strategy_for
-from src.views.base_monitor_view import RUNNING, BaseMonitorView, SourceInfo
+from src.dtos.telemetry import Telemetry
+from src.views.base_monitor_view import BaseMonitorView, SourceInfo, camera_spec
+from src.views.components.common.badge import Badge
 from src.views.components.common.inputs import Combo
+from src.views.components.common.shortcuts import add_shortcut
 from src.views.components.monitor.context_bar import ContextBar
 from src.views.components.monitor.skeleton_panel import SkeletonPanel
+from src.views.monitor_state import RUNNING
 from src.views.strings import Monitor
 
 SETTINGS_TEST_PROFILE = "admin/test_profile"
@@ -35,33 +42,36 @@ class _ProfileCombo(Combo):
 
 
 class AdminView(BaseMonitorView):
-    """Monitoring screen of the administrators (testers), in test mode.
+    """Monitoring page of the administrators (testers), in test mode.
 
-    Args:
-        user_name: Name of the signed-in administrator.
-        user_role: Their role, shown under the name.
-        parent: Parent widget.
+    Signals:
+        upload_requested(str): Analyse the video file at this path.
     """
-    SECTION = Monitor.SECTION_ADMIN
-    CAN_ANALYSE_FILES = True
+    upload_requested = Signal(str)
 
-    def __init__(self, user_name: str = "", user_role: str = "", parent: QWidget | None = None):
-        super().__init__(user_name, user_role, patient_name=None, risk_level=None, parent=parent)
+    CAN_ANALYSE_FILES = True
 
     # ------------------------------------------------------------------ contract
     def test_profile(self) -> str:
         """Risk level whose camera settings and model the next camera run uses."""
         return RISK_LEVELS[self.profile_combo.currentIndex()]
 
+    def show_pose(self, skeleton: QImage, telemetry: Telemetry) -> None:
+        """Shows the pose analysis of a processed frame (the skeleton image and the telemetry)."""
+        self.skeleton_panel.update_frame(skeleton)
+        self.skeleton_panel.update_telemetry(telemetry)
+
     # ------------------------------------------------------------------ construction
-    def _make_context_bar(self, patient_name: str | None, risk_level: str | None) -> ContextBar:
+    def _make_context_bar(self) -> ContextBar:
         self.profile_combo = _ProfileCombo([Monitor.TEST_PROFILES[level] for level in RISK_LEVELS], size="sm",
                                            width=136, accessible_name=Monitor.TEST_PROFILE_COMBO)
         self.profile_combo.setToolTip(Monitor.TEST_PROFILE_TIP)
         saved = str(self._settings.value(SETTINGS_TEST_PROFILE, DEFAULT_TEST_PROFILE))
         self.profile_combo.setCurrentIndex(RISK_LEVELS.index(saved if saved in RISK_LEVELS else DEFAULT_TEST_PROFILE))
         self._stateful.append(self.profile_combo)
-        return ContextBar(None, None, profile_selector=self.profile_combo)
+        test_badge = Badge(Monitor.TEST_MODE_BADGE, "info")
+        test_badge.setToolTip(Monitor.TEST_MODE_TIP)
+        return ContextBar(Monitor.STRIP_TEST_PROFILE, self.profile_combo, test_badge)
 
     def _build_side_panels(self, layout: QVBoxLayout) -> None:
         self.skeleton_panel = SkeletonPanel()
@@ -70,7 +80,7 @@ class AdminView(BaseMonitorView):
 
     def _connect_extras(self) -> None:
         self.video_panel.file_chosen.connect(self._start_file)
-        self._shortcut(("Ctrl+O",), self.video_panel.choose_file)
+        add_shortcut(self, ("Ctrl+O",), self.video_panel.choose_file)
         self.profile_combo.currentIndexChanged.connect(self._on_test_profile_changed)
         self._show_test_profile()
 
@@ -83,11 +93,15 @@ class AdminView(BaseMonitorView):
     def _show_test_profile(self) -> None:
         """The strip shows the resolution and frame rate the chosen profile opens the camera with."""
         level = self.test_profile()
-        strategy = strategy_for(level)
-        spec = Monitor.CAMERA_SPEC.format(width=strategy.width, height=strategy.height, fps=strategy.fps)
-        self._set_camera_profile(spec, Monitor.CAMERA_SPEC_TEST_TIP.format(level=level))
+        self._set_camera_profile(camera_spec(strategy_for(level)), Monitor.CAMERA_SPEC_TEST_TIP.format(level=level))
 
     # ------------------------------------------------------------------ user actions
     @Slot(str)
     def _start_file(self, path: str) -> None:
         self._start(SourceInfo("file", os.path.basename(path), path))
+
+    def _request_source(self, source: SourceInfo) -> None:
+        if source.kind == "file":
+            self.upload_requested.emit(str(source.arg))
+        else:
+            super()._request_source(source)

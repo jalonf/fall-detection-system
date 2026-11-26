@@ -3,34 +3,31 @@
 Contract (used by `AuthController`): the view emits `login_requested(email, password)` and
 `register_requested(RegistrationData)`; the controller answers each request synchronously, before
 the signal returns, with one of `show_error(message, field)`, `show_signed_in()` or
-`show_account_created(risk_level)`. The answer is data, never a sentence the view has to parse.
-The same instance is shown again after every logout, so it resets itself when shown again.
+`show_account_created()`. The answer is data, never a sentence the view has to parse.
+The same instance is shown again after every logout: it resets itself when the navigator leaves it,
+and the coordinator calls `show_signed_out()` when it comes back.
 """
 
 from __future__ import annotations
 
 from PySide6.QtCore import Qt, Signal, Slot
-from PySide6.QtGui import QColor, QPainter
 from PySide6.QtWidgets import QHBoxLayout, QStackedWidget, QVBoxLayout, QWidget
 
 from src.dtos.registration_data import RegistrationData, RegistrationField
 from src.views.components.auth.brand_panel import BrandPanel
 from src.views.components.auth.login_page import LoginPage
-from src.views.components.auth.page_transition import PageTransition
 from src.views.components.auth.register_page import RegisterPage
+from src.views.components.common.page_transition import PageTransition
+from src.views.components.common.painting import Surface
 from src.views.components.common.toast import ToastHost
+from src.views.screen_view import ScreenView
 from src.views.strings import Common, Toasts
 from src.views.theme import Colors
 
 TOAST_TOP_INSET = 16
 
 
-class _FormArea(QWidget):
-    def paintEvent(self, event) -> None:
-        QPainter(self).fillRect(self.rect(), QColor(Colors.N0))
-
-
-class AuthView(QWidget):
+class AuthView(ScreenView):
     """Sign-in and sign-up screen: the brand panel on the left, the form pages on the right.
 
     Signals:
@@ -42,7 +39,6 @@ class AuthView(QWidget):
 
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
-        self._hidden_by_app = False
         self._answered = True
 
         layout = QHBoxLayout(self)
@@ -51,7 +47,7 @@ class AuthView(QWidget):
         self._brand = BrandPanel()
         layout.addWidget(self._brand)
 
-        self._form = _FormArea()
+        self._form = Surface(Colors.N0)
         form_layout = QVBoxLayout(self._form)
         form_layout.setContentsMargins(0, 0, 0, 0)
         self._pages = QStackedWidget()
@@ -78,7 +74,7 @@ class AuthView(QWidget):
             field: The sign-up field to point at, or None to show `message` in the form.
         """
         self._answered = True
-        if self._pages.currentWidget() is self.register_page:
+        if self._current_page() is self.register_page:
             self.register_page.show_server_error(message, field)
         else:
             self.login_page.show_server_error(message)
@@ -88,15 +84,14 @@ class AuthView(QWidget):
         self._answered = True
         ToastHost.for_widget(self).success(Toasts.SIGNED_IN, title=Toasts.SIGNED_IN_TITLE)
 
-    def show_account_created(self, risk_level: str) -> None:
-        """Sign-up succeeded. The form stays locked while the dashboard opens.
-
-        Args:
-            risk_level: The patient's risk level ("LOW", "MEDIUM" or "HIGH").
-        """
+    def show_account_created(self) -> None:
+        """Sign-up succeeded. The form stays locked while the dashboard (its Patients page) opens."""
         self._answered = True
-        ToastHost.for_widget(self).success(Toasts.ACCOUNT_CREATED.format(level=risk_level),
-                                           title=Toasts.ACCOUNT_CREATED_TITLE)
+        ToastHost.for_widget(self).success(Toasts.ACCOUNT_CREATED, title=Toasts.ACCOUNT_CREATED_TITLE)
+
+    def show_signed_out(self) -> None:
+        """Back after signing out (called by the coordinator)."""
+        ToastHost.for_widget(self).success(Toasts.SIGNED_OUT, title=Toasts.SIGNED_OUT_TITLE)
 
     # ------------------------------------------------------------------ pages
     @Slot(str, str)
@@ -131,18 +126,12 @@ class AuthView(QWidget):
         if not self.register_page.is_busy() and not self._transition.is_running():
             self._transition.slide(self._pages, self.login_page, forward=False)
 
+    def _current_page(self) -> LoginPage | RegisterPage:
+        return self.register_page if self._pages.currentWidget() is self.register_page else self.login_page
+
     @Slot()
     def _focus_current_page(self) -> None:
-        self._pages.currentWidget().focus_first()
-
-    def _reset(self) -> None:
-        self.setUpdatesEnabled(False)
-        try:
-            self.login_page.reset()
-            self.register_page.reset()
-            self._pages.setCurrentWidget(self.login_page)
-        finally:
-            self.setUpdatesEnabled(True)
+        self._current_page().focus_first()
 
     # ------------------------------------------------------------------ events
     def resizeEvent(self, event) -> None:
@@ -154,23 +143,17 @@ class AuthView(QWidget):
         super().resizeEvent(event)
         self._brand.set_target_width(max(440, min(860, round(self.width() * 0.45))))
 
-    def showEvent(self, event) -> None:
-        """Resets the forms after a sign-out and focuses the first field."""
-        super().showEvent(event)
-        if event.spontaneous():
-            return
+    # ------------------------------------------------------------------ life cycle
+    def entered(self) -> None:
+        """Toasts below the window's top edge, and the first field focused."""
         ToastHost.for_widget(self).set_top_inset(TOAST_TOP_INSET)
-        if self._hidden_by_app:      # back after signing out
-            self._hidden_by_app = False
-            self._reset()
-            ToastHost.for_widget(self).success(Toasts.SIGNED_OUT, title=Toasts.SIGNED_OUT_TITLE)
-        self._pages.currentWidget().focus_first()
+        self._current_page().focus_first()
 
-    def hideEvent(self, event) -> None:
-        """Remembers that the app hid the screen (a sign-in), so it resets when shown again."""
-        super().hideEvent(event)
-        if not event.spontaneous():
-            self._hidden_by_app = True
+    def left(self) -> None:
+        """The dashboard is shown: empty the forms (off screen) for the next sign-in."""
+        self.login_page.reset()
+        self.register_page.reset()
+        self._pages.setCurrentWidget(self.login_page)
 
     def keyPressEvent(self, event) -> None:
         """Ignores Esc, which has no meaning on these screens."""
