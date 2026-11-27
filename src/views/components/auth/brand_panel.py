@@ -4,17 +4,17 @@ One block, centred vertically like the form beside it: the logo and the applicat
 headline and one supporting line, then what the application does as a compact list. The project
 credit sits at the bottom. The panel says the same on sign-in and sign-up.
 
-Behind it, cropped by the right edge, a large and faint MediaPipe Pose figure (33 landmarks and their
+Behind it, on the right, a large and faint MediaPipe Pose figure (33 landmarks and their
 connections) gives the screen its character. The figure fades out towards the text, so it is whole
-wherever it shows and never runs under a word; on narrow panels little of it shows, on wide ones most
-of it. Everything is painted on the panel's own background and cached.
+wherever it shows and never runs under a word; on narrow panels its left side fades into the text,
+on wide ones it shows almost whole. Everything is painted on the panel's own background and cached.
 """
 
 from __future__ import annotations
 
 from PySide6.QtCore import QPointF, QRectF, QSize, Qt
 from PySide6.QtGui import QColor, QLinearGradient, QPainter, QPen, QPixmap
-from PySide6.QtWidgets import QHBoxLayout, QSizePolicy, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QHBoxLayout, QLabel, QSizePolicy, QVBoxLayout, QWidget
 
 from src.strings import Brand
 from src.views import icons
@@ -24,8 +24,8 @@ from src.views.theme import APP_NAME, Colors, Space, make_label, mix, qcolor
 _PADDING_X = 48
 _PADDING_Y = 40
 _TEXT_WIDTH = 440
-_LOGO = 32
-_FADE = 160            # the figure goes from invisible to full strength over this width, right of the text
+_LOGO = 44
+_FADE = 48             # the figure goes from invisible to full strength over this width, right of the text
 
 # A relaxed standing pose in a 100 x 160 box, facing the viewer (the person's left is on the right).
 POSE_LANDMARKS: tuple[tuple[float, float], ...] = (
@@ -62,7 +62,8 @@ def paint_background_figure(painter: QPainter, width: float, height: float, text
     """Paints the faint MediaPipe pose figure of the brand panel.
 
     The figure is about as tall as the panel, with the head near the top, standing right of the text
-    column (or cropped by the panel's right edge when there is little room there).
+    column. When there is little room there it moves left into the fade, so the panel's right edge
+    never crops its hand.
 
     Args:
         painter: Painter of the figure's transparent layer.
@@ -71,7 +72,9 @@ def paint_background_figure(painter: QPainter, width: float, height: float, text
         text_right: Right edge of the text column.
     """
     scale = height / 150.0
-    centre_x = max(width * 0.80, text_right + _FADE * 0.9)
+    # Far enough right for the left hand (19 units left of the centre) to clear the fade, but never so far
+    # that the panel's edge crops the right hand (21.5 units right of it).
+    centre_x = min(max(width * 0.80, text_right + _FADE + 19.0 * scale), width - 22.5 * scale)
     origin_x = centre_x - 50.0 * scale
     origin_y = height * 0.08 - 9.0 * scale
     points = [QPointF(origin_x + x * scale, origin_y + y * scale) for x, y in POSE_LANDMARKS]
@@ -112,7 +115,7 @@ def fade_towards_text(painter: QPainter, width: float, height: float, text_right
 
 
 class _Logo(QWidget):
-    """The application's logo, 32 px."""
+    """The application's logo, 44 px."""
 
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
@@ -129,7 +132,7 @@ def _brand() -> QHBoxLayout:
     row.setContentsMargins(0, 0, 0, 0)
     row.setSpacing(Space.S3)
     row.addWidget(_Logo())
-    row.addWidget(make_label(APP_NAME, "title-md", "on-brand"))
+    row.addWidget(make_label(APP_NAME, "title-lg", "on-brand"))
     row.addStretch(1)
     return row
 
@@ -199,8 +202,13 @@ class BrandPanel(QWidget):
         return QSize(520, 720)
 
     def _text_right(self) -> int:
-        """Right edge of the text column, in panel coordinates."""
-        return self._content.geometry().right() + 1
+        """Right edge of the longest line of text in the column, in panel coordinates."""
+        right = self._content.geometry().left()
+        for label in self._content.findChildren(QLabel):
+            flags = Qt.TextFlag.TextWordWrap.value if label.wordWrap() else 0
+            used = label.fontMetrics().boundingRect(label.contentsRect(), flags, label.text())
+            right = max(right, label.mapTo(self, used.topRight()).x() + 1)
+        return right
 
     def _background_pixmap(self) -> QPixmap:
         dpr = self.devicePixelRatioF()
@@ -211,8 +219,8 @@ class BrandPanel(QWidget):
             pixmap.setDevicePixelRatio(dpr)
             painter = QPainter(pixmap)
             depth = QLinearGradient(0, 0, 0, self.height())
-            depth.setColorAt(0.0, mix(Colors.BRAND, Colors.S900, 0.35))
-            depth.setColorAt(1.0, mix(Colors.BRAND, Colors.P800, 0.45))
+            depth.setColorAt(0.0, mix(Colors.BRAND, Colors.P800, 0.15))
+            depth.setColorAt(1.0, mix(Colors.BRAND, Colors.P700, 0.50))
             painter.fillRect(QRectF(0, 0, self.width(), self.height()), depth)
             painter.drawPixmap(0, 0, self._figure_layer(dpr, text_right))
             painter.end()
