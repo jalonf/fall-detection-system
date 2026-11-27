@@ -9,14 +9,12 @@ from collections.abc import Callable
 import numpy as np
 from PySide6.QtCore import QThread, Signal
 
-from src.ai.fall_model import POSE_VALUES, FallModelError, load_fall_model
+from src.ai.fall_model import POSE_VALUES, FallModelError, is_fall, load_fall_model
 from src.dtos.fall_prediction import FallPrediction
 
 logger = logging.getLogger(__name__)
 
 THREAD_NAME = "fall-detection-thread"
-FALL_ON = 0.6                 # a fall starts when the probability reaches this...
-FALL_OFF = 0.4                # ...and ends when it drops below this (hysteresis)
 MAX_CONSECUTIVE_ERRORS = 10   # inference failures in a row before the model is given up as broken
 _STOP = object()              # put in the queue to end the thread
 
@@ -149,9 +147,9 @@ class FallDetectionThread(QThread):
 
             # 3. Hysteresis: a fall starts at FALL_ON and lasts until the probability drops below FALL_OFF.
             was_fall = self.latest is not None and self.latest.is_fall
-            is_fall = probability >= (FALL_OFF if was_fall else FALL_ON)
-            self.latest = FallPrediction(is_fall=is_fall, probability=probability)
-            if is_fall and not was_fall:
+            falling = is_fall(probability, was_fall)
+            self.latest = FallPrediction(is_fall=falling, probability=probability)
+            if falling and not was_fall:
                 self.fall_detected.emit(probability)     # Qt queues it to the controller
 
     def _add_pose(self, timestamp_ms: float, pose: np.ndarray | None) -> bool:

@@ -3,7 +3,9 @@
 Every video of `data/fall_detection/raw/VideoDataset/` (ADL = normal activity, Fall = fall)
 is subsampled to the target FPS and cut into one-second windows of 3D poses (33 x 3 values per
 frame, as the application extracts them); consecutive windows overlap by half. The arrays are
-written to `data/fall_detection/processed/`, one folder per model.
+written to `data/fall_detection/processed/`, one folder per model: the windows (X_data), their
+labels (y_data), and the subject (subject_data, from the SBJ_xx folder) and video (video_data)
+each one comes from, so the evaluation can keep a person's videos out of training.
 
     python -m training.fall_detection.build_fall_dataset
 """
@@ -15,6 +17,7 @@ os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 os.environ["GLOG_minloglevel"] = "3"
 
 import logging
+import re
 from pathlib import Path
 
 import cv2
@@ -30,6 +33,16 @@ logging.basicConfig(
     format="[%(levelname)s] %(message)s"
 )
 logger = logging.getLogger(__name__)
+
+_SUBJECT = re.compile(r"SBJ_(\d+)")   # the dataset's folders are SBJ_<subject>_LOC<location>
+
+
+def subject_of(video_file: Path) -> int:
+    """The number of the person recorded in a video, from its SBJ_xx folder."""
+    match = _SUBJECT.search(str(video_file))
+    if match is None:
+        raise ValueError(f"No SBJ_xx folder in the path of {video_file}")
+    return int(match.group(1))
 
 
 def process_dataset(dataset_root: str, output_dir: str, target_fps: int = 30) -> None:
@@ -71,11 +84,11 @@ def process_dataset(dataset_root: str, output_dir: str, target_fps: int = 30) ->
         extractor.release()
         return
 
-    X_list, y_list = [], []
-    
+    X_list, y_list, subject_list, video_list = [], [], [], []
+
     # tqdm progress bar loop
     with tqdm(total=len(all_videos), desc=f"Processing {target_fps} FPS", unit="vid", ncols=90) as pbar:
-        for video_file, label, category in all_videos:
+        for video_index, (video_file, label, category) in enumerate(all_videos):
             pbar.set_postfix(cat=category, file=video_file.name[:15])
 
             cap = cv2.VideoCapture(str(video_file))
@@ -130,6 +143,8 @@ def process_dataset(dataset_root: str, output_dir: str, target_fps: int = 30) ->
             for i in range(0, len(sequence_array) - seq_len + 1, step_size):
                 X_list.append(sequence_array[i : i + seq_len])
                 y_list.append(label)
+                subject_list.append(subject_of(video_file))
+                video_list.append(video_index)
 
             pbar.update(1)
 
@@ -138,6 +153,8 @@ def process_dataset(dataset_root: str, output_dir: str, target_fps: int = 30) ->
     if X_list:
         np.save(out_path / "X_data.npy", np.array(X_list, dtype=np.float32))
         np.save(out_path / "y_data.npy", np.array(y_list, dtype=np.float32))
+        np.save(out_path / "subject_data.npy", np.array(subject_list, dtype=np.int32))
+        np.save(out_path / "video_data.npy", np.array(video_list, dtype=np.int32))
         logger.info("Saved %d samples to '%s'.", len(X_list), output_dir)
     else:
         logger.warning("No valid windows generated for %d FPS.", target_fps)

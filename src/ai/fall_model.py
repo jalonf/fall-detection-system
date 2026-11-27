@@ -10,6 +10,21 @@ from src.ai import preload
 logger = logging.getLogger(__name__)
 
 POSE_VALUES = 99   # model input per frame: 33 landmarks x (x, y, z)
+FALL_ON = 0.6      # a fall starts when the probability reaches this...
+FALL_OFF = 0.4     # ...and ends when it drops below this (hysteresis)
+
+
+def is_fall(probability: float, was_fall: bool) -> bool:
+    """Hysteresis: a fall starts at FALL_ON and lasts until the probability drops below FALL_OFF.
+
+    The application and the evaluation of the models both decide with this, so a probability
+    hovering around 0.5 is one fall, not many.
+
+    Args:
+        probability: The model's output for the newest window (0-1).
+        was_fall: Whether the previous window was a fall.
+    """
+    return probability >= (FALL_OFF if was_fall else FALL_ON)
 
 
 class FallModelError(RuntimeError):
