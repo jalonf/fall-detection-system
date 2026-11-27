@@ -14,6 +14,7 @@ from PySide6.QtCore import Qt, Signal, Slot
 from PySide6.QtWidgets import QHBoxLayout, QStackedWidget, QVBoxLayout, QWidget
 
 from src.dtos.registration_data import RegistrationData, RegistrationField
+from src.strings import Common, Toasts
 from src.views.components.auth.brand_panel import BrandPanel
 from src.views.components.auth.login_page import LoginPage
 from src.views.components.auth.register_page import RegisterPage
@@ -21,7 +22,6 @@ from src.views.components.common.page_transition import PageTransition
 from src.views.components.common.painting import Surface
 from src.views.components.common.toast import ToastHost
 from src.views.screen_view import ScreenView
-from src.views.strings import Common, Toasts
 from src.views.theme import Colors
 
 TOAST_TOP_INSET = 16

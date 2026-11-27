@@ -12,6 +12,7 @@ from src.database.connection import db
 from src.dtos.fall_alert import FallAlert
 from src.notifications.email_notifier import EmailNotifier
 from src.repositories.fall_repository import FallRepository
+from src.strings import Messages
 
 logger = logging.getLogger(__name__)
 
@@ -106,7 +107,7 @@ class AlertThread(QObject):
             # 2. E-mail it, with the capture attached (encoded in memory, never written to disk).
             alert = FallAlert(
                 patient_name=getattr(self.patient, "name", None) or self.user.name,
-                medical_notes=getattr(self.patient, "medical_notes", None) or "N/A",
+                medical_notes=getattr(self.patient, "medical_notes", None) or Messages.NO_NOTES,
                 probability=probability,
                 timestamp=timestamp,
                 snapshot=encode_jpeg(frame),

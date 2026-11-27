@@ -29,13 +29,13 @@ from PySide6.QtGui import QImage
 from PySide6.QtWidgets import QApplication, QHBoxLayout, QVBoxLayout, QWidget
 
 from src.domain.monitoring_profiles import MonitoringStrategy, strategy_for
+from src.strings import Monitor, risk_level_label
 from src.views.components.common.shortcuts import add_shortcut
 from src.views.components.monitor.alert_pulse import AlertPulse
 from src.views.components.monitor.context_bar import ContextBar
 from src.views.components.monitor.event_log import EventLogPanel
 from src.views.components.monitor.video_panel import VideoPanel
 from src.views.monitor_state import RUNNING, STOPPED, MonitorState
-from src.views.strings import Monitor
 from src.views.theme import Space
 
 __all__ = ["RUNNING", "STOPPED", "BaseMonitorView", "MonitorState", "SourceInfo", "camera_profile", "camera_spec"]
@@ -75,7 +75,7 @@ def camera_profile(risk_level: str | None) -> tuple[str, str]:
     strategy = strategy_for(level or "LOW")
     spec = camera_spec(strategy)
     known = level in ("LOW", "MEDIUM", "HIGH")
-    tip = (Monitor.CAMERA_SPEC_TIP if known else Monitor.CAMERA_SPEC_DEFAULT_TIP).format(level=strategy.name)
+    tip = (Monitor.CAMERA_SPEC_TIP if known else Monitor.CAMERA_SPEC_DEFAULT_TIP).format(level=risk_level_label(strategy.name))
     return spec, tip
 
 

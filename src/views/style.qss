@@ -1,5 +1,5 @@
 /*
- * FallSense Clinical stylesheet.
+ * Vigía Clinical stylesheet.
  * ThemeManager replaces every TOKEN marker (written between two at-signs) with its value from
  * theme.py and prepends the type rules generated from Type. No font-family is declared here:
  * the family comes from the application font.

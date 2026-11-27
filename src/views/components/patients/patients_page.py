@@ -16,13 +16,13 @@ from PySide6.QtWidgets import QStackedWidget, QVBoxLayout, QWidget
 
 from src.dtos.patient_form_data import PatientFormData
 from src.dtos.patient_summary import PatientSummary
+from src.strings import Patients, risk_level_label
 from src.views.components.common.confirm_dialog import ConfirmDialog
 from src.views.components.common.page_transition import PageTransition
 from src.views.components.common.painting import Surface
 from src.views.components.common.toast import ToastHost
 from src.views.components.patients.patient_form import PatientForm
 from src.views.components.patients.patient_list import PatientList, falls_text
-from src.views.strings import Patients
 from src.views.theme import Colors, Space
 
 CONTENT_MAX = 1200          # widest the list gets; on wider screens it is centred
@@ -96,7 +96,7 @@ class PatientsPage(QWidget):
     def show_patient_added(self, name: str, risk_level: str) -> None:
         """The patient was saved: back to the list, with a toast that gives their risk level."""
         self.close_form()
-        ToastHost.for_widget(self).success(Patients.ADDED.format(name=name, level=risk_level),
+        ToastHost.for_widget(self).success(Patients.ADDED.format(name=name, level=risk_level_label(risk_level)),
                                            title=Patients.ADDED_TITLE)
 
     def show_patient_deleted(self, name: str) -> None:

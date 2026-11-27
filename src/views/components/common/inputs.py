@@ -17,8 +17,8 @@ from PySide6.QtWidgets import (
 )
 
 from src.domain import password_policy
+from src.strings import Common
 from src.views import icons
-from src.views.strings import Common
 from src.views.theme import Colors, Size, Type
 
 _HEIGHT = {"sm": Size.H_SM, "md": Size.H_MD, "lg": Size.H_LG}

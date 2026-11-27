@@ -31,9 +31,9 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from src.strings import Common
 from src.views.components.common.button import Button
 from src.views.components.common.painting import shadow_pixmap
-from src.views.strings import Common
 from src.views.theme import Colors, Motion, Radius, Space, make_label, qcolor
 
 WIDTH = 420

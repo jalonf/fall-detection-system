@@ -28,10 +28,10 @@ from PySide6.QtGui import (
 from PySide6.QtWidgets import QSizePolicy, QToolTip, QWidget
 
 from src.dtos.telemetry import Telemetry
+from src.strings import EM_DASH, Pose
 from src.views.components.common.panel import Panel
 from src.views.components.monitor.video_widget import VideoWidget
 from src.views.monitor_state import STOPPED
-from src.views.strings import EM_DASH, Pose
 from src.views.theme import Colors, Radius, Space, Type, make_label, qcolor
 
 VIEW_HEIGHT = 140

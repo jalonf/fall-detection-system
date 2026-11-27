@@ -8,6 +8,7 @@ from PySide6.QtGui import QImage
 from src.database.models.patient import Patient
 from src.domain.monitoring_profiles import MonitoringStrategy, strategy_for
 from src.dtos.frame_packet import FramePacket
+from src.strings import Messages
 from src.threads.alert_thread import AlertThread
 from src.threads.fall_detection_thread import FallDetectionThread
 from src.threads.video_thread import VideoThread
@@ -81,7 +82,7 @@ class BaseMonitorController(QObject):
             logger.warning("Attempted to start the camera, but a monitoring is already running.")
             return
 
-        self._start(camera_index, self._camera_strategy(), f"Starting camera {camera_index}...")
+        self._start(camera_index, self._camera_strategy(), Messages.STARTING_CAMERA.format(index=camera_index))
 
     def _camera_strategy(self) -> MonitoringStrategy:
         """The patient's risk level picks the camera settings and the model."""
@@ -179,7 +180,7 @@ class BaseMonitorController(QObject):
             return
         if self._waiting_first_frame:
             self._waiting_first_frame = False
-            self.view.log_event("INFO", "Stream connected")
+            self.view.log_event("INFO", Messages.STREAM_CONNECTED)
         self._show_frame(packet)
 
     def _show_frame(self, packet: FramePacket):
@@ -197,7 +198,7 @@ class BaseMonitorController(QObject):
         self.video_thread = None
         self._stop_other_threads()   # no more poses or falls can come
         self.view.set_monitoring_state(False)
-        self.view.log_event("INFO", "Stream disconnected")
+        self.view.log_event("INFO", Messages.STREAM_DISCONNECTED)
         self.view.clear_video()
 
     @Slot(str)
@@ -212,18 +213,18 @@ class BaseMonitorController(QObject):
         if self._closed or self.fall_detection_thread is None or self.sender() is not self.fall_detection_thread:
             return
         logger.warning("Fall detected (%.0f%%)", probability * 100)
-        self.view.trigger_fall_alert(f"Fall detected ({probability:.0%})")
+        self.view.trigger_fall_alert(Messages.FALL_DETECTED.format(probability=probability))
         if self.alert_thread is None:
             return
         if self.alert_thread.handle(probability, self._last_frame):
-            self.view.log_event("INFO", "Sending notification e-mail...")
+            self.view.log_event("INFO", Messages.SENDING_EMAIL)
         else:
-            self.view.log_event("INFO", "Fall stored; no e-mail (one was sent less than a minute ago)")
+            self.view.log_event("INFO", Messages.EMAIL_SKIPPED)
 
     @Slot(bool)
     def _on_notification_sent(self, ok: bool):
         if self._closed:   # the e-mail can finish after logging out, when the view is gone
             return
         self.view.log_event(
-            "INFO", "Notification e-mail sent" if ok else "The notification e-mail could not be sent"
+            "INFO", Messages.EMAIL_SENT if ok else Messages.EMAIL_FAILED
         )

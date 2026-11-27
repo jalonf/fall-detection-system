@@ -9,6 +9,7 @@ from PySide6.QtCore import QSize, Signal, Slot
 from PySide6.QtGui import QImage
 from PySide6.QtWidgets import QFileDialog, QSizePolicy, QStackedLayout, QWidget
 
+from src.strings import Monitor
 from src.views.components.common.button import make_button
 from src.views.components.common.inputs import Combo
 from src.views.components.common.panel import Panel
@@ -16,7 +17,6 @@ from src.views.components.monitor.stage_overlay import BAR, StageOverlay
 from src.views.components.monitor.stage_placeholder import StagePlaceholder
 from src.views.components.monitor.video_widget import VideoWidget
 from src.views.monitor_state import RUNNING, STOPPED
-from src.views.strings import Monitor
 from src.views.theme import Space, make_label
 
 

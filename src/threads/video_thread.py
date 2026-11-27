@@ -18,6 +18,7 @@ from src.domain.monitoring_profiles import (
 )
 from src.dtos.frame_packet import FramePacket
 from src.dtos.telemetry import Telemetry
+from src.strings import Messages
 from src.threads.fall_detection_thread import FallDetectionThread
 from src.threads.frame_utils import (
     FALL_COLOR,
@@ -36,7 +37,7 @@ THREAD_NAME = "video-thread"
 DEFAULT_FILE_FPS = 30.0   # when a video file does not say its frame rate
 _STAGE_RGB = bytes.fromhex(Colors.STAGE.lstrip("#"))
 SKELETON_BACKGROUND = tuple(reversed(_STAGE_RGB))   # BGR of the panel's stage, so the image blends in
-MODEL_FAILED_MESSAGE = "Fall detection is not available: the fall model could not be used. Monitoring stopped."
+MODEL_FAILED_MESSAGE = Messages.MODEL_FAILED
 
 
 def strategy_for_file(path: str) -> MonitoringStrategy:
@@ -140,7 +141,9 @@ class VideoThread(QThread):
         try:
             if not cap.isOpened():
                 logger.error("Could not open %s", self.source_label)
-                self.source_failed.emit(f"Could not open {self.source_label}")
+                self.source_failed.emit(
+                    Messages.CAMERA_NOT_OPENED.format(index=self.source) if isinstance(self.source, int)
+                    else Messages.FILE_NOT_OPENED.format(name=os.path.basename(self.source)))
                 return
             logger.info("Starting %s with %s strategy", self.source_label, self.strategy.name)
 
@@ -167,7 +170,7 @@ class VideoThread(QThread):
             self.source_failed.emit(MODEL_FAILED_MESSAGE)
         except Exception:
             logger.exception("The video pipeline stopped because of an unexpected error")
-            self.source_failed.emit("Detection stopped because of an unexpected error")
+            self.source_failed.emit(Messages.UNEXPECTED_STOP)
         finally:
             # 4. Release the source and MediaPipe. Before ending, let the fall detection thread
             #    finish loading its model, so the controller can then stop it at once.

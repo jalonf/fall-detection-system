@@ -16,12 +16,12 @@ from __future__ import annotations
 from PySide6.QtCore import Slot
 
 from src.dtos.patient_summary import PatientSummary
+from src.strings import Monitor
 from src.views.base_monitor_view import BaseMonitorView, camera_profile
 from src.views.components.common.badge import Badge, risk_badge
 from src.views.components.common.inputs import Combo
 from src.views.components.monitor.context_bar import ContextBar
 from src.views.monitor_state import RUNNING, MonitorState
-from src.views.strings import Monitor
 
 SETTINGS_PATIENT = "monitor/patient"
 _PATIENT_COMBO_WIDTH = 220

@@ -24,6 +24,7 @@ from src.database.models.user import User
 from src.domain import password_policy
 from src.domain.roles import ADMINISTRATOR
 from src.repositories.user_repository import UserRepository
+from src.strings import Register, role_label
 
 EMAIL_PATTERN = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")   # same rule as the sign-in form
 
@@ -40,17 +41,17 @@ def _ask(prompt: str, value: str | None, valid, error: str) -> str:
 
 def _ask_password() -> str:
     while True:
-        password = getpass.getpass("Password: ")
+        password = getpass.getpass("Contraseña: ")
         unmet = [rule for rule, met in password_policy.requirements(password).items() if not met]
         if unmet:
-            print(f"  The password needs: {', '.join(unmet)} "
-                  f"(at least {password_policy.MIN_LENGTH} characters, an uppercase letter, a number and a symbol).")
+            labels = dict(Register.CHECKLIST)
+            print(f"  A la contraseña le falta: {', '.join(labels[rule].lower() for rule in unmet)}.")
             continue
         if password_policy.too_long(password):
-            print(f"  The password is too long (at most {password_policy.MAX_BYTES} bytes).")
+            print(f"  La contraseña es demasiado larga (máximo {password_policy.MAX_BYTES} bytes).")
             continue
-        if getpass.getpass("Confirm password: ") != password:
-            print("  The passwords don't match.")
+        if getpass.getpass("Repite la contraseña: ") != password:
+            print("  Las contraseñas no coinciden.")
             continue
         return password
 
@@ -64,31 +65,31 @@ def main(argv: list[str] | None = None) -> int:
     Returns:
         The exit code: 0 when the account was created, 1 otherwise.
     """
-    parser = argparse.ArgumentParser(prog="python -m src.create_admin", description="Create an administrator account.")
-    parser.add_argument("--name", help="full name (asked when omitted)")
-    parser.add_argument("--email", help="e-mail used to sign in (asked when omitted)")
+    parser = argparse.ArgumentParser(prog="python -m src.create_admin", description="Crea una cuenta de administrador.")
+    parser.add_argument("--name", help="nombre completo (se pregunta si se omite)")
+    parser.add_argument("--email", help="correo para iniciar sesión (se pregunta si se omite)")
     args = parser.parse_args(argv)
     logging.basicConfig(level=logging.WARNING, format="%(levelname)s: %(message)s")
 
-    print("Create an administrator (tester) account. It has no patient and runs every test without")
-    print("storing falls or sending e-mails.\n")
-    name = _ask("Full name: ", args.name, bool, "Enter a name.")
-    email = _ask("E-mail: ", args.email, EMAIL_PATTERN.match, "Enter a valid e-mail address.")
+    print("Crea una cuenta de administrador (pruebas). No tiene paciente y hace todas las pruebas sin")
+    print("guardar caídas ni enviar correos.\n")
+    name = _ask("Nombre completo: ", args.name, bool, "Introduce un nombre.")
+    email = _ask("Correo: ", args.email, EMAIL_PATTERN.match, "Introduce un correo válido.")
 
     init_tables([User, Patient, FallEvent])
     users = UserRepository()
     try:
         existing = users.get_user_by_email(email)
         if existing is not None:
-            print(f"There is already an account with {email} (role: {existing.role}). Nothing was created.")
+            print(f"Ya existe una cuenta con {email} (rol: {role_label(existing.role)}). No se ha creado nada.")
             return 1
 
         password = _ask_password()
         user = users.create_user(name=name, email=email, phone=None, password=password, role=ADMINISTRATOR)
         if user is None:
-            print("The account could not be created (see the error above).")
+            print("No se pudo crear la cuenta (consulta el error anterior).")
             return 1
-        print(f"\nAdministrator account created for {email}. Sign in with it in the application.")
+        print(f"\nCuenta de administrador creada para {email}. Ya puedes iniciar sesión en la aplicación.")
         return 0
     finally:
         db.close()
@@ -98,5 +99,5 @@ if __name__ == "__main__":
     try:
         sys.exit(main())
     except (KeyboardInterrupt, EOFError):
-        print("\nCancelled. Nothing was created.")
+        print("\nCancelado. No se ha creado nada.")
         sys.exit(1)

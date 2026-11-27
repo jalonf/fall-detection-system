@@ -16,9 +16,9 @@ from PySide6.QtCore import QPointF, QRectF, QSize, Qt
 from PySide6.QtGui import QColor, QLinearGradient, QPainter, QPen, QPixmap
 from PySide6.QtWidgets import QHBoxLayout, QSizePolicy, QVBoxLayout, QWidget
 
+from src.strings import Brand
 from src.views import icons
 from src.views.components.common.painting import IconView
-from src.views.strings import Brand
 from src.views.theme import APP_NAME, Colors, Space, make_label, mix, qcolor
 
 _PADDING_X = 48

@@ -28,6 +28,7 @@ from PySide6.QtWidgets import (
 from src.domain import password_policy
 from src.domain.roles import SIGNUP_ROLES
 from src.dtos.registration_data import RegistrationData, RegistrationField
+from src.strings import Register, role_label
 from src.views.components.auth.login_page import (
     COLUMN,
     COLUMN_MAX,
@@ -43,7 +44,6 @@ from src.views.components.common.form_field import FormField
 from src.views.components.common.inputs import PasswordEdit, make_line_edit
 from src.views.components.common.painting import transparent_scroll_area
 from src.views.components.common.segmented_control import SegmentedControl
-from src.views.strings import Register
 from src.views.theme import Size, Space
 
 PHONE_PATTERN = re.compile(r"^\+\d{1,3}(?:[\s.-]?\d){6,14}$")
@@ -114,7 +114,7 @@ class RegisterPage(QWidget):
         column.addLayout(_pair(self.name_field, self.phone_field))
         column.addSpacing(Space.S5)
 
-        self.role = SegmentedControl(SIGNUP_ROLES, height=Size.H_LG, accessible_name=Register.ROLE)
+        self.role = SegmentedControl([role_label(role) for role in SIGNUP_ROLES], height=Size.H_LG, accessible_name=Register.ROLE)
         self.role_field = FormField(Register.ROLE, self.role)
         column.addWidget(self.role_field)
         column.addSpacing(Space.S5)

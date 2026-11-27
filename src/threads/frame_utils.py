@@ -12,6 +12,8 @@ import cv2
 import numpy as np
 from PySide6.QtGui import QImage
 
+from src.strings import Video
+
 logger = logging.getLogger(__name__)
 
 
@@ -71,9 +73,9 @@ def censor_face(frame, landmarks) -> None:
 
 
 def draw_person_box(frame, box, is_fall: bool) -> None:
-    """Thin rectangle with thick corners and a label: green 'HUMAN', red 'FALL ALERT'."""
+    """Thin rectangle with thick corners and a label: green 'PERSONA', red 'ALERTA'."""
     x1, y1, x2, y2 = box
-    color, label, thickness = (FALL_COLOR, "FALL ALERT", 3) if is_fall else (OK_COLOR, "HUMAN", 2)
+    color, label, thickness = (FALL_COLOR, Video.FALL, 3) if is_fall else (OK_COLOR, Video.PERSON, 2)
 
     cv2.rectangle(frame, (x1, y1), (x2, y2), color, 1, cv2.LINE_AA)
 

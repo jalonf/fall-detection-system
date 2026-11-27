@@ -28,10 +28,10 @@ from PySide6.QtWidgets import (
 )
 
 from src.domain.questionnaire import CHECK, CHOICE, NUMBER, Question
+from src.strings import Form
 from src.views.components.common.form_field import FieldMessage, FormField
 from src.views.components.common.inputs import CheckBox, RadioButton, make_line_edit
 from src.views.components.common.segmented_control import SegmentedControl
-from src.views.strings import Form
 from src.views.theme import Colors, Size, Space, Type, make_label, set_props
 
 SCALE_ROW = 44           # height of a row of the scale matrix

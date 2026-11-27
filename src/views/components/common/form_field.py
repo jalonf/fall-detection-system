@@ -5,8 +5,8 @@ from __future__ import annotations
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QHBoxLayout, QLabel, QVBoxLayout, QWidget
 
+from src.strings import Common
 from src.views.components.common.painting import IconView
-from src.views.strings import Common
 from src.views.theme import Colors, make_label, set_props
 
 

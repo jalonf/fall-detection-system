@@ -27,14 +27,14 @@ from PySide6.QtWidgets import (
 )
 
 from src.dtos.patient_summary import PatientSummary
+from src.strings import Patients
 from src.views.components.common.badge import Badge, risk_badge
 from src.views.components.common.button import make_button
 from src.views.components.common.empty_state import EmptyState
 from src.views.components.common.painting import Surface
-from src.views.strings import Patients
 from src.views.theme import Colors, Space, Type, make_label
 
-_LOCALE = QLocale(QLocale.Language.English)
+_LOCALE = QLocale(QLocale.Language.Spanish, QLocale.Country.Spain)
 ROW_HEIGHT = 60
 HEADER_HEIGHT = 36
 # Fixed widths of the columns after the name, which takes the rest; the last one holds the bin button.
@@ -43,7 +43,7 @@ EMPTY_HEIGHT = 320               # the empty state's card
 
 
 def format_date(value: datetime.datetime | None, pattern: str) -> str:
-    """Formats a date the way the interface shows dates ("3 Nov 2026").
+    """Formats a date the way the interface shows dates ("3 nov 2026").
 
     Args:
         value: The date, or None.
@@ -59,7 +59,7 @@ def format_date(value: datetime.datetime | None, pattern: str) -> str:
 
 
 def falls_text(count: int) -> str:
-    """Returns "no stored falls", "1 stored fall" or "n stored falls"."""
+    """Returns "sin caídas guardadas", "1 caída guardada" or "n caídas guardadas"."""
     if count == 0:
         return Patients.FALLS_NONE
     return Patients.FALLS_ONE if count == 1 else Patients.FALLS_MANY.format(n=count)

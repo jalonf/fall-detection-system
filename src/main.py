@@ -4,7 +4,7 @@ import logging
 import os
 import sys
 
-from PySide6.QtCore import QTimer
+from PySide6.QtCore import QLibraryInfo, QLocale, QTimer, QTranslator
 from PySide6.QtWidgets import QApplication, QMainWindow
 
 from src.ai import preload
@@ -67,6 +67,14 @@ if __name__ == "__main__":
     app = QApplication(sys.argv)
     app.setOrganizationName(APP_NAME)        # where QSettings() keeps the interface's preferences
     app.setApplicationName(APP_NAME)
+
+    # Spanish for the texts Qt writes itself (the context menu of the text fields, standard dialogs).
+    QLocale.setDefault(QLocale(QLocale.Language.Spanish, QLocale.Country.Spain))
+    translator = QTranslator(app)
+    if translator.load("qtbase_es", QLibraryInfo.path(QLibraryInfo.LibraryPath.TranslationsPath)):
+        app.installTranslator(translator)
+    else:
+        logger.warning("Qt's Spanish translation was not found: Qt's own texts stay in English")
 
     ThemeManager.setup_theme(app)
     app.setWindowIcon(icons.app_icon())      # the window's title bar and the taskbar

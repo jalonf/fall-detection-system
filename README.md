@@ -1,6 +1,6 @@
-# FallSense · Fall risk assessment and detection
+# Vigía · Fall risk assessment and detection
 
-**FallSense** is a desktop application that watches a person through a camera and raises an
+**Vigía** is a desktop application that watches a person through a camera and raises an
 alert when it detects a fall. MediaPipe extracts the 3D pose of the person in every frame and a GRU
 recurrent network classifies the last second of movement as a normal activity or a fall.
 When a fall starts, the application records the event and e-mails the caregiver with a

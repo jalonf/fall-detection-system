@@ -21,6 +21,7 @@ from PySide6.QtWidgets import QVBoxLayout
 
 from src.domain.monitoring_profiles import RISK_LEVELS, strategy_for
 from src.dtos.telemetry import Telemetry
+from src.strings import Monitor, risk_level_label
 from src.views.base_monitor_view import BaseMonitorView, SourceInfo, camera_spec
 from src.views.components.common.badge import Badge
 from src.views.components.common.inputs import Combo
@@ -28,7 +29,6 @@ from src.views.components.common.shortcuts import add_shortcut
 from src.views.components.monitor.context_bar import ContextBar
 from src.views.components.monitor.skeleton_panel import SkeletonPanel
 from src.views.monitor_state import RUNNING
-from src.views.strings import Monitor
 
 SETTINGS_TEST_PROFILE = "admin/test_profile"
 DEFAULT_TEST_PROFILE = "HIGH"      # the strictest profile, as for a patient whose level is unknown
@@ -93,7 +93,7 @@ class AdminView(BaseMonitorView):
     def _show_test_profile(self) -> None:
         """The strip shows the resolution and frame rate the chosen profile opens the camera with."""
         level = self.test_profile()
-        self._set_camera_profile(camera_spec(strategy_for(level)), Monitor.CAMERA_SPEC_TEST_TIP.format(level=level))
+        self._set_camera_profile(camera_spec(strategy_for(level)), Monitor.CAMERA_SPEC_TEST_TIP.format(level=risk_level_label(level)))
 
     # ------------------------------------------------------------------ user actions
     @Slot(str)

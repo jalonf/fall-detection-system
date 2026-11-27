@@ -5,8 +5,8 @@ from __future__ import annotations
 from PySide6.QtCore import Signal
 from PySide6.QtWidgets import QWidget
 
+from src.strings import Monitor
 from src.views.components.common.empty_state import EmptyState
-from src.views.strings import Monitor
 from src.views.theme import Colors
 
 

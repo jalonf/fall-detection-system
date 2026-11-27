@@ -19,13 +19,13 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from src.strings import Login
 from src.views.components.auth.page_heading import PageHeading
 from src.views.components.common.button import make_button
 from src.views.components.common.callout import Callout
 from src.views.components.common.form_field import FormField
 from src.views.components.common.inputs import PasswordEdit, make_line_edit
 from src.views.components.common.painting import Divider
-from src.views.strings import Login
 from src.views.theme import Colors, Space, make_label
 
 EMAIL_PATTERN = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")

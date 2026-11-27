@@ -2,6 +2,7 @@
 
 from html import escape
 
+from src.strings import Email
 from src.views.theme import APP_DESCRIPTION, APP_NAME, Colors
 
 # E-mail clients ignore custom fonts and stylesheets, so every style is inline and the
@@ -25,17 +26,20 @@ def render_fall_alert_email(
     confidence_pct = f"{confidence * 100:.1f}%"
     bar_width = max(2, round(confidence * 100))
 
+    footer = Email.FOOTER.format(app=BRAND_NAME)
+    image = Email.IMAGE_ATTACHED if has_attachment else Email.IMAGE_MISSING
+
     plain_text = (
         f"{BRAND_NAME.upper()} | {BRAND_CAPTION.upper()}\n"
-        f"FALL DETECTED\n"
+        f"{Email.TITLE.upper()}\n"
         f"--------------------------------------------------\n"
-        f"Patient          : {patient_name}\n"
-        f"Detected at      : {timestamp}\n"
-        f"Confidence       : {confidence_pct}\n"
-        f"Clinical notes   : {medical_info}\n"
-        f"Incident frame   : {'attached to this e-mail' if has_attachment else 'not available'}\n\n"
-        f"A possible unassisted fall has been detected. Please check on the patient as soon as possible.\n"
-        f"Automated message from {BRAND_NAME}. Intended only for the patient's authorized contacts."
+        f"{Email.PATIENT:<17}: {patient_name}\n"
+        f"{Email.DETECTED_AT:<17}: {timestamp}\n"
+        f"{Email.CONFIDENCE:<17}: {confidence_pct}\n"
+        f"{Email.NOTES:<17}: {medical_info}\n"
+        f"{Email.IMAGE:<17}: {image}\n\n"
+        f"{Email.ADVICE}\n"
+        f"{footer}"
     )
 
     # User-provided text goes into the HTML, so it is escaped.
@@ -56,7 +60,7 @@ def render_fall_alert_email(
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: {c.PRIMARY_SOFT}; border: 1px solid {c.PRIMARY_BORDER}; border-radius: 6px;">
                 <tr>
                   <td style="padding: 12px 16px; font-family: {_FONT_UI}; font-size: 13px; line-height: 1.5; color: {c.PRIMARY};">
-                    <strong>Incident frame attached.</strong> The image captured at the moment of the fall is included with this message.
+                    <strong>{Email.ATTACHMENT_TITLE}</strong> {Email.ATTACHMENT_BODY}
                   </td>
                 </tr>
               </table>
@@ -64,18 +68,18 @@ def render_fall_alert_email(
           </tr>"""
 
     html_content = f"""<!DOCTYPE html>
-<html lang="en">
+<html lang="es">
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="color-scheme" content="light">
     <meta name="supported-color-schemes" content="light">
-    <title>{BRAND_NAME}: fall detected</title>
+    <title>{Email.PAGE_TITLE.format(app=BRAND_NAME)}</title>
   </head>
   <body style="margin: 0; padding: 0; background-color: {c.BACKGROUND}; font-family: {_FONT_UI}; color: {c.TEXT_BODY};">
     <!-- Preview text shown by mail clients next to the subject -->
     <div style="display: none; max-height: 0; overflow: hidden; opacity: 0; color: {c.BACKGROUND};">
-      Possible fall detected for {patient_html} at {timestamp_html}.
+      {Email.PREVIEW.format(patient=patient_html, timestamp=timestamp_html)}
     </div>
 
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: {c.BACKGROUND};">
@@ -100,7 +104,7 @@ def render_fall_alert_email(
                       </table>
                     </td>
                     <td align="right">
-                      <span style="display: inline-block; padding: 4px 10px; background-color: {c.DANGER_SOFT}; border: 1px solid {c.DANGER_BORDER}; border-radius: 4px; font-family: {_FONT_UI}; font-size: 11px; font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase; color: {c.DANGER_TEXT};">Alert</span>
+                      <span style="display: inline-block; padding: 4px 10px; background-color: {c.DANGER_SOFT}; border: 1px solid {c.DANGER_BORDER}; border-radius: 4px; font-family: {_FONT_UI}; font-size: 11px; font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase; color: {c.DANGER_TEXT};">{Email.BADGE}</span>
                     </td>
                   </tr>
                 </table>
@@ -113,9 +117,9 @@ def render_fall_alert_email(
                 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: {c.DANGER_SOFT}; border: 1px solid {c.DANGER_BORDER}; border-left: 3px solid {c.DANGER}; border-radius: 6px;">
                   <tr>
                     <td style="padding: 16px 18px; font-family: {_FONT_UI};">
-                      <div style="font-size: 17px; font-weight: 700; color: {c.DANGER_TEXT}; line-height: 1.3;">Fall detected</div>
+                      <div style="font-size: 17px; font-weight: 700; color: {c.DANGER_TEXT}; line-height: 1.3;">{Email.TITLE}</div>
                       <div style="margin-top: 6px; font-size: 14px; line-height: 1.5; color: {c.TEXT_BODY};">
-                        A possible unassisted fall has been detected. Please check on the patient as soon as possible.
+                        {Email.ADVICE}
                       </div>
                     </td>
                   </tr>
@@ -128,15 +132,15 @@ def render_fall_alert_email(
               <td style="padding: 16px 32px 8px 32px;">
                 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
                   <tr>
-                    <td style="{label}">Patient</td>
+                    <td style="{label}">{Email.PATIENT}</td>
                     <td style="{value} font-weight: 600;">{patient_html}</td>
                   </tr>
                   <tr>
-                    <td style="{label} {divider}">Detected at</td>
+                    <td style="{label} {divider}">{Email.DETECTED_AT}</td>
                     <td style="{value} {divider} font-family: {_FONT_MONO}; font-size: 13px;">{timestamp_html}</td>
                   </tr>
                   <tr>
-                    <td style="{label} {divider}">Confidence</td>
+                    <td style="{label} {divider}">{Email.CONFIDENCE}</td>
                     <td style="{value} {divider}">
                       <span style="font-weight: 700; color: {c.DANGER_TEXT};">{confidence_pct}</span>
                       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top: 8px; background-color: {c.TRACK}; border-radius: 2px;">
@@ -157,7 +161,7 @@ def render_fall_alert_email(
                 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: {c.SURFACE_ALT}; border: 1px solid {c.BORDER}; border-radius: 6px;">
                   <tr>
                     <td style="padding: 14px 16px; font-family: {_FONT_UI};">
-                      <div style="font-size: 11px; font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase; color: {c.TEXT_SUBTLE};">Clinical notes</div>
+                      <div style="font-size: 11px; font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase; color: {c.TEXT_SUBTLE};">{Email.NOTES}</div>
                       <div style="margin-top: 6px; font-size: 14px; line-height: 1.5; color: {c.TEXT_MAIN};">{notes_html}</div>
                     </td>
                   </tr>
@@ -168,7 +172,7 @@ def render_fall_alert_email(
             <!-- Footer -->
             <tr>
               <td style="padding: 16px 32px; background-color: {c.SURFACE_ALT}; border-top: 1px solid {c.BORDER}; border-radius: 0 0 8px 8px; font-family: {_FONT_UI}; font-size: 12px; line-height: 1.5; color: {c.TEXT_SUBTLE};">
-                Automated message from {BRAND_NAME}. Intended only for the patient's authorized contacts.
+                {footer}
               </td>
             </tr>
 

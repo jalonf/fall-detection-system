@@ -9,8 +9,8 @@ from PySide6.QtCore import QRectF, QSize, Qt
 from PySide6.QtGui import QColor, QFontMetrics, QPainter, QPen
 from PySide6.QtWidgets import QSizePolicy, QWidget
 
+from src.strings import Monitor, risk_level_label
 from src.views.components.common.painting import crisp
-from src.views.strings import Monitor
 from src.views.theme import Colors, Radius, Type
 
 RISK_VARIANTS = {"LOW": "success", "MEDIUM": "warning", "HIGH": "danger"}
@@ -23,9 +23,9 @@ def risk_badge(level: str) -> tuple[str, str]:
         level: "LOW", "MEDIUM" or "HIGH".
 
     Returns:
-        ("HIGH RISK", "danger"), for example; an unknown level is neutral.
+        ("RIESGO ALTO", "danger"), for example; an unknown level is neutral.
     """
-    return Monitor.RISK_BADGE.format(level=level), RISK_VARIANTS.get(level, "neutral")
+    return Monitor.RISK_BADGE.format(level=risk_level_label(level).upper()), RISK_VARIANTS.get(level, "neutral")
 
 
 VARIANTS = {    # fill, border, text

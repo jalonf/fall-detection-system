@@ -7,6 +7,7 @@ from PySide6.QtCore import QObject, Slot
 from src.domain.roles import SIGNUP_ROLES
 from src.dtos.registration_data import RegistrationData, RegistrationField
 from src.repositories.user_repository import UserRepository
+from src.strings import Messages
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +40,7 @@ class AuthController(QObject):
         logger.info("The controller is about to handle the login process")
         if not email or not password:
             logger.warning("Login attempt failed: missing required fields")
-            self.view.show_error("Please fill in all required fields.")
+            self.view.show_error(Messages.REQUIRED_FIELDS)
             return
 
         user = self.user_repo.authenticate(email, password)
@@ -49,7 +50,7 @@ class AuthController(QObject):
             self.on_auth_success(user)
         else:
             logger.warning("Authentication failed: invalid credentials provided")
-            self.view.show_error("Invalid email or password. Please try again.")
+            self.view.show_error(Messages.BAD_CREDENTIALS)
 
     @Slot(object)      # RegistrationData (a Python object, as in AuthView.register_requested)
     def handle_register(self, data: RegistrationData):
@@ -59,12 +60,12 @@ class AuthController(QObject):
         # Administrators are created with `python -m src.create_admin`, never from the sign-up form.
         if data.role not in SIGNUP_ROLES:
             logger.warning("Registration rejected: role %r cannot be chosen when signing up", data.role)
-            self.view.show_error("Please choose a valid user role.", RegistrationField.ROLE)
+            self.view.show_error(Messages.INVALID_ROLE, RegistrationField.ROLE)
             return
 
         if self.user_repo.get_user_by_email(data.email):
             logger.warning("Registration failed: an account with this email already exists")
-            self.view.show_error("Registration failed. This email is already in use.", RegistrationField.EMAIL)
+            self.view.show_error(Messages.EMAIL_TAKEN, RegistrationField.EMAIL)
             return
 
         new_user = self.user_repo.create_user(
@@ -81,4 +82,4 @@ class AuthController(QObject):
             self.on_auth_success(new_user)
         else:
             logger.error("Registration failed: the account could not be saved")
-            self.view.show_error("Registration failed. Please try again.")
+            self.view.show_error(Messages.REGISTRATION_FAILED)

@@ -9,6 +9,7 @@ from dotenv import load_dotenv
 
 from src.dtos.fall_alert import FallAlert
 from src.notifications.template import BRAND_NAME, render_fall_alert_email
+from src.strings import Email
 
 load_dotenv()
 
@@ -54,13 +55,13 @@ class EmailNotifier:
         )
 
         msg = EmailMessage()
-        msg["From"] = f"{BRAND_NAME} Alerts <{self.gmail_user}>"   # Gmail only allows the account itself
+        msg["From"] = f"{Email.SENDER.format(app=BRAND_NAME)} <{self.gmail_user}>"   # Gmail only allows the account itself
         msg["To"] = self.email
-        msg["Subject"] = f"{BRAND_NAME}: Fall Alert - {alert.patient_name}"
+        msg["Subject"] = Email.SUBJECT.format(app=BRAND_NAME, patient=alert.patient_name)
         msg.set_content(plain_text)
         msg.add_alternative(html_content, subtype="html")
         if alert.snapshot:
-            msg.add_attachment(alert.snapshot, maintype="image", subtype="jpeg", filename="fall.jpg")
+            msg.add_attachment(alert.snapshot, maintype="image", subtype="jpeg", filename=Email.ATTACHMENT_NAME)
 
         try:
             with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT, timeout=SMTP_TIMEOUT) as smtp:

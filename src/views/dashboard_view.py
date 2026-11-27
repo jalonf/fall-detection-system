@@ -18,6 +18,7 @@ from PySide6.QtCore import Qt, Signal, Slot
 from PySide6.QtWidgets import QStackedWidget, QVBoxLayout, QWidget
 
 from src.dtos.patient_summary import PatientSummary
+from src.strings import Monitor
 from src.views.admin_view import AdminView
 from src.views.base_monitor_view import BaseMonitorView
 from src.views.components.common.confirm_dialog import ConfirmDialog
@@ -28,7 +29,6 @@ from src.views.components.monitor.topbar import Topbar
 from src.views.components.patients.patients_page import PatientsPage
 from src.views.monitor_view import MonitorView
 from src.views.screen_view import ScreenView
-from src.views.strings import Monitor
 from src.views.theme import Motion, Size, Space
 
 TAB_SHIFT = 12       # the page being left drifts this far towards the side it is left on

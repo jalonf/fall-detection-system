@@ -45,12 +45,12 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from src.strings import Log, event_count
 from src.views.components.common.badge import Badge
 from src.views.components.common.button import make_button
 from src.views.components.common.confirm_dialog import ConfirmDialog
 from src.views.components.common.inputs import Combo
 from src.views.components.common.panel import Panel
-from src.views.strings import Log, event_count
 from src.views.theme import Colors, Type
 
 ROW_HEIGHT = 56
@@ -94,7 +94,8 @@ class EventLogModel(QAbstractTableModel):
             return None
         entry = self._rows[index.row()]
         if role == Qt.ItemDataRole.DisplayRole:
-            return (entry.time.toString("HH:mm:ss"), entry.kind, entry.message)[index.column()]
+            return (entry.time.toString("HH:mm:ss"), Log.KIND_LABELS.get(entry.kind, entry.kind),
+                    entry.message)[index.column()]
         if role == self.TypeRole:
             return entry.kind
         if role == self.TimeRole:
@@ -102,7 +103,8 @@ class EventLogModel(QAbstractTableModel):
         if role == self.MessageRole:
             return entry.message
         if role == Qt.ItemDataRole.AccessibleTextRole:
-            return f"{entry.time.toString('HH:mm:ss')}, {entry.kind}, {entry.message}"
+            label = Log.KIND_LABELS.get(entry.kind, entry.kind)
+            return f"{entry.time.toString('HH:mm:ss')}, {label}, {entry.message}"
         return None
 
     def headerData(self, section: int, orientation: Qt.Orientation, role: int = Qt.ItemDataRole.DisplayRole):
@@ -193,8 +195,9 @@ class EventFeedDelegate(QStyledItemDelegate):
 
         x = rect.left() + _PADDING
         width = rect.width() - 2 * _PADDING
-        badge_width = Badge.width_for(kind)
-        Badge.paint(painter, QRectF(x, rect.top() + 8, badge_width, 20), kind, BADGE_VARIANTS.get(kind, "neutral"))
+        label = Log.KIND_LABELS.get(kind, kind)
+        badge_width = Badge.width_for(label)
+        Badge.paint(painter, QRectF(x, rect.top() + 8, badge_width, 20), label, BADGE_VARIANTS.get(kind, "neutral"))
         painter.setFont(Type.font("caption", tabular=True))
         painter.setPen(QColor(Colors.N600))
         painter.drawText(QRect(x + badge_width + 8, rect.top() + 8, width - badge_width - 8, 20),

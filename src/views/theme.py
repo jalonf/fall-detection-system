@@ -1,4 +1,4 @@
-"""FallSense Clinical: design tokens and the application-wide theme.
+"""Vigía Clinical: design tokens and the application-wide theme.
 
 Every colour, size, radius, duration and type style of the interface is defined here once.
 `style.qss` refers to the tokens through @TOKEN@ markers that `ThemeManager` fills in, and the
@@ -16,8 +16,8 @@ from PySide6.QtCore import QEasingCurve
 from PySide6.QtGui import QColor, QFont, QPalette
 from PySide6.QtWidgets import QApplication, QLabel, QWidget
 
-APP_NAME = "FallSense"
-APP_DESCRIPTION = "Fall detection and risk monitoring"
+APP_NAME = "Vigía"
+APP_DESCRIPTION = "Detección de caídas y control del riesgo"
 
 
 class Colors:

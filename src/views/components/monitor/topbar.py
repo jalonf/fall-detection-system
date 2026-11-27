@@ -37,9 +37,9 @@ from PySide6.QtWidgets import (
     QWidgetAction,
 )
 
+from src.strings import Monitor, role_label
 from src.views import icons
 from src.views.components.common.painting import Divider, IconView
-from src.views.strings import Monitor
 from src.views.theme import (
     Colors,
     Motion,
@@ -51,7 +51,7 @@ from src.views.theme import (
     set_props,
 )
 
-_LOCALE = QLocale(QLocale.Language.English)
+_LOCALE = QLocale(QLocale.Language.Spanish, QLocale.Country.Spain)
 _ACCOUNT_HEIGHT = 40
 _NAME_WIDTH = 180          # longer names are elided
 _MARK = 28
@@ -288,7 +288,7 @@ class Topbar(QWidget):
         layout.addSpacing(Space.S4)
         layout.addWidget(Divider(Colors.N200, vertical=True, length=Space.S6), 0, Qt.AlignmentFlag.AlignVCenter)
         layout.addSpacing(Space.S3)
-        self.account = AccountButton(user_name, user_role)
+        self.account = AccountButton(user_name, role_label(user_role))
         self.account.sign_out_requested.connect(self.sign_out_clicked)
         layout.addWidget(self.account, 0, Qt.AlignmentFlag.AlignVCenter)
 

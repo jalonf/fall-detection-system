@@ -1,1 +1,1 @@
-"""Views (MVC): screens, components, theme and texts of the interface."""
+"""Views (MVC): screens, components and theme of the interface."""

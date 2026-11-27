@@ -23,11 +23,11 @@ from PySide6.QtCore import QRect, QRectF, QSize, Qt, Signal
 from PySide6.QtGui import QColor, QFontMetrics, QPainter, QPainterPath, QPen
 from PySide6.QtWidgets import QHBoxLayout, QLabel, QVBoxLayout, QWidget
 
+from src.strings import EM_DASH, Monitor
 from src.views.components.common.badge import Badge
 from src.views.components.common.button import make_button
 from src.views.components.common.painting import Divider, crisp
 from src.views.components.common.status_indicator import StatusIndicator
-from src.views.strings import EM_DASH, Monitor
 from src.views.theme import (
     Colors,
     Radius,

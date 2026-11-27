@@ -7,6 +7,7 @@ from PySide6.QtCore import QObject, Slot
 from src.ai.risk_assessor import RiskAssessor
 from src.dtos.patient_form_data import PatientFormData
 from src.repositories.patient_repository import PatientRepository
+from src.strings import Messages
 
 logger = logging.getLogger(__name__)
 
@@ -52,7 +53,7 @@ class PatientsController(QObject):
         risk_level = self._assess_risk(data.risk_answers)
         patient = self.patient_repo.create_patient(self.caregiver, data.name, risk_level, data.medical_notes)
         if patient is None:
-            self.page.show_error("The patient could not be saved. Please try again.")
+            self.page.show_error(Messages.PATIENT_NOT_SAVED)
             return
         logger.info("Patient added with risk level %s", risk_level)
         self.refresh()
@@ -64,7 +65,7 @@ class PatientsController(QObject):
         patient = self.patient_repo.get_patient(patient_id, self.caregiver)
         name = patient.name if patient is not None else ""
         if not self.patient_repo.delete_patient(patient_id, self.caregiver):
-            self.page.show_error("The patient could not be deleted. Please try again.")
+            self.page.show_error(Messages.PATIENT_NOT_DELETED)
             return
         self.refresh()
         self.page.show_patient_deleted(name)

@@ -7,8 +7,8 @@ from PySide6.QtGui import QColor, QPainter, QPen
 from PySide6.QtWidgets import QSizePolicy, QWidget
 
 from src.domain import password_policy
+from src.strings import Register
 from src.views import icons
-from src.views.strings import Register
 from src.views.theme import Colors, Type
 
 _ROW = 20

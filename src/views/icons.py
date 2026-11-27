@@ -1,4 +1,4 @@
-"""FallSense icon set: 24-unit grid, 1.5 stroke, round caps and joins, no fill.
+"""Vigía icon set: 24-unit grid, 1.5 stroke, round caps and joins, no fill.
 
 Icons take the colour of the text around them, so every request names its colour. Rendered
 pixmaps are cached per (name, colour, size, device pixel ratio).

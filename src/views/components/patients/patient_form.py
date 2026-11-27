@@ -41,6 +41,7 @@ from PySide6.QtWidgets import (
 
 from src.domain.questionnaire import PATIENT, SECTIONS, questions_in
 from src.dtos.patient_form_data import PatientFormData
+from src.strings import PatientForm as Text
 from src.views import icons
 from src.views.components.common.button import make_button
 from src.views.components.common.callout import Callout
@@ -54,7 +55,6 @@ from src.views.components.patients.questionnaire import (
     CheckAnswer,
     build_section,
 )
-from src.views.strings import PatientForm as Text
 from src.views.theme import Colors, Motion, Space, Type, make_label, set_props
 
 CONTENT = 820                                  # width of the form's column

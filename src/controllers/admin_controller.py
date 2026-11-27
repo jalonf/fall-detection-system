@@ -9,6 +9,7 @@ from src.controllers.base_monitor_controller import BaseMonitorController
 from src.domain.monitoring_profiles import MonitoringStrategy, strategy_for
 from src.domain.roles import is_admin
 from src.dtos.frame_packet import FramePacket
+from src.strings import Messages, risk_level_label
 from src.threads.video_thread import strategy_for_file
 
 logger = logging.getLogger(__name__)
@@ -41,7 +42,7 @@ class AdminController(BaseMonitorController):
     def _camera_strategy(self) -> MonitoringStrategy:
         """The camera follows the test profile chosen in the view; there is no alert thread, so nothing is stored."""
         strategy = strategy_for(self.view.test_profile())
-        self.view.log_event("INFO", f"Test mode · {strategy.name} risk profile: falls are not stored or e-mailed")
+        self.view.log_event("INFO", Messages.TEST_MODE.format(level=risk_level_label(strategy.name)))
         return strategy
 
     @Slot(str)
@@ -56,7 +57,7 @@ class AdminController(BaseMonitorController):
             return
 
         # The file's own frame rate picks the model; there is no alert thread, so nothing is stored or e-mailed.
-        self._start(file_path, strategy_for_file(file_path), f"Processing video file: {os.path.basename(file_path)}")
+        self._start(file_path, strategy_for_file(file_path), Messages.PROCESSING_FILE.format(name=os.path.basename(file_path)))
 
     def _show_frame(self, packet: FramePacket):
         super()._show_frame(packet)

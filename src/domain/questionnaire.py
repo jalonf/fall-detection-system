@@ -26,11 +26,11 @@ class Section:
     description: str
 
 
-PATIENT = Section("patient", "Patient", "Who the patient is and who they live with.")
-CONDITION = Section("condition", "General condition", "How the patient's health has been lately.")
-ACTIVITIES = Section("activities", "Everyday activities", "How hard each activity is for the patient.")
-CONDITIONS = Section("conditions", "Health conditions", "Conditions a doctor has diagnosed in the last 12 months.")
-MEDICATION = Section("medication", "Medication", "Medicines taken in the last 2 weeks.")
+PATIENT = Section("patient", "Paciente", "Quién es el paciente y con quién vive.")
+CONDITION = Section("condition", "Estado general", "Cómo ha estado de salud el paciente últimamente.")
+ACTIVITIES = Section("activities", "Actividades diarias", "Cuánto le cuesta al paciente cada actividad.")
+CONDITIONS = Section("conditions", "Problemas de salud", "Diagnosticados por un médico en los últimos 12 meses.")
+MEDICATION = Section("medication", "Medicación", "Medicamentos tomados en las últimas 2 semanas.")
 SECTIONS = (PATIENT, CONDITION, ACTIVITIES, CONDITIONS, MEDICATION)
 
 
@@ -73,52 +73,52 @@ def _number(key, text, section, minimum, maximum):
     return Question(key, text, section, NUMBER, minimum=minimum, maximum=maximum)
 
 
-_DIFFICULTY = (("No difficulty", 0), ("Some difficulty", 1), ("A lot of difficulty", 2), ("Cannot do it", 3))
+_DIFFICULTY = (("Ninguna dificultad", 0), ("Alguna dificultad", 1), ("Mucha dificultad", 2), ("No puede hacerlo", 3))
 
 QUESTIONS = (
     # --- The patient ---
-    _number("age", "Age (years)", PATIENT, 18, 110),
-    _choice("sex_female", "Sex", PATIENT, (("Male", 0), ("Female", 1))),
-    _check("lives_with_partner", "Lives with a spouse or partner", PATIENT),
+    _number("age", "Edad (años)", PATIENT, 18, 110),
+    _choice("sex_female", "Sexo", PATIENT, (("Hombre", 0), ("Mujer", 1))),
+    _check("lives_with_partner", "Vive con su cónyuge o pareja", PATIENT),
 
     # --- General condition ---
-    _choice("self_rated_health", "General health", CONDITION,
-            (("Very good", 0), ("Good", 1), ("Fair", 2), ("Bad", 3), ("Very bad", 4))),
-    _choice("activity_limitation", "Limited by a health problem (at least 6 months)", CONDITION,
-            (("Not limited", 0), ("Limited, but not severely", 1), ("Severely limited", 2))),
-    _choice("pain_level", "Pain in the last 4 weeks", CONDITION,
-            (("None", 0), ("Very mild", 1), ("Mild", 2), ("Moderate", 3), ("Severe", 4), ("Extreme", 5))),
-    _choice("physical_activity", "Physical activity in free time", CONDITION,
-            (("Almost none (sedentary)", 0), ("Occasional", 1), ("Several times a month", 2),
-             ("Several times a week", 3))),
+    _choice("self_rated_health", "Estado de salud general", CONDITION,
+            (("Muy bueno", 0), ("Bueno", 1), ("Regular", 2), ("Malo", 3), ("Muy malo", 4))),
+    _choice("activity_limitation", "Limitado por un problema de salud (al menos 6 meses)", CONDITION,
+            (("Nada limitado", 0), ("Limitado, pero no gravemente", 1), ("Gravemente limitado", 2))),
+    _choice("pain_level", "Dolor en las últimas 4 semanas", CONDITION,
+            (("Ninguno", 0), ("Muy leve", 1), ("Leve", 2), ("Moderado", 3), ("Severo", 4), ("Extremo", 5))),
+    _choice("physical_activity", "Actividad física en el tiempo libre", CONDITION,
+            (("Casi ninguna (sedentario)", 0), ("Ocasional", 1), ("Varias veces al mes", 2),
+             ("Varias veces a la semana", 3))),
 
     # --- Everyday activities: all answered on the same difficulty scale ---
-    _choice("walk_500m_difficulty", "Walking 500 metres without help", ACTIVITIES, _DIFFICULTY),
-    _choice("stairs_difficulty", "Going up or down 12 steps", ACTIVITIES, _DIFFICULTY),
-    _choice("sit_stand_difficulty", "Sitting down or getting up from a chair or bed", ACTIVITIES, _DIFFICULTY),
-    _choice("bathing_difficulty", "Showering or bathing without help", ACTIVITIES, _DIFFICULTY),
-    _choice("heavy_chores_difficulty", "Heavy housework (washing windows, scrubbing floors)", ACTIVITIES,
+    _choice("walk_500m_difficulty", "Caminar 500 metros en llano sin ayuda", ACTIVITIES, _DIFFICULTY),
+    _choice("stairs_difficulty", "Subir o bajar 12 escalones", ACTIVITIES, _DIFFICULTY),
+    _choice("sit_stand_difficulty", "Sentarse o levantarse de una silla o cama", ACTIVITIES, _DIFFICULTY),
+    _choice("bathing_difficulty", "Ducharse o bañarse sin ayuda", ACTIVITIES, _DIFFICULTY),
+    _choice("heavy_chores_difficulty", "Tareas domésticas pesadas (cristales, fregar suelos)", ACTIVITIES,
             _DIFFICULTY),
-    _choice("concentration_difficulty", "Concentrating", ACTIVITIES, _DIFFICULTY),
-    _choice("vision_difficulty", "Seeing (with glasses if used)", ACTIVITIES, _DIFFICULTY),
-    _choice("hearing_difficulty", "Hearing in a quiet place", ACTIVITIES, _DIFFICULTY),
+    _choice("concentration_difficulty", "Recordar o concentrarse", ACTIVITIES, _DIFFICULTY),
+    _choice("vision_difficulty", "Ver (con gafas si las usa)", ACTIVITIES, _DIFFICULTY),
+    _choice("hearing_difficulty", "Oír una conversación en un sitio tranquilo", ACTIVITIES, _DIFFICULTY),
 
     # --- Health conditions ---
     _check("osteoporosis", "Osteoporosis", CONDITIONS),
-    _check("arthrosis", "Arthrosis", CONDITIONS),
-    _check("chronic_back_pain", "Chronic back or neck pain", CONDITIONS),
-    _check("urinary_incontinence", "Urinary incontinence", CONDITIONS),
+    _check("arthrosis", "Artrosis", CONDITIONS),
+    _check("chronic_back_pain", "Dolor crónico de espalda o cuello", CONDITIONS),
+    _check("urinary_incontinence", "Incontinencia urinaria", CONDITIONS),
     _check("diabetes", "Diabetes", CONDITIONS),
-    _check("heart_disease", "Heart disease (heart attack, angina...)", CONDITIONS),
-    _check("anxiety", "Chronic anxiety", CONDITIONS),
-    _check("depression", "Depression", CONDITIONS),
-    _check("stroke_ever", "Has ever had a stroke", CONDITIONS),
+    _check("heart_disease", "Enfermedad del corazón (infarto, angina...)", CONDITIONS),
+    _check("anxiety", "Ansiedad crónica", CONDITIONS),
+    _check("depression", "Depresión", CONDITIONS),
+    _check("stroke_ever", "Ha sufrido alguna vez un ictus", CONDITIONS),
 
     # --- Medication ---
-    _number("n_prescribed_med_types", "Different medicines prescribed by a doctor", MEDICATION, 0, 23),
-    _check("takes_sedatives", "Tranquillisers, relaxants or sleeping pills", MEDICATION),
-    _check("takes_antidepressants", "Antidepressants", MEDICATION),
-    _check("takes_bp_medication", "Medicines for blood pressure", MEDICATION),
+    _number("n_prescribed_med_types", "Medicamentos distintos recetados por un médico", MEDICATION, 0, 23),
+    _check("takes_sedatives", "Tranquilizantes, relajantes o pastillas para dormir", MEDICATION),
+    _check("takes_antidepressants", "Antidepresivos", MEDICATION),
+    _check("takes_bp_medication", "Medicinas para la tensión arterial", MEDICATION),
 )
 
 

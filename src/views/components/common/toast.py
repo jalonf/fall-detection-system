@@ -26,9 +26,9 @@ from PySide6.QtCore import (
 from PySide6.QtGui import QColor, QPainter
 from PySide6.QtWidgets import QWidget
 
+from src.strings import Toasts
 from src.views import icons
 from src.views.components.common.painting import shadow_pixmap, wrap_text
-from src.views.strings import Toasts
 from src.views.theme import Colors, Motion, Radius, Type
 
 KINDS = {
