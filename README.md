@@ -248,8 +248,9 @@ sign-up form) and creates the account without a patient. Then sign in with it in
 
 The trained models are already in `models/fall_detection/`. To train them again:
 
-1. Place the videos (`.mp4`) in `data/fall_detection/raw/VideoDataset/ADL/` (normal activities) and
-   `data/fall_detection/raw/VideoDataset/Fall/` (falls). Subfolders are allowed.
+1. Download `VideoDataset.zip` from the [Video-Based Fall Detection Dataset](https://doi.org/10.6084/m9.figshare.28596332)
+   (see [Datasets](#datasets)) and place its videos (`.mp4`) in `data/fall_detection/raw/VideoDataset/ADL/`
+   (normal activities) and `data/fall_detection/raw/VideoDataset/Fall/` (falls). Subfolders are allowed.
 2. Extract the pose sequences for both modes (written to `data/fall_detection/processed/`):
    ```bash
    python -m training.fall_detection.build_fall_dataset
@@ -263,8 +264,8 @@ The trained models are already in `models/fall_detection/`. To train them again:
 
 ### Risk-assessment dataset
 
-The patient's risk level comes from a Random Forest trained on the ESdE 2025 health survey (INE).
-The microdata zip goes in `data/risk_assessment/raw/ESdEadulto_2025.zip`; then, from the project root:
+The patient's risk level comes from a Random Forest trained on the ESdE 2025 health survey (INE, see
+[Datasets](#datasets)). The microdata zip goes in `data/risk_assessment/raw/ESdEadulto_2025.zip`; then, from the project root:
 
 ```bash
 python -m training.risk_assessment.build_risk_dataset_esde
@@ -285,6 +286,39 @@ python -m training.risk_assessment.train_risk_model
 
 The application only needs that `.joblib` file. Questions are defined once in
 `src/domain/questionnaire.py`; each one is a feature of the model.
+
+---
+
+## Datasets
+
+Neither dataset is redistributed in this repository (`data/` is ignored by Git): download them from
+their sources. The trained models in `models/` were derived from them.
+
+### Fall detection: Video-Based Fall Detection Dataset
+
+> Ursul, Ivan (2025). *Video-Based Fall Detection Dataset with 2017 Activities from 29 Subjects*.
+> figshare. Dataset. https://doi.org/10.6084/m9.figshare.28596332.v2
+
+* **Content:** video recordings of 29 subjects: 999 falls (to the left, right, front and back, while
+  trying to sit down, from a height...) and 1,017 activities of daily living (walking, running,
+  getting up from the floor...).
+* **Licence:** [Creative Commons Attribution 4.0 International (CC BY 4.0)](https://creativecommons.org/licenses/by/4.0/).
+* **Changes made:** the videos were not modified or redistributed. They were subsampled to 15 and
+  30 FPS and converted into one-second windows of MediaPipe 3D poses to train the GRU fall models
+  (`training/fall_detection/build_fall_dataset.py`).
+
+### Fall-risk assessment: ESdE 2025 (INE)
+
+> Ministerio de Sanidad and Instituto Nacional de Estadística (INE). *Encuesta de Salud de España
+> (ESdE) 2025*, adult questionnaire microdata (`ESdEadulto_2025.zip`).
+> https://www.sanidad.gob.es/estadEstudios/estadisticas/encuestaSaludEspana/home_2025.htm
+
+* **Content:** 21,641 respondents, 6,456 of them aged 65 or more.
+* **Use:** the respondents aged 65+ and 28 of their answers train the risk model. The survey has no
+  question about falls, so the target is a proxy: accidents at home or during leisure time in the
+  last 12 months (see `data/README.md`).
+* **Terms:** any publication obtained from the microdata must cite the Ministerio de Sanidad and the
+  INE as the source of the primary data.
 
 ---
 

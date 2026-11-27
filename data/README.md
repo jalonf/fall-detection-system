@@ -19,13 +19,16 @@ data/
 
 ## Fall detection
 
-Videos in `raw/` are converted to pose sequences by `python -m training.fall_detection.build_fall_dataset`.
+`raw/VideoDataset/` is `VideoDataset.zip` from the *Video-Based Fall Detection Dataset with 2017
+Activities from 29 Subjects* (Ivan Ursul, figshare, 2025, https://doi.org/10.6084/m9.figshare.28596332,
+licence CC BY 4.0). Its videos are converted to pose sequences by
+`python -m training.fall_detection.build_fall_dataset`.
 
 ## Risk assessment
 
-`ESdEadulto_2025.zip` is the microdata of the *Encuesta de Salud y Estilos de Vida de los adultos
-2025* (ESdE), published by the Spanish National Statistics Institute (INE, www.ine.es) together
-with the Ministry of Health. It contains 21,641 respondents, 6,456 of them aged 65 or more.
+`ESdEadulto_2025.zip` is the adult questionnaire microdata of the *Encuesta de Salud de España
+(ESdE) 2025*, run by the Ministry of Health (Ministerio de Sanidad) and the Spanish National
+Statistics Institute (INE), who must be cited as the source of the primary data. It contains 21,641 respondents, 6,456 of them aged 65 or more.
 
 `python -m training.risk_assessment.build_risk_dataset_esde` turns it into `processed/risk_dataset_esde2025.csv`
 (6,396 people, 28 predictors that the application asks the patient, 7 targets and the survey weight).
