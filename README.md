@@ -57,8 +57,9 @@ every "Start" / "Stop". Each thread is named after its job, and the log shows wh
 
 Each patient has a risk level, calculated when the caregiver adds them. The caregiver answers a health
 questionnaire about the patient (`src/domain/questionnaire.py`: age, mobility, pain, conditions, medication...) and a
-Random Forest (`src/ai/risk_assessor.py`) turns the answers into LOW, MEDIUM or HIGH. If the model cannot
-be used, the patient is registered as HIGH, the strictest level. The level decides how the camera is
+Random Forest (`src/ai/risk_assessor.py`) turns the answers into LOW, MEDIUM or HIGH. The patient must be
+65 or older, the ages the model was trained on. If the model cannot be used, the patient is
+registered as HIGH, the strictest level. The level decides how the camera is
 configured and which model is used (`src/domain/monitoring_profiles.py`):
 
 | Risk   | Camera | Model window | Model file |
@@ -79,8 +80,25 @@ Both models share the same architecture, trained with Keras (`training/fall_dete
 Input (window, 99) → GRU(64) → Dropout(0.3) → Dense(32, ReLU) → Dense(1, sigmoid)
 ```
 
-The confusion matrices and training curves are in `docs/high_risk_30fps/` and
-`docs/low_risk_15fps/`.
+They are evaluated **by subject**: the people recorded are split into 5 groups and each group is
+predicted by a model trained without any of their videos, so the results measure how the models
+work with people they have never seen. Each test video is also replayed one pose at a time with the
+application's hysteresis, which gives the share of falls that raise an alarm and of normal
+activities that raise a false one. The report (`evaluation.json`), the confusion matrices and the
+training curves are in `docs/high_risk_30fps/` and `docs/low_risk_15fps/`.
+
+Results by subject (mean ± standard deviation over the 5 groups; 29 subjects, 2,013 videos):
+
+| | 30 FPS model | 15 FPS model |
+|---|---|---|
+| Window accuracy | 0.906 ± 0.019 | 0.918 ± 0.006 |
+| Window precision / recall | 0.927 / 0.881 | 0.942 / 0.889 |
+| Window ROC AUC | 0.956 ± 0.011 | 0.968 ± 0.010 |
+| Fall videos that raise an alarm | 98.1 % | 98.8 % |
+| Normal-activity videos that raise a false alarm | 12.6 % | 11.5 % |
+
+The clips are short (about 1.9 s) and the normal activities include movements that resemble a fall,
+so the false-alarm share is per clip, not per hour of real monitoring.
 
 ---
 
@@ -251,11 +269,13 @@ The trained models are already in `models/fall_detection/`. To train them again:
 1. Download `VideoDataset.zip` from the [Video-Based Fall Detection Dataset](https://doi.org/10.6084/m9.figshare.28596332)
    (see [Datasets](#datasets)) and place its videos (`.mp4`) in `data/fall_detection/raw/VideoDataset/ADL/`
    (normal activities) and `data/fall_detection/raw/VideoDataset/Fall/` (falls). Subfolders are allowed.
-2. Extract the pose sequences for both modes (written to `data/fall_detection/processed/`):
+2. Extract the pose sequences for both modes (written to `data/fall_detection/processed/`, with
+   the subject and video of every window):
    ```bash
    python -m training.fall_detection.build_fall_dataset
    ```
-3. Train and evaluate both models (written to `models/fall_detection/`, plots to `docs/`):
+3. Evaluate both models by subject and train them (written to `models/fall_detection/`, report and
+   plots to `docs/`); `--evaluate-only` runs the evaluation and keeps the saved models:
    ```bash
    python -m training.fall_detection.train_fall_model
    ```
@@ -274,7 +294,8 @@ python -m training.risk_assessment.build_risk_dataset_esde
 This writes `data/risk_assessment/processed/risk_dataset_esde2025.csv` (people aged 65+, the 28
 predictors that the application asks the patient, the targets and the survey weight) and a
 `..._dictionary.csv` that explains every column. The survey has no question about falls, so the
-targets are a proxy: accidents at home or during leisure time in the last 12 months.
+model learns a proxy: an accident at home in the last 12 months, the closest the survey gets to a
+fall at home.
 
 Then train the Random Forest. It reports its cross-validated AUC and the observed event rate per risk
 level, saves the confusion matrices in `docs/risk_assessment/` and stores the model, the questions it
@@ -283,6 +304,31 @@ expects and the limits of each level in `models/risk_model/risk_random_forest.jo
 ```bash
 python -m training.risk_assessment.train_risk_model
 ```
+
+The levels are percentiles of the cross-validated probabilities: the lowest 50 % of the people are
+LOW, the next 30 % MEDIUM and the highest 20 % HIGH. Current results (5-fold cross-validation,
+6,396 people, 442 with an accident at home):
+
+| | |
+|---|---|
+| AUC | 0.779 |
+| People with an accident at home: LOW / MEDIUM / HIGH | 2.1 % / 6.9 % / 19.0 % |
+| Accidents caught by flagging MEDIUM or HIGH | 85 % (specificity 53 %) |
+| Accidents caught by flagging HIGH only | 55 % (specificity 83 %) |
+
+The questions that weigh most are the difficulty to shower, to do heavy housework, to get up from a
+chair, to walk 500 m and to climb stairs, then age. Two decisions were checked against the data:
+
+* **Target.** With the same model and folds, an accident at home (AUC 0.779) separates the levels
+  better than an accident at home or during leisure time (0.726) or than any accident or permanent
+  injury from one (0.712), which mix in active people's leisure injuries and old accidents.
+* **Questions.** 32 more ESdE variables (dementia, body mass index, social support, alcohol, help
+  received, the other daily activities...) were added one by one to the 28 questions and compared
+  over 15 folds: none improved the AUC by more than 0.003, so the questionnaire stays at 28 questions.
+
+The survey measures the answers and the accidents at the same time, so the model identifies the
+profile of the older people who have had an accident at home; it is a screening of how closely to
+monitor them, not a prediction of future falls.
 
 The application only needs that `.joblib` file. Questions are defined once in
 `src/domain/questionnaire.py`; each one is a feature of the model.
@@ -315,8 +361,8 @@ their sources. The trained models in `models/` were derived from them.
 
 * **Content:** 21,641 respondents, 6,456 of them aged 65 or more.
 * **Use:** the respondents aged 65+ and 28 of their answers train the risk model. The survey has no
-  question about falls, so the target is a proxy: accidents at home or during leisure time in the
-  last 12 months (see `data/README.md`).
+  question about falls, so the target is a proxy: an accident at home in the last 12 months (see
+  `data/README.md`).
 * **Terms:** any publication obtained from the microdata must cite the Ministerio de Sanidad and the
   INE as the source of the primary data.
 
