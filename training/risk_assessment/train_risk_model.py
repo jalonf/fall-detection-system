@@ -24,7 +24,7 @@ from training.risk_assessment.build_risk_dataset_esde import PREDICTOR_COLUMNS
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger(__name__)
 
-TARGET = "y_any_event"                 # accident at home / leisure time, with care or with sequelae
+TARGET = "y_accident_home"             # accident at home in the last 12 months: the survey's closest proxy of a fall at home
 LEVELS = ["LOW", "MEDIUM", "HIGH"]
 LEVEL_PERCENTILES = (50, 80)           # LOW: lowest 50 % of the probabilities, HIGH: highest 20 %
 RANDOM_STATE = 42

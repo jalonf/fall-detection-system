@@ -77,7 +77,7 @@ _DIFFICULTY = (("Ninguna dificultad", 0), ("Alguna dificultad", 1), ("Mucha difi
 
 QUESTIONS = (
     # --- The patient ---
-    _number("age", "Edad (años)", PATIENT, 18, 110),
+    _number("age", "Edad (años)", PATIENT, 65, 110),   # the risk model only saw people aged 65 or more
     _choice("sex_female", "Sexo", PATIENT, (("Hombre", 0), ("Mujer", 1))),
     _check("lives_with_partner", "Vive con su cónyuge o pareja", PATIENT),
 

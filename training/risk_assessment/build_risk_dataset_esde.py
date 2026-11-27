@@ -209,7 +209,9 @@ PREDICTOR_COLUMNS = [feature.name for feature in FEATURES]
 TARGETS = [
     ("y_accident", "D1_2, D1_3",
      "Accidente en casa o en tiempo libre en los últimos 12 meses (proxy de caída)", "0 no, 1 sí"),
-    ("y_accident_home", "D1_2", "Accidente en casa en los últimos 12 meses", "0 no, 1 sí"),
+    ("y_accident_home", "D1_2",
+     "TARGET USADO: accidente en casa en los últimos 12 meses (el proxy más cercano a una caída en el hogar)",
+     "0 no, 1 sí"),
     ("y_injurious_accident", "D1_2, D1_3, D2",
      "Accidente en casa o tiempo libre que requirió hospital o urgencias", "0 no, 1 sí"),
     ("y_injury_sequelae", "C5b_33", "Lesión o defecto permanente causado por un accidente", "0 no, 1 sí"),
@@ -217,7 +219,7 @@ TARGETS = [
      "Puntuación compuesta: suma de las tres señales anteriores", "0-3"),
     ("y_risk_level", "y_risk_score", "Nivel de riesgo: 0 bajo (puntuación 0), 1 medio (1), 2 alto (2 o más)",
      "0 bajo, 1 medio, 2 alto"),
-    ("y_any_event", "y_risk_score", "TARGET RECOMENDADO: ha tenido algún evento (puntuación 1 o más)", "0 no, 1 sí"),
+    ("y_any_event", "y_risk_score", "Ha tenido algún evento (puntuación 1 o más)", "0 no, 1 sí"),
 ]
 TARGET_COLUMNS = [name for name, *_ in TARGETS]
 
